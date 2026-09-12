@@ -446,37 +446,29 @@ Only pause when:
 
 ---
 
-# Completion Report
+# Mandatory Post-Implementation Summary
 
-When finished provide:
+After **every implementation** (regardless of whether the task is small or big):
 
-## Summary
+Always provide a comprehensive, structured summary report containing:
 
-What was implemented.
+## 1. Summary
+A concise overview of what was implemented.
 
-## Files Changed
+## 2. Rationale ("Why")
+The root reason and purpose for the change.
 
-List modified files.
+## 3. Files Changed
+Clickable markdown links to all created and modified files.
 
-## Architecture Decisions
+## 4. Architecture Decisions & Tradeoffs
+Key technical decisions, patterns used, and compromises made.
 
-Explain important decisions.
+## 5. Testing & Verification
+Test results and verification status (unit tests, build checks).
 
-## Tradeoffs
-
-Explain compromises.
-
-## Testing
-
-Describe tests performed.
-
-## Risks
-
-Remaining risks.
-
-## Future Improvements
-
-Recommended next steps.
+## 6. Risks & Future Improvements
+Any remaining risks and recommended next steps.
 
 ---
 
