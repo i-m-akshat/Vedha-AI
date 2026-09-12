@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "ResuMate AI — 1-Click Job Scraper",
+  "version": "1.0.0",
+  "description": "Instantly capture job descriptions from LinkedIn, Greenhouse, Lever, Workday, Ashby, and Indeed for ATS tailoring in ResuMate AI.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Tailor Resume with ResuMate AI"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.linkedin.com/*",
+        "*://*.greenhouse.io/*",
+        "*://*.lever.co/*",
+        "*://*.ashbyhq.com/*",
+        "*://*.workday.com/*",
+        "*://*.myworkdayjobs.com/*",
+        "*://*.wellfound.com/*",
+        "*://*.indeed.com/*",
+        "*://*/*"
+      ],
+      "js": ["content.js"]
+    }
+  ]
+}

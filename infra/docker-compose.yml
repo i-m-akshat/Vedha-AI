@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: resumate-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-resumate_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-resumate_secret_password_change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-resumate_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-resumate_admin} -d ${POSTGRES_DB:-resumate_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - resumate-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: resumate-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - resumate-network
+
+  backend:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.backend
+    container_name: resumate-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=${ENVIRONMENT:-Production}
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-resumate_db};Username=${POSTGRES_USER:-resumate_admin};Password=${POSTGRES_PASSWORD:-resumate_secret_password_change_me};
+      - ConnectionStrings__Redis=${REDIS_CONNECTION_STRING:-redis:6379}
+      - JwtSettings__Secret=${JWT_SECRET}
+      - JwtSettings__Issuer=${JWT_ISSUER}
+      - JwtSettings__Audience=${JWT_AUDIENCE}
+      - JwtSettings__ExpiryMinutes=${JWT_EXPIRY_MINUTES}
+      - AiSettings__OpenAiApiKey=${OPENAI_API_KEY}
+      - AiSettings__AnthropicApiKey=${ANTHROPIC_API_KEY}
+      - AiSettings__GeminiApiKey=${GEMINI_API_KEY}
+      - AiSettings__DefaultProvider=${DEFAULT_AI_PROVIDER:-Gemini}
+      - AiSettings__DefaultModel=${DEFAULT_AI_MODEL:-gemini-2.0-flash}
+    ports:
+      - "${APP_PORT:-5000}:8080"
+    networks:
+      - resumate-network
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.frontend
+    container_name: resumate-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    networks:
+      - resumate-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  resumate-network:
+    driver: bridge

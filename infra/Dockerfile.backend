@@ -1,0 +1,36 @@
+# Build stage for .NET 10 Web API
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /app
+
+# Copy project files for caching layer
+COPY backend/src/ResumeTailor.Domain/ResumeTailor.Domain.csproj src/ResumeTailor.Domain/
+COPY backend/src/ResumeTailor.Application/ResumeTailor.Application.csproj src/ResumeTailor.Application/
+COPY backend/src/ResumeTailor.Infrastructure/ResumeTailor.Infrastructure.csproj src/ResumeTailor.Infrastructure/
+COPY backend/src/ResumeTailor.WebApi/ResumeTailor.WebApi.csproj src/ResumeTailor.WebApi/
+COPY backend/ResumeTailor.sln .
+
+RUN dotnet restore src/ResumeTailor.WebApi/ResumeTailor.WebApi.csproj
+
+# Copy all backend source
+COPY backend/ .
+
+# Build and publish
+WORKDIR /app/src/ResumeTailor.WebApi
+RUN dotnet publish -c Release -o /out
+
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+COPY --from=build /out .
+
+# Install dependencies for fonts (for ATS PDF generation)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    fontconfig \
+    fonts-dejavu-core \
+    libgdiplus \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
+
+ENTRYPOINT ["dotnet", "ResumeTailor.WebApi.dll"]
