@@ -1,3 +1,4 @@
+using AngleSharp;
 using FluentAssertions;
 using ResumeTailor.Application.Common.Interfaces;
 using ResumeTailor.Domain.Entities;
@@ -85,5 +86,63 @@ public class OrchestratorTests
         result.Success.Should().BeTrue();
         result.PausedForUserReview.Should().BeTrue();
         result.ExecutionLogs.Should().Contain(log => log.Contains("Review Gateway Activated"));
+    }
+
+    [Fact]
+    public async Task SemanticDomFormMapper_ShouldMapFieldsUsingSemanticLabelsWithoutHardcodedSelectors()
+    {
+        var browsingContext = AngleSharp.BrowsingContext.New(AngleSharp.Configuration.Default);
+        var html = @"
+            <html>
+                <body>
+                    <form>
+                        <div>
+                            <label for='user_fname'>First Name</label>
+                            <input id='user_fname' name='fname' type='text' required />
+                        </div>
+                        <div>
+                            <label for='user_email'>Work Email</label>
+                            <input id='user_email' name='email' type='email' />
+                        </div>
+                        <div>
+                            <label for='user_salary'>Expected Compensation / Salary</label>
+                            <input id='user_salary' name='compensation' type='text' />
+                        </div>
+                        <div>
+                            <label for='user_cv'>Attach Resume / CV</label>
+                            <input id='user_cv' name='cv_file' type='file' />
+                        </div>
+                    </form>
+                </body>
+            </html>";
+
+        var document = await browsingContext.OpenAsync(req => req.Content(html));
+        var mapper = new SemanticDomFormMapper(null!); // Mocked/null AI factory since standard profile matches apply
+
+        var extractedFields = mapper.ExtractSemanticFields(document);
+
+        extractedFields.Should().HaveCount(4);
+        extractedFields.Should().Contain(f => f.Label == "First Name" && f.Type == "text");
+        extractedFields.Should().Contain(f => f.Label == "Work Email" && f.Type == "email");
+        extractedFields.Should().Contain(f => f.Label == "Expected Compensation / Salary");
+        extractedFields.Should().Contain(f => f.Label == "Attach Resume / CV" && f.Type == "file");
+
+        var profile = new CandidateProfile
+        {
+            ExpectedSalary = "$165,000 / year",
+            NoticePeriodDays = 30
+        };
+
+        var resume = new ResumeSchema
+        {
+            PersonalInfo = new PersonalInfo { FullName = "Sarah Connor", Email = "sarah@skynet-defense.org" }
+        };
+
+        var mapped = await mapper.MapFieldsToCandidateAsync(extractedFields, profile, resume, new List<ScreeningQuestionMemory>());
+
+        mapped.FirstOrDefault(f => f.Label == "First Name")?.InferredMappedValue.Should().Be("Sarah");
+        mapped.FirstOrDefault(f => f.Label == "Work Email")?.InferredMappedValue.Should().Be("sarah@skynet-defense.org");
+        mapped.FirstOrDefault(f => f.Label == "Expected Compensation / Salary")?.InferredMappedValue.Should().Be("$165,000 / year");
+        mapped.FirstOrDefault(f => f.Label == "Attach Resume / CV")?.InferredMappedValue.Should().Be("[ATS-Tailored-Resume.pdf]");
     }
 }

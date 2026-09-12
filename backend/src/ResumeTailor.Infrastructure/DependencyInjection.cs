@@ -81,6 +81,7 @@ public static class DependencyInjection
         services.AddScoped<IJobApplicationProvider, WorkdayProvider>();
         services.AddScoped<IJobApplicationProvider, GenericBrowserProvider>();
         services.AddScoped<IJobApplicationOrchestrator, JobApplicationOrchestrator>();
+        services.AddScoped<SemanticDomFormMapper>();
 
         return services;
     }
