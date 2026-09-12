@@ -531,7 +531,7 @@ export const CandidateProfilePage: React.FC = () => {
                 Company Screening Memory Engine
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Saved question-and-answer pairs learned from past applications. When applying to the same company again, ResuMate immediately reuses matching answers.
+                Saved question-and-answer pairs learned from past applications. When applying to the same company again, Vedha AI immediately reuses matching answers.
               </p>
             </div>
 

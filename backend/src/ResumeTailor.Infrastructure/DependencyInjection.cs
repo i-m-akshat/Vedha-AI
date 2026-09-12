@@ -28,7 +28,7 @@ public static class DependencyInjection
         else
         {
             // SQLite local fallback for zero-config developer onboarding
-            var sqliteConnection = configuration.GetConnectionString("SqliteConnection") ?? "Data Source=resumate.db";
+            var sqliteConnection = configuration.GetConnectionString("SqliteConnection") ?? "Data Source=vedha.db";
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlite(sqliteConnection));
         }

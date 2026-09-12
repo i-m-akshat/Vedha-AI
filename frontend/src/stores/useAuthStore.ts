@@ -14,17 +14,19 @@ interface AuthState {
   updateKeys: (data: { preferredProvider: AiProviderType; preferredModel?: string; openAiKey?: string; claudeKey?: string; geminiKey?: string }) => Promise<void>;
 }
 
+const getInitialToken = () => localStorage.getItem('vedha_token') || localStorage.getItem('resumate_token');
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  token: localStorage.getItem('resumate_token'),
-  isAuthenticated: !!localStorage.getItem('resumate_token'),
+  token: getInitialToken(),
+  isAuthenticated: !!getInitialToken(),
   isLoading: false,
 
   login: async (email, pass) => {
     set({ isLoading: true });
     try {
       const res = await authApi.login(email, pass);
-      localStorage.setItem('resumate_token', res.token);
+      localStorage.setItem('vedha_token', res.token);
       set({ user: res.user, token: res.token, isAuthenticated: true, isLoading: false });
     } catch (e) {
       set({ isLoading: false });
@@ -36,7 +38,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true });
     try {
       const res = await authApi.register(email, pass, name);
-      localStorage.setItem('resumate_token', res.token);
+      localStorage.setItem('vedha_token', res.token);
       set({ user: res.user, token: res.token, isAuthenticated: true, isLoading: false });
     } catch (e) {
       set({ isLoading: false });
@@ -45,6 +47,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: () => {
+    localStorage.removeItem('vedha_token');
     localStorage.removeItem('resumate_token');
     set({ user: null, token: null, isAuthenticated: false });
   },
@@ -54,6 +57,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const user = await authApi.getCurrentUser();
       set({ user, isAuthenticated: true });
     } catch {
+      localStorage.removeItem('vedha_token');
       localStorage.removeItem('resumate_token');
       set({ user: null, token: null, isAuthenticated: false });
     }
@@ -72,11 +76,11 @@ interface ThemeState {
 }
 
 export const useThemeStore = create<ThemeState>((set) => ({
-  isDark: localStorage.getItem('resumate_theme') !== 'light',
+  isDark: (localStorage.getItem('vedha_theme') || localStorage.getItem('resumate_theme')) !== 'light',
   toggleTheme: () =>
     set((state) => {
       const next = !state.isDark;
-      localStorage.setItem('resumate_theme', next ? 'dark' : 'light');
+      localStorage.setItem('vedha_theme', next ? 'dark' : 'light');
       if (next) {
         document.documentElement.classList.add('dark');
       } else {

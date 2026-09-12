@@ -1,12 +1,20 @@
-# ResuMate AI — Enterprise AI Resume Tailoring & ATS Optimization Platform
+<div align="center">
+  <img src="docs/assets/vedha-logo.png" alt="Vedha AI Logo" width="130" style="border-radius: 24px; margin-bottom: 8px;" />
+  <h1>Vedha AI</h1>
+  <p><strong>The AI Career Operating System & Multi-Pipeline Job Application Orchestrator</strong></p>
 
-[![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
-[![React 19](https://img.shields.io/badge/React-19.0-61DAFB?logo=react)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://www.docker.com/)
+  <p>
+    <a href="https://dotnet.microsoft.com/"><img src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet" alt=".NET 10" /></a>
+    <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-19.0-61DAFB?logo=react" alt="React 19" /></a>
+    <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript" alt="TypeScript" /></a>
+    <a href="https://tailwindcss.com/"><img src="https://img.shields.io/badge/Tailwind-3.4-38B2AC?logo=tailwind-css" alt="Tailwind CSS" /></a>
+    <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker" alt="Docker" /></a>
+  </p>
+</div>
 
-ResuMate AI is a production-ready SaaS platform that bridges the gap between candidates and Applicant Tracking Systems (ATS). Upload an immutable Master Resume once, provide any job opening via URL (LinkedIn, Greenhouse, Lever, Workday, Ashby, Indeed) or raw text, and receive a mathematically truth-preserving, tailored resume, ATS scorecard, recruiter feedback, and ATS-safe PDF/DOCX downloads.
+---
+
+Vedha AI is a production-ready AI Career Operating System that bridges the gap between candidates, Applicant Tracking Systems (ATS), and company career portals. Upload an immutable Master Resume once, provide any job opening via URL or raw text, and receive a mathematically truth-preserving, tailored resume, ATS scorecard, recruiter feedback, and automated multi-pipeline application staging.
 
 ---
 
@@ -56,7 +64,7 @@ ResuMate AI is a production-ready SaaS platform that bridges the gap between can
 | **Extension** | Google Chrome Extension Manifest V3 |
 | **Containerization** | Docker, Docker Compose (all stored in `infra/`) |
 
-See [ARCHITECTURE.md](file:///A:/AIProjects/Resumebuilder/ARCHITECTURE.md) for detailed design specifications.
+See [ARCHITECTURE.md](file:///A:/AIProjects/Resumebuilder/ARCHITECTURE.md) for detailed design specifications, [SYSTEM_DESIGN_AND_PATTERNS.md](file:///A:/AIProjects/Resumebuilder/SYSTEM_DESIGN_AND_PATTERNS.md) for a masterclass on SOLID principles and design patterns in this codebase, and [INTERESTING_THINGS.md](file:///A:/AIProjects/Resumebuilder/INTERESTING_THINGS.md) for core engineering highlights and innovations.
 
 ---
 

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "ResuMate AI — 1-Click Job Scraper",
+  "name": "Vedha AI — The AI Career Operating System",
   "version": "1.0.0",
-  "description": "Instantly capture job descriptions from LinkedIn, Greenhouse, Lever, Workday, Ashby, and Indeed for ATS tailoring in ResuMate AI.",
+  "description": "Instantly capture job descriptions and auto-fill career portals with verified profile data via Vedha AI.",
   "permissions": [
     "activeTab",
     "scripting",
@@ -11,9 +11,19 @@
   "host_permissions": [
     "*://*/*"
   ],
+  "icons": {
+    "16": "vedha-logo.png",
+    "48": "vedha-logo.png",
+    "128": "vedha-logo.png"
+  },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Tailor Resume with ResuMate AI"
+    "default_title": "Vedha AI Copilot",
+    "default_icon": {
+      "16": "vedha-logo.png",
+      "48": "vedha-logo.png",
+      "128": "vedha-logo.png"
+    }
   },
   "content_scripts": [
     {

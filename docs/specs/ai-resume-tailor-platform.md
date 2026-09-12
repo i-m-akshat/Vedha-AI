@@ -1,7 +1,7 @@
-# Feature Specification: ResuMate AI Platform
+# Feature Specification: Vedha AI — The AI Career Operating System
 
 ## 1. Overview
-ResuMate AI is an enterprise-grade, AI-powered Resume Tailoring SaaS platform. The application allows job seekers to upload an immutable Master Resume (PDF, DOCX, Markdown), provide a target Job Description via direct text or URL (LinkedIn, Greenhouse, Lever, Workday, Ashby, Indeed, etc.), and automatically generate an ATS-optimized, tailored resume alongside an in-depth ATS gap analysis, recruiter scorecard, and interview preparation suite.
+Vedha AI is an enterprise-grade AI Career Operating System. The platform allows job seekers to upload an immutable Master Resume (PDF, DOCX, Markdown), provide a target Job Description via direct text or URL (LinkedIn, Greenhouse, Lever, Workday, Ashby, Indeed, etc.), and automatically generate an ATS-optimized, tailored resume alongside an in-depth ATS gap analysis, recruiter scorecard, interview preparation suite, and multi-pipeline browser automation copilot.
 
 ---
 

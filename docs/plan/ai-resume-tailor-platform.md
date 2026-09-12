@@ -1,7 +1,7 @@
-# Implementation Plan: ResuMate AI Platform
+# Implementation Plan: Vedha AI Platform
 
 ## 1. Scope & Execution Strategy
-Build the complete, production-ready AI Resume Tailoring platform across 4 execution phases:
+Build the complete, production-ready Vedha AI Career Operating System across 5 execution phases:
 - **Phase 1: Backend Architecture (.NET 10 Web API + Clean Architecture)**
 - **Phase 2: Frontend Client (React 19 + TypeScript + Vite + Tailwind CSS + shadcn/ui)**
 - **Phase 3: Chrome / Browser Extension (Manifest V3)**
@@ -76,7 +76,7 @@ Build the complete, production-ready AI Resume Tailoring platform across 4 execu
 1. Chrome Extension in `extension/`:
    - `manifest.json`: Manifest V3 configuration with permissions for `activeTab`, `storage`, and host permissions.
    - `content.ts`: Target-specific DOM parsers for LinkedIn, Greenhouse, Lever, Workday, Ashby, Indeed, and generic job boards.
-   - `popup.html` / `popup.ts`: Modern UI showing extracted Job Title, Company, Description with a 1-click "Send to ResuMate AI" button.
+   - `popup.html` / `popup.js`: Modern UI showing extracted Job Title, Company, Description with a 1-click "Send to Vedha AI Studio" button and in-page auto-fill.
    - `background.ts`: API communication bridge.
 
 ---

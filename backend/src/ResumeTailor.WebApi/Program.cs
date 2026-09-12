@@ -37,8 +37,8 @@ builder.Services.AddControllers()
 
 // Configure JWT Authentication
 var jwtSecret = builder.Configuration["JwtSettings:Secret"] ?? "super_secret_jwt_key_at_least_32_characters_long_for_security_hs256";
-var jwtIssuer = builder.Configuration["JwtSettings:Issuer"] ?? "ResuMateApi";
-var jwtAudience = builder.Configuration["JwtSettings:Audience"] ?? "ResuMateClient";
+var jwtIssuer = builder.Configuration["JwtSettings:Issuer"] ?? "VedhaApi";
+var jwtAudience = builder.Configuration["JwtSettings:Audience"] ?? "VedhaClient";
 
 builder.Services.AddAuthentication(options =>
 {
@@ -97,9 +97,9 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "ResuMate AI Platform API",
+        Title = "Vedha AI Platform API",
         Version = "v1",
-        Description = "Production-ready AI Resume Tailoring, Parsing, and ATS Optimization Engine"
+        Description = "Production-ready AI Resume Tailoring, Parsing, ATS Optimization & Multi-Pipeline Application Orchestrator"
     });
 
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -145,7 +145,7 @@ using (var scope = app.Services.CreateScope())
         {
             var demoUser = new User
             {
-                Email = "demo@resumate.ai",
+                Email = "demo@vedha.ai",
                 FullName = "Alex Morgan",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123!"),
                 Role = "User",
@@ -201,7 +201,7 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 if (app.Environment.IsDevelopment() || true)
 {
     app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "ResuMate AI API v1"));
+    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Vedha AI API v1"));
 }
 
 app.UseCors("AllowAll");
@@ -213,7 +213,7 @@ app.MapHub<TailoringProgressHub>("/hubs/progress");
 
 app.MapGet("/", () => Results.Ok(new
 {
-    Name = "ResuMate AI Platform API",
+    Name = "Vedha AI Platform API",
     Status = "Healthy",
     Version = "1.0.0",
     Timestamp = DateTime.UtcNow

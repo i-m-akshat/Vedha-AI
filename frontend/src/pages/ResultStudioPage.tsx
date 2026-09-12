@@ -61,7 +61,7 @@ export const ResultStudioPage: React.FC = () => {
     try {
       const url = tailorApi.exportUrl(tailoredResult.id, format, selectedTemplate);
       const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('resumate_token')}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem('vedha_token') || localStorage.getItem('resumate_token')}` },
       });
       const blob = await res.blob();
       const downloadUrl = window.URL.createObjectURL(blob);

@@ -78,7 +78,7 @@ export const DashboardPage: React.FC<{ setActivePage: (p: ActivePage) => void }>
               Tailor your resume for any job opening in seconds
             </h2>
             <p className="text-sm text-zinc-300 leading-relaxed">
-              Paste a job URL or description. ResuMate AI performs ATS keyword gap analysis and generates a truth-preserved, ATS-optimized resume.
+              Paste a job URL or description. Vedha AI performs ATS keyword gap analysis, generates a truth-preserved resume, and stages your application in the multi-pipeline orchestrator.
             </p>
           </div>
 

@@ -4,7 +4,7 @@ import { Button, Input, Card } from '../components/ui';
 import { useAuthStore } from '../stores/useAuthStore';
 
 export const LoginPage: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwitchToRegister }) => {
-  const [email, setEmail] = useState('demo@resumate.ai');
+  const [email, setEmail] = useState('demo@vedha.ai');
   const [password, setPassword] = useState('Password123!');
   const [error, setError] = useState<string | null>(null);
   const { login, isLoading } = useAuthStore();
@@ -23,11 +23,13 @@ export const LoginPage: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwit
     <div className="min-h-screen w-screen flex items-center justify-center p-4 bg-zinc-950 font-sans">
       <Card className="w-full max-w-md p-8 space-y-6 border-zinc-800 bg-zinc-900/80 shadow-2xl">
         <div className="text-center space-y-2">
-          <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center mx-auto shadow-lg shadow-indigo-500/20">
-            <Sparkles className="w-6 h-6 text-white" />
-          </div>
-          <h2 className="text-2xl font-black text-white tracking-tight">Sign In to ResuMate AI</h2>
-          <p className="text-xs text-zinc-400">ATS Resume Optimization & Application Studio</p>
+          <img 
+            src="/vedha-logo.png" 
+            alt="Vedha AI" 
+            className="h-16 w-16 rounded-2xl object-contain mx-auto bg-zinc-950 p-2 border border-indigo-500/30 shadow-lg shadow-indigo-500/20" 
+          />
+          <h2 className="text-2xl font-black text-white tracking-tight">Sign In to Vedha AI</h2>
+          <p className="text-xs text-zinc-400">The AI Career Operating System & Orchestrator</p>
         </div>
 
         {error && (
@@ -98,11 +100,13 @@ export const RegisterPage: React.FC<{ onSwitchToLogin: () => void }> = ({ onSwit
     <div className="min-h-screen w-screen flex items-center justify-center p-4 bg-zinc-950 font-sans">
       <Card className="w-full max-w-md p-8 space-y-6 border-zinc-800 bg-zinc-900/80 shadow-2xl">
         <div className="text-center space-y-2">
-          <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center mx-auto shadow-lg shadow-indigo-500/20">
-            <Sparkles className="w-6 h-6 text-white" />
-          </div>
+          <img 
+            src="/vedha-logo.png" 
+            alt="Vedha AI" 
+            className="h-16 w-16 rounded-2xl object-contain mx-auto bg-zinc-950 p-2 border border-indigo-500/30 shadow-lg shadow-indigo-500/20" 
+          />
           <h2 className="text-2xl font-black text-white tracking-tight">Create an Account</h2>
-          <p className="text-xs text-zinc-400">Start tailoring your resume for ATS with AI</p>
+          <p className="text-xs text-zinc-400">Start tailoring your resume and automating job applications with Vedha AI</p>
         </div>
 
         {error && (

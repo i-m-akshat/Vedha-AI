@@ -110,7 +110,7 @@ export const useTailorStore = create<TailorState>((set, get) => ({
   initSignalR: (userId: string) => {
     if (get().hubConnection) return;
 
-    const token = localStorage.getItem('resumate_token');
+    const token = localStorage.getItem('vedha_token') || localStorage.getItem('resumate_token');
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(`/hubs/progress?access_token=${token || ''}`, {
         skipNegotiation: true,

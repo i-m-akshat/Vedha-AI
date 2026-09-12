@@ -1,8 +1,14 @@
-# ResuMate AI Platform Architecture
+<div align="center">
+  <img src="docs/assets/vedha-logo.png" alt="Vedha AI Logo" width="100" style="border-radius: 18px; margin-bottom: 6px;" />
+  <h1>Vedha AI — System Architecture</h1>
+  <p><strong>Clean Architecture, CQRS, and Multi-Pipeline Engineering Blueprint</strong></p>
+</div>
+
+---
 
 ## 1. High-Level Architecture Overview
 
-ResuMate AI is an enterprise-grade SaaS platform designed for AI-driven resume tailoring, ATS optimization, semantic job description parsing, and application tracking. The system follows Clean Architecture principles with CQRS (Command Query Responsibility Segregation) and Domain-Driven Design (DDD).
+Vedha AI is an enterprise-grade AI Career Operating System designed for AI-driven resume tailoring, ATS optimization, semantic job description parsing, multi-pipeline browser application automation, and career tracking. The system follows Clean Architecture principles with CQRS (Command Query Responsibility Segregation) and Domain-Driven Design (DDD).
 
 ```
                       +-------------------------------------------------------+
@@ -167,4 +173,10 @@ ResuMate AI is an enterprise-grade SaaS platform designed for AI-driven resume t
 - **Truth Preservation Guardrail**: Algorithmic validator checks that tailored experience entries do not introduce non-existent companies, universities, or unverified certifications.
 - **Encrypted Provider Keys**: User-provided API keys are encrypted at rest using AES-256 before storage.
 - **Zero Raw File Storage of Sensitive Data**: Only structured JSON representations are stored in database records; uploaded binary files are processed in-memory streams.
+
+---
+
+## 6. Engineering Innovations & Deep Dive
+- For an in-depth breakdown of SOLID principles, Clean Architecture, and GoF patterns applied across this codebase, see [SYSTEM_DESIGN_AND_PATTERNS.md](file:///A:/AIProjects/Resumebuilder/SYSTEM_DESIGN_AND_PATTERNS.md).
+- For a deep dive into the 10 hardest engineering challenges solved (mathematical truth preservation, zero-selector DOM mapping, SHA-256 screening memory, and the Copilot Review Gateway), see [INTERESTING_THINGS.md](file:///A:/AIProjects/Resumebuilder/INTERESTING_THINGS.md).
 

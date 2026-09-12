@@ -11,7 +11,7 @@ export const apiClient = axios.create({
 
 // Intercept requests to attach Bearer token
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('resumate_token');
+  const token = localStorage.getItem('vedha_token') || localStorage.getItem('resumate_token');
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -24,6 +24,7 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Clear token on 401
+      localStorage.removeItem('vedha_token');
       localStorage.removeItem('resumate_token');
       if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
         window.location.href = '/login';

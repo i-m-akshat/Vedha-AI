@@ -1,4 +1,4 @@
-// ResuMate AI Content Scraper & Auto-Fill Copilot Script
+// Vedha AI Content Scraper & Auto-Fill Copilot Script
 (function () {
   function extractJobDetails() {
     const host = window.location.hostname.toLowerCase();
