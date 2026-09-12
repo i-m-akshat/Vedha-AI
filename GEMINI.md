@@ -157,6 +157,7 @@ Produce a Bug Fix Plan containing:
 ### Specification & Plan Synchronization & Changelog Rules
 
 - **Continuous Synchronization**: Whenever code, architecture, data contracts, or infrastructure evolve beyond the initial specification, the corresponding `docs/specs/<feature-name>.md` and `docs/plan/<feature-name>.md` files MUST be updated immediately.
+- **User Recommendation & Consensus Synchronization**: Whenever the user recommends, suggests, or agrees upon an architectural adjustment, pipeline feature, data contract, or workflow improvement, immediately reflect those changes in the respective Feature Specification (`docs/specs/<feature-name>.md`) and Implementation Plan (`docs/plan/<feature-name>.md`) with a dated Changelog entry before/during execution.
 - **Mandatory Changelog**: Every Spec and Plan document must include a `## Changelog` section at the end detailing:
   - Date & Timestamp
   - Changes Made
