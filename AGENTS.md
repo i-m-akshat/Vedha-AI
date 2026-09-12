@@ -85,7 +85,12 @@ Before implementation:
 - Risks
 - Dependencies
 
-If requirements are ambiguous, ask clarifying questions before implementation.
+If core requirements or architecture are genuinely ambiguous or contradictory, ask targeted clarifying questions before implementation.
+
+**Clarification & Autonomous Execution Rules**:
+- **Proceed When Clear**: When the user's recommendation or request is clear and architecturally feasible, immediately update the relevant specification (`docs/specs/<feature-name>.md`) and implementation plan (`docs/plan/<feature-name>.md`) with a `## Changelog` entry and execute autonomously.
+- **Ask Only for Major Ambiguities**: Pause to ask questions ONLY when there is a major architectural conflict, undefined critical business rule, or blocking ambiguity.
+- **Never Ask About Small/Trivial Things**: NEVER ask for clarification regarding minor implementation details (e.g., standard library usage, naming of private helpers, standard UI styling/padding, internal error message wording). Use senior principal engineering judgment to choose the most robust, maintainable solution.
 
 Never assume missing business logic.
 
