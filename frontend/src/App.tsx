@@ -11,6 +11,8 @@ import { HistoryPage } from './pages/HistoryPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { PromptsPage } from './pages/PromptsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { CandidateProfilePage } from './pages/CandidateProfilePage';
+import { OrchestratorQueuePage } from './pages/OrchestratorQueuePage';
 import { LoginPage, RegisterPage } from './pages/AuthPages';
 
 const queryClient = new QueryClient();
@@ -40,10 +42,14 @@ export const AppContent: React.FC = () => {
         return <DashboardPage setActivePage={setActivePage} />;
       case 'master-resume':
         return <MasterResumePage />;
+      case 'candidate-profile':
+        return <CandidateProfilePage />;
       case 'tailor-studio':
         return <TailorStudioPage setActivePage={setActivePage} />;
       case 'result-studio':
         return <ResultStudioPage />;
+      case 'orchestrator':
+        return <OrchestratorQueuePage />;
       case 'tracker':
         return <TrackerPage />;
       case 'history':

@@ -62,3 +62,46 @@ public interface ITailoringProgressNotifier
 {
     Task SendProgressAsync(Guid userId, string stage, string message, int percentComplete, CancellationToken cancellationToken = default);
 }
+
+public class ApplicationAutomationResult
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public string? FinalPageUrl { get; set; }
+    public bool PausedForUserReview { get; set; }
+    public List<string> ExecutionLogs { get; set; } = new();
+    public string? ErrorDetails { get; set; }
+}
+
+public interface IJobApplicationProvider
+{
+    JobSource SupportedSource { get; }
+    bool CanHandle(string url);
+    Task<ApplicationAutomationResult> ExecuteFlowAsync(
+        string targetUrl,
+        Domain.Entities.CandidateProfile profile,
+        ResumeSchema resumeData,
+        byte[] resumePdfBytes,
+        string coverLetter,
+        List<ScreeningAnswerPayload> prefilledAnswers,
+        bool copilotReviewMode,
+        Func<string, Task>? logCallback = null,
+        CancellationToken cancellationToken = default);
+}
+
+public class ScreeningAnswerPayload
+{
+    public string QuestionText { get; set; } = string.Empty;
+    public string AnswerText { get; set; } = string.Empty;
+    public string FieldType { get; set; } = "text";
+}
+
+public interface IJobApplicationOrchestrator
+{
+    Task<Result<ApplicationAutomationResult>> RunPipelineAsync(
+        Guid queueItemId,
+        bool headed,
+        bool copilotMode,
+        CancellationToken cancellationToken = default);
+}
+

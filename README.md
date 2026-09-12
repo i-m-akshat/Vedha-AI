@@ -12,6 +12,17 @@ ResuMate AI is a production-ready SaaS platform that bridges the gap between can
 
 ## 🌟 Key Features
 
+- **Multi-Pipeline Job Application Orchestrator**:
+  - Dedicated automation providers for LinkedIn Easy Apply (Copilot Mode), Naukri, Greenhouse, Lever, Ashby, and Workday.
+  - Generic AI Browser Agent with dynamic semantic DOM form field detection for custom company career portals.
+  - Multi-hop redirect unwinding for aggregator links (LinkedIn external apply, Indeed, Wellfound).
+- **Candidate Master Profile & Verified Evidence Base**:
+  - Store work authorization, visa sponsorship requirements, notice period, and salary expectations once.
+  - Key-value evidence knowledge base for verified real-world accomplishments.
+- **Browser Agent Screening Question Memory**:
+  - Caches company-specific screening Q&A pairs. Automatically reuses verified answers on repeat applications to the same employer.
+- **Copilot Review Gateway**:
+  - Stages the pre-filled application package and tailored resume PDF; halts before final submission so candidate retains 100% control and safety.
 - **Immutable Master Resume**: Upload once in PDF, DOCX, or Markdown. It is parsed into a structured, typed JSON schema and permanently preserved.
 - **Smart Job Scraper**: Automatically extracts and cleans job descriptions from LinkedIn, Greenhouse, Lever, Workday, Ashby, Indeed, and generic career pages.
 - **Strict "Never Lie" Guarantee**: Rewrites bullets, emphasizes relevant skills, and reorganizes experience without hallucinating fake companies, roles, degrees, or certifications.
@@ -24,7 +35,7 @@ ResuMate AI is a production-ready SaaS platform that bridges the gap between can
   - Single-column ATS PDF rendered with strict typographic hierarchy.
   - Formatted DOCX document.
   - Clean Markdown and JSON data.
-- **Multi-Provider AI Abstraction**: First-class support for OpenAI (GPT-4o), Anthropic (Claude 3.5 Sonnet), and Google Gemini (2.0 Flash / Pro) with dynamic failover.
+- **Multi-Provider AI Abstraction**: Standardized on Google Gemini (`gemini-2.0-flash` for sub-second parsing, ATS scoring & Q&A, and `gemini-1.5-pro` for deep synthesis) with full support for OpenAI and Claude.
 - **Integrated Job Application Tracker**: Built-in Kanban workflow (`Saved` ➔ `Applied` ➔ `Interviewing` ➔ `Offered` ➔ `Rejected`) with linked resumes and interview prep.
 - **Chrome Extension (Manifest V3)**: 1-click job scraping directly from active browser tabs.
 - **Live Real-time Generation Terminal**: SignalR live log streaming of scraping, parsing, tailoring, and scoring steps.

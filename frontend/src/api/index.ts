@@ -121,3 +121,41 @@ export const analyticsApi = {
   getDashboard: () =>
     apiClient.get<DashboardAnalyticsDto>('/analytics/dashboard').then(res => res.data),
 };
+
+export const candidateProfileApi = {
+  get: () =>
+    apiClient.get<import('../types/orchestrator').CandidateProfileDto>('/candidateprofile').then(res => res.data),
+
+  update: (data: import('../types/orchestrator').CandidateProfileDto) =>
+    apiClient.put<import('../types/orchestrator').CandidateProfileDto>('/candidateprofile', data).then(res => res.data),
+
+  getScreeningMemories: (company?: string) =>
+    apiClient.get<import('../types/orchestrator').ScreeningQuestionMemoryDto[]>('/candidateprofile/screening-memories', { params: { company } }).then(res => res.data),
+
+  saveScreeningMemory: (company: string, questionText: string, answerText: string, fieldType = 'text') =>
+    apiClient.post<import('../types/orchestrator').ScreeningQuestionMemoryDto>('/candidateprofile/screening-memories', { company, questionText, answerText, fieldType }).then(res => res.data),
+};
+
+export const orchestratorApi = {
+  detectSource: (url: string) =>
+    apiClient.post<import('../types/orchestrator').DetectedJobSourceDto>('/orchestrator/detect-source', { url }).then(res => res.data),
+
+  generateAnswers: (company: string, questions: string[], masterResumeId?: string) =>
+    apiClient.post<import('../types/orchestrator').ScreeningQuestionAnswerDto[]>('/orchestrator/generate-answers', { company, questions, masterResumeId }).then(res => res.data),
+
+  preparePackage: (params: import('../types/orchestrator').PreparePackageRequest) =>
+    apiClient.post<import('../types/orchestrator').ApplicationQueueItemDto>('/orchestrator/prepare-package', params).then(res => res.data),
+
+  getQueue: (status?: string) =>
+    apiClient.get<import('../types/orchestrator').ApplicationQueueItemDto[]>('/orchestrator/queue', { params: { status } }).then(res => res.data),
+
+  getQueueItem: (id: string) =>
+    apiClient.get<import('../types/orchestrator').ApplicationQueueItemDto>(`/orchestrator/queue/${id}`).then(res => res.data),
+
+  updateStatus: (id: string, status: string, errorMessage?: string) =>
+    apiClient.put(`/orchestrator/queue/${id}/status`, { status, errorMessage }).then(res => res.data),
+
+  execute: (id: string, headed = false, copilotMode = true) =>
+    apiClient.post<import('../types/orchestrator').ApplicationAutomationResultDto>(`/orchestrator/queue/${id}/execute`, { headed, copilotMode }).then(res => res.data),
+};
+

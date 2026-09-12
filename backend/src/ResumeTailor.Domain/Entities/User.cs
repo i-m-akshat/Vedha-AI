@@ -22,6 +22,9 @@ public class User : AuditableEntity
     public ICollection<JobDescription> JobDescriptions { get; set; } = new List<JobDescription>();
     public ICollection<ApplicationRecord> Applications { get; set; } = new List<ApplicationRecord>();
     public ICollection<PromptTemplate> CustomPrompts { get; set; } = new List<PromptTemplate>();
+    public CandidateProfile? CandidateProfile { get; set; }
+    public ICollection<ScreeningQuestionMemory> ScreeningMemories { get; set; } = new List<ScreeningQuestionMemory>();
+    public ICollection<ApplicationQueueItem> ApplicationQueue { get; set; } = new List<ApplicationQueueItem>();
 }
 
 public class MasterResume : AuditableEntity

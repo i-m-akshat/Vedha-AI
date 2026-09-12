@@ -21,10 +21,46 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<ApplicationRecord> Applications => Set<ApplicationRecord>();
     public DbSet<PromptTemplate> PromptTemplates => Set<PromptTemplate>();
     public DbSet<UsageLog> UsageLogs => Set<UsageLog>();
+    public DbSet<CandidateProfile> CandidateProfiles => Set<CandidateProfile>();
+    public DbSet<ScreeningQuestionMemory> ScreeningQuestionMemories => Set<ScreeningQuestionMemory>();
+    public DbSet<ApplicationQueueItem> ApplicationQueueItems => Set<ApplicationQueueItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<CandidateProfile>(b =>
+        {
+            b.HasKey(c => c.Id);
+            b.HasOne(c => c.User)
+             .WithOne(u => u.CandidateProfile)
+             .HasForeignKey<CandidateProfile>(c => c.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ScreeningQuestionMemory>(b =>
+        {
+            b.HasKey(s => s.Id);
+            b.HasIndex(s => new { s.UserId, s.Company, s.QuestionHash });
+            b.HasOne(s => s.User)
+             .WithMany(u => u.ScreeningMemories)
+             .HasForeignKey(s => s.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ApplicationQueueItem>(b =>
+        {
+            b.HasKey(q => q.Id);
+            b.HasOne(q => q.User)
+             .WithMany(u => u.ApplicationQueue)
+             .HasForeignKey(q => q.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasOne(q => q.GeneratedResume)
+             .WithMany()
+             .HasForeignKey(q => q.GeneratedResumeId)
+             .OnDelete(DeleteBehavior.SetNull);
+        });
 
         modelBuilder.Entity<User>(b =>
         {

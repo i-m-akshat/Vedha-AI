@@ -119,3 +119,76 @@ public class UsageLog : AuditableEntity
     public bool IsSuccess { get; set; }
     public string? ErrorMessage { get; set; }
 }
+
+public class CandidateProfile : AuditableEntity
+{
+    public Guid UserId { get; set; }
+    public User? User { get; set; }
+
+    public string PhoneNumber { get; set; } = string.Empty;
+    public string CurrentCity { get; set; } = string.Empty;
+    public string CurrentCountry { get; set; } = string.Empty;
+    public string WorkAuthorizationStatus { get; set; } = "Authorized to work in current country"; // e.g. "US Citizen", "Green Card", "Authorized for India"
+    public bool RequiresVisaSponsorship { get; set; } = false;
+    public int NoticePeriodDays { get; set; } = 30; // 0 for immediate, 15, 30, 60, 90
+    public string CurrentSalary { get; set; } = string.Empty;
+    public string ExpectedSalary { get; set; } = string.Empty;
+    public bool WillingToRelocate { get; set; } = false;
+    public string RemotePreference { get; set; } = "Remote or Hybrid"; // Remote, Hybrid, On-site, Any
+    public string LinkedInUrl { get; set; } = string.Empty;
+    public string GithubUrl { get; set; } = string.Empty;
+    public string PortfolioUrl { get; set; } = string.Empty;
+
+    // Optional EEO (Equal Employment Opportunity) answers for US/global standard ATS forms
+    public string? EqualEmploymentGender { get; set; }
+    public string? EqualEmploymentRace { get; set; }
+    public string? EqualEmploymentVeteran { get; set; }
+    public string? EqualEmploymentDisability { get; set; }
+
+    // JSON Key-Value dictionary mapping topic/skill keywords to concrete verified achievements and metrics
+    // e.g. {"Kubernetes": "5 years managing AWS EKS with 99.99% uptime across 12 microservices", "Management": "Led team of 10 engineers"}
+    public string EvidenceKnowledgeBaseJson { get; set; } = "{}";
+}
+
+public class ScreeningQuestionMemory : AuditableEntity
+{
+    public Guid UserId { get; set; }
+    public User? User { get; set; }
+
+    public string Company { get; set; } = string.Empty;
+    public string QuestionHash { get; set; } = string.Empty; // SHA-256 of normalized question
+    public string QuestionText { get; set; } = string.Empty;
+    public string AnswerText { get; set; } = string.Empty;
+    public string FieldType { get; set; } = "text"; // text, textarea, radio, select, number, boolean
+    public int SuccessCount { get; set; } = 1;
+    public DateTime LastUsedAtUtc { get; set; } = DateTime.UtcNow;
+}
+
+public class ApplicationQueueItem : AuditableEntity
+{
+    public Guid UserId { get; set; }
+    public User? User { get; set; }
+
+    public string JobUrl { get; set; } = string.Empty;
+    public string ResolvedDestinationUrl { get; set; } = string.Empty;
+    public string TargetCompany { get; set; } = string.Empty;
+    public string TargetRole { get; set; } = string.Empty;
+    public JobSource DetectedSource { get; set; } = JobSource.CompanyCareers;
+
+    public Guid? GeneratedResumeId { get; set; }
+    public GeneratedResume? GeneratedResume { get; set; }
+
+    public string CoverLetterText { get; set; } = string.Empty;
+    
+    // JSON serialized List<ScreeningQuestionAnswerDto>
+    public string PrefilledAnswersJson { get; set; } = "[]";
+
+    public PipelineExecutionStatus Status { get; set; } = PipelineExecutionStatus.Prepared;
+    public bool RequiresManualReview { get; set; } = true; // Review Gateway: Defaults to true for all external/LinkedIn copilot workflows
+    
+    // JSON serialized List<string> for live automation step traces
+    public string ExecutionLogsJson { get; set; } = "[]";
+    public string? ErrorMessage { get; set; }
+    public DateTime? AppliedAtUtc { get; set; }
+}
+

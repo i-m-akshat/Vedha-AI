@@ -12,7 +12,9 @@ import {
   Sun, 
   Moon, 
   Layers,
-  ChevronRight
+  ChevronRight,
+  UserCheck,
+  Bot
 } from 'lucide-react';
 import { useAuthStore, useThemeStore } from '../../stores/useAuthStore';
 import { Button } from '../ui';
@@ -20,8 +22,10 @@ import { Button } from '../ui';
 export type ActivePage = 
   | 'dashboard' 
   | 'master-resume' 
+  | 'candidate-profile'
   | 'tailor-studio' 
   | 'result-studio' 
+  | 'orchestrator'
   | 'tracker' 
   | 'history' 
   | 'analytics' 
@@ -41,8 +45,10 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
   const navItems: { id: ActivePage; label: string; icon: React.ReactNode; badge?: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: <Layers className="w-4 h-4" /> },
     { id: 'master-resume', label: 'Master Resume', icon: <FileText className="w-4 h-4" /> },
+    { id: 'candidate-profile', label: 'Candidate Profile & Memory', icon: <UserCheck className="w-4 h-4 text-emerald-400" /> },
     { id: 'tailor-studio', label: 'Generate Resume', icon: <Sparkles className="w-4 h-4 text-indigo-400" /> },
     { id: 'result-studio', label: 'Inspection Studio', icon: <Columns className="w-4 h-4 text-emerald-400" /> },
+    { id: 'orchestrator', label: 'Application Copilot', icon: <Bot className="w-4 h-4 text-sky-400" />, badge: 'Pipelines' },
     { id: 'tracker', label: 'Job Tracker', icon: <Kanban className="w-4 h-4" /> },
     { id: 'history', label: 'Resume History', icon: <History className="w-4 h-4" /> },
     { id: 'analytics', label: 'Analytics', icon: <BarChart3 className="w-4 h-4" /> },

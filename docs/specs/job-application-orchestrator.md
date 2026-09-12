@@ -70,7 +70,68 @@ The **Job Application Orchestrator** solves this by introducing a multi-pipeline
 
 ---
 
-## 4. Candidate Master Profile Schema
+## 4. External Redirect Handling & Universal ATS Pipeline
+
+When a user provides a job link from an aggregator (LinkedIn external apply, Indeed, Wellfound, Google Jobs) that transfers them to a company career site:
+
+```text
+Job Aggregator URL (LinkedIn / Indeed / Naukri)
+                     │
+                     ▼
+       URL Unwinding & Follow-Through
+ (Follows HTTP 301/302, JS window.location & "Apply on Company Site" button)
+                     │
+                     ▼
+           Resolved ATS Destination
+                     │
+      ┌──────────────┴──────────────┐
+      ▼                             ▼
+Standard ATS Provider        Universal Dynamic Form Filler
+(Greenhouse, Lever,          (`GenericAtsProvider`)
+ Ashby, Workday, etc.)       (AI DOM Field Heuristic + Q&A)
+      │                             │
+      └──────────────┬──────────────┘
+                     ▼
+        Candidate Application Queue
+```
+
+1. **Automated URL Unwinding**:
+   - The crawler follows multi-hop HTTP redirects, meta refreshes, and tracking links (e.g. `linkedin.com/redir/...`, `bit.ly`, `lever-redirect`) to resolve the canonical destination URL.
+   - If the posting contains an "Apply on Company Website" button, Playwright extracts the destination `href` or triggers the click to capture the final application landing page.
+
+2. **Destination ATS Fingerprinting**:
+   - Inspects URL domain and DOM signatures:
+     - `boards.greenhouse.io` or embedded Greenhouse iframe ➔ `GreenhouseProvider`
+     - `jobs.lever.co` ➔ `LeverProvider`
+     - `jobs.ashbyhq.com` ➔ `AshbyProvider`
+     - `myworkdayjobs.com` / `workday.com` ➔ `WorkdayProvider`
+     - Custom corporate career portals ➔ `GenericAtsProvider` (Universal AI Form Filler).
+
+3. **Universal Dynamic Form Filler (`GenericAtsProvider`)**:
+   - For bespoke custom career pages:
+     - Analyzes DOM input elements (`label`, `aria-label`, `placeholder`, `name`, `id`).
+     - Maps standard fields (Name, Email, Phone, Location, Portfolio, LinkedIn, Resume file input).
+     - Sends non-standard/custom questions to the **AI Question Answering Engine** (Gemini 2.0 Flash).
+
+4. **Chrome Extension Client-Side Copilot Bridge**:
+   - For protected portals (Cloudflare bot verification or mandatory SSO login):
+     - The candidate opens the external job tab in their regular browser.
+     - The Chrome Extension detects the active ATS form and provides a 1-click **"Auto-Fill Application Package"** button, injecting the tailored resume and answering screening questions in-place.
+
+---
+
+## 5. Primary AI Engine: Google Gemini
+
+The platform uses Google Gemini as its primary intelligence engine with a two-tier configuration:
+- **`gemini-2.0-flash` (Default Speed Workhorse)**:
+  - Sub-second latency for real-time document parsing, HTML cleaning, ATS keyword gap scoring, and Playwright form question answering.
+  - Native structured JSON schema output (`response_mime_type: "application/json"`).
+- **`gemini-1.5-pro` / `gemini-2.0-pro` (Deep Synthesis Tier)**:
+  - Used for executive resume bullet restructuring using the STAR method, leadership cover letter generation, and mock interview coaching.
+
+---
+
+## 6. Candidate Master Profile Schema
 Extended to store all recurring job application questions:
 - **Work Authorization & Visa**:
   - Country of citizenship, US / EU / India work authorization, requires visa sponsorship (Yes/No), current visa type.
@@ -85,7 +146,7 @@ Extended to store all recurring job application questions:
 
 ---
 
-## 5. AI Question Answering Engine
+## 7. AI Question Answering Engine
 - Analyzes any form question:
   - **Yes/No & Boolean**: Grounds answer in candidate profile; provides evidence if prompt asks for elaboration.
   - **Numeric & Experience**: Computes actual years of experience from Master Resume work history.
@@ -94,7 +155,7 @@ Extended to store all recurring job application questions:
 
 ---
 
-## 6. Application Queue & Review Studio
+## 8. Application Queue & Review Studio
 - Instead of blind instant submission:
   1. **Queue Item Generated**: Tailored Resume + Cover Letter + Generated Q&A Answers + Form Field Mappings.
   2. **Review Screen**: Candidate inspects answers, modifies any field if desired.
@@ -102,8 +163,11 @@ Extended to store all recurring job application questions:
 
 ---
 
-## 7. Changelog
+## 9. Changelog
 
 | Date | Author | Version | Summary of Changes | Rationale ("Why") | Impacted Components |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | 2026-09-12 | Principal Engineer | v2.0.0 | Multi-Pipeline Job Application Orchestrator Architecture | Transform platform from standalone tailoring into unified application engine with LinkedIn Copilot, Naukri, and External ATS Playwright adapters | `Application/`, `Infrastructure/`, `Domain/`, `frontend/` |
+| 2026-09-12 | Principal Engineer | v2.1.0 | Added External Redirect URL Resolver & Universal ATS Form Filler | Seamlessly handles jobs redirecting to external company portals from LinkedIn/Indeed/aggregators | `Infrastructure/WebScraping`, `GenericAtsProvider`, `extension/` |
+| 2026-09-12 | Principal Engineer | v2.2.0 | Standardized Google Gemini (2.0 Flash / Pro) as Primary AI Engine | 95% lower operational cost, sub-second latency, 1M+ context window, and native JSON schema validation | `ResumeTailor.Infrastructure/Ai`, `infra/.env` |
+| 2026-09-12 | Principal Engineer | v2.3.0 | Implemented Candidate Profile, Screening Memory, Orchestrator & Review Gateway | Full end-to-end multi-pipeline preparation, AI question answering grounding, memory cache, and review gateway | `Domain/`, `Application/`, `Infrastructure/Orchestrator`, `WebApi/`, `frontend/` |

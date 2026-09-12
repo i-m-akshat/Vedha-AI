@@ -14,6 +14,9 @@ public interface IApplicationDbContext
     DbSet<ApplicationRecord> Applications { get; }
     DbSet<PromptTemplate> PromptTemplates { get; }
     DbSet<UsageLog> UsageLogs { get; }
+    DbSet<CandidateProfile> CandidateProfiles { get; }
+    DbSet<ScreeningQuestionMemory> ScreeningQuestionMemories { get; }
+    DbSet<ApplicationQueueItem> ApplicationQueueItems { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

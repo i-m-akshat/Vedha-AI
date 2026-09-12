@@ -114,7 +114,57 @@ ResuMate AI is an enterprise-grade SaaS platform designed for AI-driven resume t
 
 ---
 
-## 4. Security & Guardrails
+## 4. Multi-Pipeline Job Application Orchestrator Architecture
+
+```text
+                  Paste Job URL
+                        │
+                        ▼
+             Identify Job Source
+                        │
+      ┌─────────────────┼─────────────────┐
+      │                 │                 │
+      ▼                 ▼                 ▼
+  Pipeline 1        Pipeline 2        Pipeline 3
+  LinkedIn           Naukri          External ATS
+ (Easy Apply)     (Apply Flow)    (Greenhouse/Lever/
+                                   Ashby/Workday/Workable)
+      │                 │                 │
+      └─────────────────┼─────────────────┘
+                        ▼
+             Resume Tailoring Engine
+                        ▼
+         AI Question Answering Engine
+       (Grounding on Candidate Profile)
+                        ▼
+                Application Queue
+         [Resume + Cover Letter + Q&A]
+                        ▼
+        Playwright Automation Engine / Copilot
+       (Review Gateway: Staged Before Final Submit)
+```
+
+### 4.1 Provider Pipelines (`IJobApplicationProvider`)
+- **`GreenhouseProvider`**: Auto-populates personal information, handles multipart ATS resume attachment, and maps screening questions.
+- **`LeverProvider`**: Handles Lever application forms, custom URLs, and social profile links.
+- **`AshbyProvider`**: Maps Ashby single-page application forms.
+- **`LinkedInCopilotProvider`**: Safely steps through LinkedIn Easy Apply wizard, attaches tailored resume PDF, and halts at the final Review Screen for candidate submission.
+- **`NaukriProvider`**: Populates CTC, notice period, and key skills for Indian job market applications.
+- **`WorkdayProvider`**: Steps through enterprise multi-stage Workday application flows.
+- **`GenericBrowserProvider`**: Universal AI-driven DOM heuristic filler for custom company career portals.
+
+### 4.2 Candidate Master Profile & Screening Question Memory
+- **Candidate Profile**: Stores Work Authorization status, Visa sponsorship requirement, Notice Period (days), Salary expectations, Relocation/Remote preferences, and a verified **Evidence Base** (key-value achievement snippets).
+- **Browser Agent Memory**: Caches answered screening questions hashed by normalized question text per company. When applying to the same company again, past answers are reused instantly with 100% fidelity.
+- **AI Question Answering Engine**: Uses Google Gemini (`gemini-2.0-flash`) grounded strictly on Candidate Profile and Master Resume work history to compute exact years of experience, check visa status, and draft concise STAR-format responses.
+
+### 4.3 Review Gateway
+- For all external job portals and LinkedIn applications, automation stages the complete package (pre-filled fields + resume attachment) and pauses before the final "Submit" button, giving the candidate complete oversight and eliminating risk.
+
+---
+
+## 5. Security & Guardrails
 - **Truth Preservation Guardrail**: Algorithmic validator checks that tailored experience entries do not introduce non-existent companies, universities, or unverified certifications.
 - **Encrypted Provider Keys**: User-provided API keys are encrypted at rest using AES-256 before storage.
 - **Zero Raw File Storage of Sensitive Data**: Only structured JSON representations are stored in database records; uploaded binary files are processed in-memory streams.
+

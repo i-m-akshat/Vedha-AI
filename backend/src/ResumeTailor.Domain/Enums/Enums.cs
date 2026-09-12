@@ -21,7 +21,21 @@ public enum JobSource
     Wellfound = 6,
     Indeed = 7,
     CompanyCareers = 8,
-    Other = 9
+    Other = 9,
+    Naukri = 10,
+    Workable = 11,
+    SmartRecruiters = 12
+}
+
+public enum PipelineExecutionStatus
+{
+    Prepared = 0,
+    Reviewing = 1,
+    RunningAutomation = 2,
+    PausedForUserReview = 3,
+    Submitted = 4,
+    Failed = 5,
+    Cancelled = 6
 }
 
 public enum AiProviderType

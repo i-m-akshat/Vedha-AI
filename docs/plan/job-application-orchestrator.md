@@ -52,11 +52,13 @@ Implement the complete multi-pipeline architecture:
   - `LinkedInCopilotProvider`: Navigates to job URL, clicks Easy Apply, cycles through modal steps, fills pre-generated answers, attaches resume, and pauses at the final review screen for candidate click.
   - `NaukriProvider`: Handles Naukri form flow.
   - `WorkdayProvider` & `WorkableProvider`: Handles corporate ATS multi-step wizards.
+  - `GenericAtsProvider`: Universal AI-driven DOM heuristic filler for custom company career portals.
+  - `UrlRedirectResolver`: Multi-hop redirect unwinder and "Apply on Company Website" extractor.
 
-### Step 4: Frontend UI Enhancements
+### Step 4: Frontend UI & Chrome Extension Copilot
 - **Candidate Profile / Question Base Tab**: Form to save Work Authorization, Notice Period (days), Salary expectations, and custom Q&A answers once.
 - **Application Queue / Review Drawer**: Shows prepared packages with pre-filled answers and 1-click "Launch Playwright Copilot".
-- **Real-Time Step Visualizer**: Displays browser automation steps in real-time.
+- **Chrome Extension 1-Click Auto-Fill**: Injects tailored resume and answers directly into active tabs on external company portals when bot detection blocks automated sessions.
 
 ---
 
@@ -65,3 +67,6 @@ Implement the complete multi-pipeline architecture:
 | Date | Author | Version | Summary of Changes | Rationale ("Why") | Impacted Components |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | 2026-09-12 | Principal Engineer | v2.0.0 | Multi-Pipeline Orchestrator Plan | Implementation plan for LinkedIn Copilot, Naukri, and External ATS Playwright adapters | `Domain`, `Application`, `Infrastructure`, `frontend` |
+| 2026-09-12 | Principal Engineer | v2.1.0 | Added External Redirect Resolver & Generic ATS Provider | Seamlessly resolves aggregator redirect links to destination ATS forms | `Infrastructure/WebScraping`, `GenericAtsProvider` |
+| 2026-09-12 | Principal Engineer | v2.2.0 | Standardized Google Gemini as Primary AI Engine in Plan | Configure dual-tier Gemini (2.0 Flash for speed/Q&A, 1.5 Pro for deep synthesis) | `AiSettings`, `infra/.env` |
+| 2026-09-12 | Principal Engineer | v2.3.0 | Implemented Candidate Profile, Screening Memory, Orchestrator & Review Gateway | Full end-to-end multi-pipeline preparation, AI question answering grounding, memory cache, and review gateway | `Domain`, `Application`, `Infrastructure`, `WebApi`, `frontend` |
