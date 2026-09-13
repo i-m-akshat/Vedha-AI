@@ -1,5 +1,6 @@
-# Build stage for .NET 10 Web API
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# Multi-stage Containerfile for Vedha AI / ResuMate
+# Default build target: Backend Web API service
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend-build
 WORKDIR /app
 
 # Copy project files for caching layer
@@ -20,9 +21,9 @@ WORKDIR /app/src/ResumeTailor.WebApi
 RUN dotnet publish -c Release -o /out
 
 # Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS backend-runtime
 WORKDIR /app
-COPY --from=build /out .
+COPY --from=backend-build /out .
 
 # Install dependencies for fonts (ATS PDF generation) and headless browser automation (Playwright/Chromium)
 RUN apt-get update && apt-get install -y --no-install-recommends \
