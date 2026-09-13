@@ -1,2 +1,7 @@
 <Solution>
+  <Project Path="src/ResumeTailor.Domain/ResumeTailor.Domain.csproj" />
+  <Project Path="src/ResumeTailor.Application/ResumeTailor.Application.csproj" />
+  <Project Path="src/ResumeTailor.Infrastructure/ResumeTailor.Infrastructure.csproj" />
+  <Project Path="src/ResumeTailor.WebApi/ResumeTailor.WebApi.csproj" />
+  <Project Path="tests/ResumeTailor.UnitTests/ResumeTailor.UnitTests.csproj" />
 </Solution>

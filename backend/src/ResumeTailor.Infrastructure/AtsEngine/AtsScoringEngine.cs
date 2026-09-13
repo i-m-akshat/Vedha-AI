@@ -77,6 +77,23 @@ public class AtsScoringEngine : IAtsScoringEngine
             }
         }
 
+        // 4. Verify Quantitative Metric Invariants (Percentages, Dollar amounts, Multipliers, Counts)
+        var masterMetrics = ExtractQuantitativeMetrics(masterResume);
+        foreach (var exp in tailoredResume.Experience)
+        {
+            foreach (var highlight in exp.Highlights)
+            {
+                var tailoredMetrics = ExtractQuantitativeMetricsFromText(highlight);
+                foreach (var metric in tailoredMetrics)
+                {
+                    if (!masterMetrics.Contains(metric))
+                    {
+                        violations.Add($"Tailored resume introduced unauthorized quantitative metric or claim: '{metric}' in role '{exp.Role}' at '{exp.Company}'.");
+                    }
+                }
+            }
+        }
+
         if (violations.Any())
         {
             return Result.Failure(string.Join(" ", violations));
@@ -299,6 +316,37 @@ public class AtsScoringEngine : IAtsScoringEngine
         if (string.IsNullOrWhiteSpace(keyword)) return false;
         var pattern = $@"\b{Regex.Escape(keyword)}\b";
         return Regex.IsMatch(fullText, pattern, RegexOptions.IgnoreCase);
+    }
+
+    public static HashSet<string> ExtractQuantitativeMetrics(ResumeSchema resume)
+    {
+        var text = ExtractAllResumeText(resume);
+        return ExtractQuantitativeMetricsFromText(text);
+    }
+
+    public static HashSet<string> ExtractQuantitativeMetricsFromText(string text)
+    {
+        var metrics = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(text)) return metrics;
+
+        // 1. Percentages (e.g. 15%, 99.9%, 40%)
+        var percentMatches = Regex.Matches(text, @"\b\d+(?:\.\d+)?\s*%", RegexOptions.IgnoreCase);
+        foreach (Match m in percentMatches) metrics.Add(NormalizeMetric(m.Value));
+
+        // 2. Currencies (e.g. $500k, $1.2M, €400, ₹50L, £2M)
+        var currencyMatches = Regex.Matches(text, @"(?:[\$\€\£\₹]|USD|EUR|INR|GBP)\s*\d+(?:\.\d+)?\s*(?:k|m|b|million|billion|thousand|lakh|crore)?", RegexOptions.IgnoreCase);
+        foreach (Match m in currencyMatches) metrics.Add(NormalizeMetric(m.Value));
+
+        // 3. Multipliers & Plus counts (e.g. 3x, 10x, 500+, 50k+, 10M+)
+        var multiplierMatches = Regex.Matches(text, @"\b\d+(?:\.\d+)?(?:x|\+|k\+|m\+|b\+)\b", RegexOptions.IgnoreCase);
+        foreach (Match m in multiplierMatches) metrics.Add(NormalizeMetric(m.Value));
+
+        return metrics;
+    }
+
+    private static string NormalizeMetric(string metric)
+    {
+        return Regex.Replace(metric.ToLowerInvariant(), @"\s+", "");
     }
 
     private static string Normalize(string input)

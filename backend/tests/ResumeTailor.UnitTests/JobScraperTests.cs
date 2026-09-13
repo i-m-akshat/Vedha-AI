@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using ResumeTailor.Domain.Enums;
 using ResumeTailor.Infrastructure.WebScraping;
+using System.Net;
 using Xunit;
 
 namespace ResumeTailor.UnitTests;
@@ -30,6 +31,53 @@ public class JobScraperTests
         if (result.IsFailure)
         {
             result.Error.Should().NotBeNullOrWhiteSpace();
+        }
+    }
+
+    [Fact]
+    public async Task ScrapeAsync_GreenhousePage_ShouldExtractJobDetails()
+    {
+        const string html = """
+            <html>
+              <body>
+                <header>Navigation</header>
+                <div class="logo-container">Acme Corp</div>
+                <h1 class="app-title">Senior Backend Engineer</h1>
+                <main id="content">
+                  <p>Build reliable distributed systems for our customers.</p>
+                  <p>Requirements include C#, SQL, and cloud experience.</p>
+                </main>
+              </body>
+            </html>
+            """;
+        using var httpClient = new HttpClient(new StaticResponseHandler(html));
+        var scraper = new JobScraperService(httpClient, NullLogger<JobScraperService>.Instance);
+
+        var result = await scraper.ScrapeAsync("https://boards.greenhouse.io/acme/jobs/123");
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Source.Should().Be(JobSource.Greenhouse);
+        result.Value.Company.Should().Be("Acme Corp");
+        result.Value.Title.Should().Be("Senior Backend Engineer");
+        result.Value.CleanedText.Should().Contain("distributed systems");
+        result.Value.CleanedText.Should().NotContain("Navigation");
+    }
+
+    private sealed class StaticResponseHandler : HttpMessageHandler
+    {
+        private readonly string _content;
+
+        public StaticResponseHandler(string content)
+        {
+            _content = content;
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(_content)
+            });
         }
     }
 }

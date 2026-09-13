@@ -62,7 +62,7 @@ Vedha AI is a production-ready AI Career Operating System that bridges the gap b
 | **PDF Generation** | QuestPDF (Single-column ATS standard) |
 | **Real-Time Logs** | ASP.NET Core SignalR WebSockets |
 | **Extension** | Google Chrome Extension Manifest V3 |
-| **Containerization** | Docker, Docker Compose (all stored in `infra/`) |
+| **Containerization** | Docker, Docker Compose, Podman (all configs stored in `infra/`) |
 
 See [ARCHITECTURE.md](file:///A:/AIProjects/Resumebuilder/ARCHITECTURE.md) for detailed design specifications, [SYSTEM_DESIGN_AND_PATTERNS.md](file:///A:/AIProjects/Resumebuilder/SYSTEM_DESIGN_AND_PATTERNS.md) for a masterclass on SOLID principles and design patterns in this codebase, and [INTERESTING_THINGS.md](file:///A:/AIProjects/Resumebuilder/INTERESTING_THINGS.md) for core engineering highlights and innovations.
 
@@ -73,7 +73,7 @@ See [ARCHITECTURE.md](file:///A:/AIProjects/Resumebuilder/ARCHITECTURE.md) for d
 ### Prerequisites
 - [.NET 10 SDK](https://dotnet.microsoft.com/)
 - [Node.js 20+](https://nodejs.org/) & npm
-- [Docker & Docker Compose](https://www.docker.com/) (optional, for containerized run)
+- [Docker](https://www.docker.com/) or [Podman](https://podman.io/) (optional, for containerized execution)
 
 ### 1. Environment Configuration
 Navigate to `infra/` and ensure `.env` is configured:
@@ -82,14 +82,56 @@ cp infra/.env.example infra/.env
 ```
 *(Note: `infra/.env` is ignored by Git and must not be committed.)*
 
-### 2. Running with Docker Compose
+---
+
+### 2. Running with Containers
+
+#### Option A: Docker Compose
 ```bash
 docker compose -f infra/docker-compose.yml up --build
 ```
-- Frontend: `http://localhost:3000`
-- Backend API & Swagger: `http://localhost:5000/swagger`
 
-### 3. Running Locally for Development
+#### Option B: Podman on Windows (WSL)
+On Windows with WSL Podman, use the automated one-click launcher scripts in `infra/`:
+```powershell
+# Rebuild images and launch containers (recommended):
+.\infra\build_and_start.ps1
+
+# Quick launch existing images:
+.\infra\start.ps1
+
+# Stop containers:
+.\infra\stop.ps1
+```
+*(CMD users can run `infra\start.bat`, `infra\stop.bat`, or `infra\build_and_start.bat`)*
+
+On Windows, use `build_and_start.ps1` or `build_and_start.bat` for rebuilds. The currently installed `podman-compose 1.6.0` drops the `dockerfile` field when generating build commands, so `podman compose up --build` incorrectly looks for a root `Dockerfile` and fails. The launcher calls Podman directly with the correct `-f infra/Dockerfile.*` paths.
+
+#### Option C: Native Linux / Docker Compose
+```bash
+podman compose -f infra/docker-compose.yml up -d --build
+# or
+docker compose -f infra/docker-compose.yml up -d --build
+```
+
+#### Service URLs:
+- **Frontend UI**: `http://172.18.158.83:3000` (or `http://localhost:3000`)
+- **Backend API & Swagger**: `http://172.18.158.83:3000/swagger`
+- **Health Checks**: `http://172.18.158.83:5000/health`
+
+### 3. Install the Chrome Extension
+
+1. Start the frontend and backend so `http://localhost:3000` and `http://localhost:5000` are available.
+2. Open `http://localhost:3000` in Chrome and sign in. Reload the page once after installing the extension so the extension can synchronize the session token.
+3. Open `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and select the repository's `extension/` folder.
+4. Open a supported job page and reload it. Click the Vedha AI extension icon to verify the detected title, company, and source.
+5. Use **Send to Vedha AI Orchestrator** to stage the job, or use **Safe Biometric Auto-Fill** to populate visible application fields. Review all values and submit manually.
+
+The extension currently expects the local development ports above. It does not submit applications automatically.
+
+---
+
+### 4. Running Locally for Development
 
 #### Backend (.NET 10):
 ```bash

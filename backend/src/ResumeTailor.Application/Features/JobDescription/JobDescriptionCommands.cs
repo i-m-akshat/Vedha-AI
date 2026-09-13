@@ -67,7 +67,11 @@ public class JobDescriptionCommandHandler :
         var (cleanedText, company, title, source) = scrapeResult.Value;
 
         var aiProvider = _aiServiceFactory.GetProvider(user.PreferredAiProvider);
-        var schema = await ExtractSchemaWithAiAsync(aiProvider, user, cleanedText, cancellationToken);
+        var schemaResult = await ExtractSchemaWithAiAsync(aiProvider, user, cleanedText, cancellationToken);
+        if (schemaResult.IsFailure)
+            return Result<JobDescriptionDto>.Failure(schemaResult.Error!);
+
+        var schema = schemaResult.Value;
 
         if (!string.IsNullOrEmpty(company)) schema.Company = company;
         if (!string.IsNullOrEmpty(title)) schema.Title = title;
@@ -106,7 +110,11 @@ public class JobDescriptionCommandHandler :
             ?? throw new NotFoundException(nameof(User), userId);
 
         var aiProvider = _aiServiceFactory.GetProvider(user.PreferredAiProvider);
-        var schema = await ExtractSchemaWithAiAsync(aiProvider, user, request.RawText, cancellationToken);
+        var schemaResult = await ExtractSchemaWithAiAsync(aiProvider, user, request.RawText, cancellationToken);
+        if (schemaResult.IsFailure)
+            return Result<JobDescriptionDto>.Failure(schemaResult.Error!);
+
+        var schema = schemaResult.Value;
 
         if (!string.IsNullOrEmpty(request.Company)) schema.Company = request.Company;
         if (!string.IsNullOrEmpty(request.Title)) schema.Title = request.Title;
@@ -165,7 +173,7 @@ public class JobDescriptionCommandHandler :
         return Result<List<JobDescriptionDto>>.Success(dtos);
     }
 
-    private static async Task<JobDescriptionSchema> ExtractSchemaWithAiAsync(
+    private static async Task<Result<JobDescriptionSchema>> ExtractSchemaWithAiAsync(
         IAiProvider aiProvider,
         User user,
         string rawText,
@@ -190,11 +198,8 @@ Identify exact Title, Company, Location, Seniority, MustHaveSkills, NiceToHaveSk
             cancellationToken
         );
 
-        return result.IsSuccess ? result.Value : new JobDescriptionSchema
-        {
-            Title = "Target Position",
-            Company = "Target Company",
-            Responsibilities = rawText.Split('\n', StringSplitOptions.RemoveEmptyEntries).Take(5).ToList()
-        };
+        return result.IsSuccess
+            ? Result<JobDescriptionSchema>.Success(result.Value)
+            : Result<JobDescriptionSchema>.Failure($"Failed to parse job description with AI: {result.Error}");
     }
 }

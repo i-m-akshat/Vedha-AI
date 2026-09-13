@@ -18,7 +18,7 @@ public class AtsScoringEngineTests
             PersonalInfo = new PersonalInfo { FullName = "Jane Doe" },
             Experience = new List<WorkExperienceItem>
             {
-                new() { Company = "Google", Role = "Software Engineer", Highlights = new List<string> { "Built high throughput distributed services." } },
+                new() { Company = "Google", Role = "Software Engineer", Highlights = new List<string> { "Built high throughput distributed services reducing p99 latency by 35%." } },
                 new() { Company = "Stripe", Role = "Backend Engineer", Highlights = new List<string> { "Designed payment processing pipeline." } }
             }
         };

@@ -47,7 +47,7 @@ export const AppContent: React.FC = () => {
       case 'tailor-studio':
         return <TailorStudioPage setActivePage={setActivePage} />;
       case 'result-studio':
-        return <ResultStudioPage />;
+        return <ResultStudioPage setActivePage={setActivePage} />;
       case 'orchestrator':
         return <OrchestratorQueuePage />;
       case 'tracker':

@@ -22,6 +22,7 @@ import {
   BrainCircuit,
   Building
 } from 'lucide-react';
+import { Button, Card, Input, Badge } from '../components/ui';
 
 export const CandidateProfilePage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -38,6 +39,7 @@ export const CandidateProfilePage: React.FC = () => {
     noticePeriodDays: 30,
     currentSalary: '',
     expectedSalary: '',
+    salaryCurrency: 'INR',
     willingToRelocate: false,
     remotePreference: 'Remote or Hybrid',
     linkedInUrl: '',
@@ -71,7 +73,8 @@ export const CandidateProfilePage: React.FC = () => {
     if (profile) {
       setFormData({
         ...profile,
-        evidenceKnowledgeBase: profile.evidenceKnowledgeBase || {}
+        evidenceKnowledgeBase: profile.evidenceKnowledgeBase || {},
+        salaryCurrency: profile.salaryCurrency || 'INR',
       });
     }
   }, [profile]);
@@ -115,7 +118,7 @@ export const CandidateProfilePage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400" />
       </div>
     );
   }
@@ -123,41 +126,43 @@ export const CandidateProfilePage: React.FC = () => {
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 dark:border-dark-700 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-zinc-800 pb-5">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2.5">
-            <UserCheck className="w-7 h-7 text-primary-600 dark:text-primary-400" />
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
+            <UserCheck className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
             Candidate Master Profile & Memory
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-sm text-slate-600 dark:text-zinc-400 mt-1">
             Store your work authorization, salary expectations, notice period, and verified evidence once. Used by AI to answer application questionnaires with 0 hallucination.
           </p>
         </div>
 
-        <button
+        <Button
           onClick={handleSave}
           disabled={updateMutation.isPending}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg shadow-sm transition disabled:opacity-50"
+          variant="primary"
+          size="md"
+          className="gap-2 shadow-sm"
         >
           {updateMutation.isPending ? (
             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
           ) : saveSuccess ? (
-            <CheckCircle2 className="w-4 h-4 text-white" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-300" />
           ) : (
             <Save className="w-4 h-4" />
           )}
           {saveSuccess ? 'Saved Successfully!' : 'Save Profile'}
-        </button>
+        </Button>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 dark:border-dark-700 gap-6">
+      <div className="flex border-b border-slate-200 dark:border-zinc-800 gap-6">
         <button
           onClick={() => setActiveTab('preferences')}
           className={`pb-3 text-sm font-medium border-b-2 transition flex items-center gap-2 ${
             activeTab === 'preferences'
-              ? 'border-primary-600 text-primary-600 dark:text-primary-400 dark:border-primary-400'
-              : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+              ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400 font-semibold'
+              : 'border-transparent text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-200'
           }`}
         >
           <Briefcase className="w-4 h-4" />
@@ -168,8 +173,8 @@ export const CandidateProfilePage: React.FC = () => {
           onClick={() => setActiveTab('evidence')}
           className={`pb-3 text-sm font-medium border-b-2 transition flex items-center gap-2 ${
             activeTab === 'evidence'
-              ? 'border-primary-600 text-primary-600 dark:text-primary-400 dark:border-primary-400'
-              : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+              ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400 font-semibold'
+              : 'border-transparent text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-200'
           }`}
         >
           <ShieldCheck className="w-4 h-4" />
@@ -180,8 +185,8 @@ export const CandidateProfilePage: React.FC = () => {
           onClick={() => setActiveTab('memory')}
           className={`pb-3 text-sm font-medium border-b-2 transition flex items-center gap-2 ${
             activeTab === 'memory'
-              ? 'border-primary-600 text-primary-600 dark:text-primary-400 dark:border-primary-400'
-              : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+              ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400 font-semibold'
+              : 'border-transparent text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-200'
           }`}
         >
           <BrainCircuit className="w-4 h-4" />
@@ -193,119 +198,145 @@ export const CandidateProfilePage: React.FC = () => {
       {activeTab === 'preferences' && (
         <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Work Authorization & Visa */}
-          <div className="bg-white dark:bg-dark-800 rounded-xl border border-gray-200 dark:border-dark-700 p-5 space-y-4">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-emerald-600" />
+          <Card className="p-5 space-y-4">
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               Work Authorization & Visa
             </h2>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-xs font-medium text-slate-700 dark:text-zinc-300 mb-1">
                 Work Authorization Status
               </label>
-              <input
+              <Input
                 type="text"
                 value={formData.workAuthorizationStatus}
                 onChange={e => setFormData({ ...formData, workAuthorizationStatus: e.target.value })}
                 placeholder="e.g. US Citizen, Green Card, Authorized for India / UK"
-                className="w-full px-3.5 py-2 text-sm bg-gray-50 dark:bg-dark-900 border border-gray-300 dark:border-dark-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
               />
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-dark-900/50 rounded-lg border border-gray-200 dark:border-dark-700">
+            <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-zinc-950/60 rounded-xl border border-slate-200 dark:border-zinc-800">
               <div>
-                <span className="text-sm font-medium text-gray-900 dark:text-white block">Requires Visa Sponsorship?</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">Do you now or in future need visa sponsorship?</span>
+                <span className="text-sm font-medium text-slate-900 dark:text-zinc-100 block">Requires Visa Sponsorship?</span>
+                <span className="text-xs text-slate-500 dark:text-zinc-400">Do you now or in the future need visa sponsorship?</span>
               </div>
               <input
                 type="checkbox"
                 checked={formData.requiresVisaSponsorship}
                 onChange={e => setFormData({ ...formData, requiresVisaSponsorship: e.target.checked })}
-                className="w-5 h-5 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                className="w-5 h-5 accent-indigo-600 rounded cursor-pointer"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-gray-500" />
+              <label className="block text-xs font-medium text-slate-700 dark:text-zinc-300 mb-1 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
                 Notice Period (Days)
               </label>
               <div className="flex items-center gap-3">
-                <input
+                <Input
                   type="number"
                   min="0"
                   max="180"
                   value={formData.noticePeriodDays}
                   onChange={e => setFormData({ ...formData, noticePeriodDays: parseInt(e.target.value) || 0 })}
-                  className="w-32 px-3.5 py-2 text-sm bg-gray-50 dark:bg-dark-900 border border-gray-300 dark:border-dark-600 rounded-lg text-gray-900 dark:text-white"
+                  className="w-32"
                 />
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-slate-500 dark:text-zinc-400 font-medium">
                   {formData.noticePeriodDays === 0 ? 'Immediately Available' : `${formData.noticePeriodDays} days notice`}
                 </span>
               </div>
             </div>
-          </div>
+          </Card>
 
           {/* Compensation & Location */}
-          <div className="bg-white dark:bg-dark-800 rounded-xl border border-gray-200 dark:border-dark-700 p-5 space-y-4">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-amber-600" />
+          <Card className="p-5 space-y-4">
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               Compensation & Location
             </h2>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Current Salary / CTC</label>
-                <input
-                  type="text"
-                  value={formData.currentSalary}
-                  onChange={e => setFormData({ ...formData, currentSalary: e.target.value })}
-                  placeholder="e.g. $130,000 / ₹22 LPA"
-                  className="w-full px-3.5 py-2 text-sm bg-gray-50 dark:bg-dark-900 border border-gray-300 dark:border-dark-600 rounded-lg text-gray-900 dark:text-white"
-                />
+            {/* Currency Selector */}
+            <div>
+              <label className="block text-xs font-medium text-slate-700 dark:text-zinc-300 mb-1">Salary Currency</label>
+              <div className="flex gap-2">
+                {(['INR', 'USD', 'GBP', 'EUR'] as const).map(currency => (
+                  <button
+                    key={currency}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, salaryCurrency: currency })}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                      formData.salaryCurrency === currency
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-white dark:bg-zinc-950 text-slate-600 dark:text-zinc-400 border-slate-300 dark:border-zinc-700 hover:border-indigo-400'
+                    }`}
+                  >
+                    {currency === 'INR' ? '₹ INR' : currency === 'USD' ? '$ USD' : currency === 'GBP' ? '£ GBP' : '€ EUR'}
+                  </button>
+                ))}
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Expected Salary / CTC</label>
-                <input
-                  type="text"
-                  value={formData.expectedSalary}
-                  onChange={e => setFormData({ ...formData, expectedSalary: e.target.value })}
-                  placeholder="e.g. $160,000 / ₹30 LPA"
-                  className="w-full px-3.5 py-2 text-sm bg-gray-50 dark:bg-dark-900 border border-gray-300 dark:border-dark-600 rounded-lg text-gray-900 dark:text-white"
-                />
-              </div>
+              {formData.salaryCurrency === 'INR' && (
+                <p className="text-[11px] text-slate-500 dark:text-zinc-500 mt-1">
+                  For foreign companies, salary will be auto-converted to USD (1 LPA ≈ $1,200 USD annually)
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Current City</label>
-                <input
+                <label className="block text-xs font-medium text-slate-700 dark:text-zinc-300 mb-1">
+                  Current Salary / CTC {formData.salaryCurrency === 'INR' ? '(LPA)' : `(${formData.salaryCurrency}/yr)`}
+                </label>
+                <Input
+                  type="text"
+                  value={formData.currentSalary}
+                  onChange={e => setFormData({ ...formData, currentSalary: e.target.value })}
+                  placeholder={formData.salaryCurrency === 'INR' ? 'e.g. 22 LPA or ₹22,00,000' : 'e.g. $130,000'}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 dark:text-zinc-300 mb-1">
+                  Expected Salary / CTC {formData.salaryCurrency === 'INR' ? '(LPA)' : `(${formData.salaryCurrency}/yr)`}
+                </label>
+                <Input
+                  type="text"
+                  value={formData.expectedSalary}
+                  onChange={e => setFormData({ ...formData, expectedSalary: e.target.value })}
+                  placeholder={formData.salaryCurrency === 'INR' ? 'e.g. 30 LPA or ₹30,00,000' : 'e.g. $160,000'}
+                />
+              </div>
+            </div>
+
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 dark:text-zinc-300 mb-1">Current City</label>
+                <Input
                   type="text"
                   value={formData.currentCity}
                   onChange={e => setFormData({ ...formData, currentCity: e.target.value })}
                   placeholder="e.g. Seattle, WA"
-                  className="w-full px-3.5 py-2 text-sm bg-gray-50 dark:bg-dark-900 border border-gray-300 dark:border-dark-600 rounded-lg text-gray-900 dark:text-white"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Current Country</label>
-                <input
+                <label className="block text-xs font-medium text-slate-700 dark:text-zinc-300 mb-1">Current Country</label>
+                <Input
                   type="text"
                   value={formData.currentCountry}
                   onChange={e => setFormData({ ...formData, currentCountry: e.target.value })}
                   placeholder="e.g. United States"
-                  className="w-full px-3.5 py-2 text-sm bg-gray-50 dark:bg-dark-900 border border-gray-300 dark:border-dark-600 rounded-lg text-gray-900 dark:text-white"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Remote Preference</label>
+                <label className="block text-xs font-medium text-slate-700 dark:text-zinc-300 mb-1">Remote Preference</label>
                 <select
                   value={formData.remotePreference}
                   onChange={e => setFormData({ ...formData, remotePreference: e.target.value })}
-                  className="w-full px-3.5 py-2 text-sm bg-gray-50 dark:bg-dark-900 border border-gray-300 dark:border-dark-600 rounded-lg text-gray-900 dark:text-white"
+                  className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                 >
                   <option value="Remote Only">Remote Only</option>
                   <option value="Remote or Hybrid">Remote or Hybrid</option>
@@ -321,91 +352,87 @@ export const CandidateProfilePage: React.FC = () => {
                   id="relocate"
                   checked={formData.willingToRelocate}
                   onChange={e => setFormData({ ...formData, willingToRelocate: e.target.checked })}
-                  className="w-4 h-4 text-primary-600 rounded border-gray-300"
+                  className="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
                 />
-                <label htmlFor="relocate" className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                <label htmlFor="relocate" className="text-xs font-medium text-slate-700 dark:text-zinc-300 cursor-pointer">
                   Willing to Relocate
                 </label>
               </div>
             </div>
-          </div>
+          </Card>
 
           {/* Contact & Social Handles */}
-          <div className="bg-white dark:bg-dark-800 rounded-xl border border-gray-200 dark:border-dark-700 p-5 space-y-4">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <Globe className="w-5 h-5 text-indigo-600" />
+          <Card className="p-5 space-y-4">
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+              <Globe className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
               Contact & Social Profiles
             </h2>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
-              <input
+              <label className="block text-xs font-medium text-slate-700 dark:text-zinc-300 mb-1">Phone Number</label>
+              <Input
                 type="text"
                 value={formData.phoneNumber}
                 onChange={e => setFormData({ ...formData, phoneNumber: e.target.value })}
                 placeholder="+1 (555) 000-0000"
-                className="w-full px-3.5 py-2 text-sm bg-gray-50 dark:bg-dark-900 border border-gray-300 dark:border-dark-600 rounded-lg text-gray-900 dark:text-white"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1.5">
-                <Linkedin className="w-3.5 h-3.5 text-blue-600" />
+              <label className="block text-xs font-medium text-slate-700 dark:text-zinc-300 mb-1 flex items-center gap-1.5">
+                <Linkedin className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                 LinkedIn Profile URL
               </label>
-              <input
+              <Input
                 type="url"
                 value={formData.linkedInUrl}
                 onChange={e => setFormData({ ...formData, linkedInUrl: e.target.value })}
                 placeholder="https://linkedin.com/in/username"
-                className="w-full px-3.5 py-2 text-sm bg-gray-50 dark:bg-dark-900 border border-gray-300 dark:border-dark-600 rounded-lg text-gray-900 dark:text-white"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1.5">
-                <Github className="w-3.5 h-3.5 text-gray-800 dark:text-gray-200" />
+              <label className="block text-xs font-medium text-slate-700 dark:text-zinc-300 mb-1 flex items-center gap-1.5">
+                <Github className="w-3.5 h-3.5 text-slate-800 dark:text-zinc-200" />
                 GitHub Profile URL
               </label>
-              <input
+              <Input
                 type="url"
                 value={formData.githubUrl}
                 onChange={e => setFormData({ ...formData, githubUrl: e.target.value })}
                 placeholder="https://github.com/username"
-                className="w-full px-3.5 py-2 text-sm bg-gray-50 dark:bg-dark-900 border border-gray-300 dark:border-dark-600 rounded-lg text-gray-900 dark:text-white"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1.5">
-                <ExternalLink className="w-3.5 h-3.5 text-emerald-600" />
+              <label className="block text-xs font-medium text-slate-700 dark:text-zinc-300 mb-1 flex items-center gap-1.5">
+                <ExternalLink className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 Portfolio / Personal Website
               </label>
-              <input
+              <Input
                 type="url"
                 value={formData.portfolioUrl}
                 onChange={e => setFormData({ ...formData, portfolioUrl: e.target.value })}
                 placeholder="https://yourportfolio.dev"
-                className="w-full px-3.5 py-2 text-sm bg-gray-50 dark:bg-dark-900 border border-gray-300 dark:border-dark-600 rounded-lg text-gray-900 dark:text-white"
               />
             </div>
-          </div>
+          </Card>
 
           {/* Equal Opportunity (EEO) Standard Fields */}
-          <div className="bg-white dark:bg-dark-800 rounded-xl border border-gray-200 dark:border-dark-700 p-5 space-y-4">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <Database className="w-5 h-5 text-purple-600" />
+          <Card className="p-5 space-y-4">
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+              <Database className="w-5 h-5 text-purple-600 dark:text-purple-400" />
               Standard EEO / OFCCP Auto-Fill
             </h2>
-            <p className="text-xs text-gray-500">Optional: Used to auto-fill mandatory US/global equal opportunity disclosure questions on Greenhouse, Lever, and Workday.</p>
+            <p className="text-xs text-slate-500 dark:text-zinc-400">Optional: Used to auto-fill mandatory US/global equal opportunity disclosure questions on Greenhouse, Lever, and Workday.</p>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Gender</label>
+                <label className="block text-xs font-medium text-slate-700 dark:text-zinc-300 mb-1">Gender</label>
                 <select
                   value={formData.equalEmploymentGender || 'Decline to Self Identify'}
                   onChange={e => setFormData({ ...formData, equalEmploymentGender: e.target.value })}
-                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-dark-900 border border-gray-300 dark:border-dark-600 rounded-lg text-gray-900 dark:text-white"
+                  className="flex h-9 w-full rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                 >
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
@@ -415,11 +442,11 @@ export const CandidateProfilePage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Veteran Status</label>
+                <label className="block text-xs font-medium text-slate-700 dark:text-zinc-300 mb-1">Veteran Status</label>
                 <select
                   value={formData.equalEmploymentVeteran || 'No'}
                   onChange={e => setFormData({ ...formData, equalEmploymentVeteran: e.target.value })}
-                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-dark-900 border border-gray-300 dark:border-dark-600 rounded-lg text-gray-900 dark:text-white"
+                  className="flex h-9 w-full rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                 >
                   <option value="I am not a protected veteran">I am not a protected veteran</option>
                   <option value="I identify as a protected veteran">I identify as a protected veteran</option>
@@ -429,62 +456,63 @@ export const CandidateProfilePage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Disability Status</label>
+              <label className="block text-xs font-medium text-slate-700 dark:text-zinc-300 mb-1">Disability Status</label>
               <select
                 value={formData.equalEmploymentDisability || 'No'}
                 onChange={e => setFormData({ ...formData, equalEmploymentDisability: e.target.value })}
-                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-dark-900 border border-gray-300 dark:border-dark-600 rounded-lg text-gray-900 dark:text-white"
+                className="flex h-9 w-full rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
               >
                 <option value="No, I do not have a disability">No, I do not have a disability</option>
                 <option value="Yes, I have a disability">Yes, I have a disability</option>
                 <option value="Decline to Self Identify">Decline to Self Identify</option>
               </select>
             </div>
-          </div>
+          </Card>
         </form>
       )}
 
       {/* Tab 2: Evidence Knowledge Base */}
       {activeTab === 'evidence' && (
-        <div className="bg-white dark:bg-dark-800 rounded-xl border border-gray-200 dark:border-dark-700 p-6 space-y-6">
+        <Card className="p-6 space-y-6">
           <div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-primary-600" />
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
               Verified Evidence Knowledge Base
             </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
               Add specific evidence snippets for skills and leadership topics. When answering complex open-ended screening questions (e.g. &quot;Describe a time you solved a performance bottleneck&quot;), the AI will strictly cite these factual points.
             </p>
           </div>
 
           {/* Add New Evidence Form */}
-          <div className="p-4 bg-gray-50 dark:bg-dark-900/60 rounded-xl border border-gray-200 dark:border-dark-700 space-y-3">
-            <h3 className="text-xs font-semibold uppercase text-gray-700 dark:text-gray-300">Add Evidence Entry</h3>
+          <div className="p-4 bg-slate-50 dark:bg-zinc-950/70 rounded-xl border border-slate-200 dark:border-zinc-800 space-y-3">
+            <h3 className="text-xs font-semibold uppercase text-slate-700 dark:text-zinc-300 tracking-wider">Add Evidence Entry</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <input
+                <Input
                   type="text"
                   placeholder="Topic / Skill (e.g. Kubernetes, Mentorship)"
                   value={newEvidenceKey}
                   onChange={e => setNewEvidenceKey(e.target.value)}
-                  className="w-full px-3.5 py-2 text-sm bg-white dark:bg-dark-800 border border-gray-300 dark:border-dark-600 rounded-lg text-gray-900 dark:text-white"
                 />
               </div>
               <div className="md:col-span-2 flex gap-2">
-                <input
+                <Input
                   type="text"
                   placeholder="Verified Evidence & Metrics (e.g. Led migration to AWS EKS with zero downtime across 40 services)"
                   value={newEvidenceVal}
                   onChange={e => setNewEvidenceVal(e.target.value)}
-                  className="flex-1 px-3.5 py-2 text-sm bg-white dark:bg-dark-800 border border-gray-300 dark:border-dark-600 rounded-lg text-gray-900 dark:text-white"
+                  className="flex-1"
                 />
-                <button
+                <Button
                   type="button"
+                  variant="primary"
+                  size="sm"
                   onClick={addEvidence}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-xs font-medium rounded-lg transition"
+                  className="gap-1 px-4"
                 >
                   <Plus className="w-4 h-4" /> Add
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -492,25 +520,25 @@ export const CandidateProfilePage: React.FC = () => {
           {/* Evidence List */}
           <div className="space-y-3">
             {Object.keys(formData.evidenceKnowledgeBase || {}).length === 0 ? (
-              <div className="text-center py-8 text-gray-400 text-xs">
+              <div className="text-center py-8 text-slate-400 dark:text-zinc-500 text-xs">
                 No custom evidence entries yet. Add skills or achievement topics above.
               </div>
             ) : (
               Object.entries(formData.evidenceKnowledgeBase).map(([key, val]) => (
                 <div
                   key={key}
-                  className="flex items-start justify-between p-4 bg-gray-50 dark:bg-dark-900 rounded-lg border border-gray-200 dark:border-dark-700 gap-4"
+                  className="flex items-start justify-between p-4 bg-slate-50 dark:bg-zinc-950/70 rounded-xl border border-slate-200 dark:border-zinc-800 gap-4"
                 >
                   <div className="space-y-1">
-                    <span className="inline-block px-2 py-0.5 text-xs font-semibold bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300 rounded">
+                    <span className="inline-block px-2.5 py-0.5 text-xs font-semibold bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded-md">
                       {key}
                     </span>
-                    <p className="text-sm text-gray-700 dark:text-gray-300">{val}</p>
+                    <p className="text-sm text-slate-800 dark:text-zinc-200">{val}</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => removeEvidence(key)}
-                    className="p-1.5 text-gray-400 hover:text-red-500 rounded-md transition"
+                    className="p-1.5 text-slate-400 hover:text-rose-500 dark:text-zinc-500 dark:hover:text-rose-400 rounded-lg transition"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -518,37 +546,36 @@ export const CandidateProfilePage: React.FC = () => {
               ))
             )}
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Tab 3: Browser Agent Memory */}
       {activeTab === 'memory' && (
-        <div className="bg-white dark:bg-dark-800 rounded-xl border border-gray-200 dark:border-dark-700 p-6 space-y-6">
+        <Card className="p-6 space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <BrainCircuit className="w-5 h-5 text-indigo-600" />
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <BrainCircuit className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                 Company Screening Memory Engine
               </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
                 Saved question-and-answer pairs learned from past applications. When applying to the same company again, Vedha AI immediately reuses matching answers.
               </p>
             </div>
 
             <div className="w-full md:w-64">
-              <input
+              <Input
                 type="text"
                 placeholder="Filter by company..."
                 value={companyFilter}
                 onChange={e => setCompanyFilter(e.target.value)}
-                className="w-full px-3.5 py-1.5 text-xs bg-gray-50 dark:bg-dark-900 border border-gray-300 dark:border-dark-600 rounded-lg text-gray-900 dark:text-white"
               />
             </div>
           </div>
 
-          <div className="divide-y divide-gray-200 dark:divide-dark-700">
+          <div className="divide-y divide-slate-200 dark:divide-zinc-800">
             {(!screeningMemories || screeningMemories.length === 0) ? (
-              <div className="text-center py-12 text-gray-400 text-sm">
+              <div className="text-center py-12 text-slate-400 dark:text-zinc-500 text-sm">
                 No past screening questions memorized yet. As you run application pipelines, answers will be cached here.
               </div>
             ) : (
@@ -556,30 +583,30 @@ export const CandidateProfilePage: React.FC = () => {
                 <div key={mem.id} className="py-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300">
+                      <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300">
                         <Building className="w-3 h-3" />
                         {mem.company}
                       </span>
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-slate-400 dark:text-zinc-500">
                         Used {mem.successCount}x • Last {new Date(mem.lastUsedAtUtc).toLocaleDateString()}
                       </span>
                     </div>
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/40">
                       {mem.fieldType}
                     </span>
                   </div>
 
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  <p className="text-sm font-medium text-slate-900 dark:text-white">
                     Q: {mem.questionText}
                   </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-dark-900/60 p-2.5 rounded-lg border border-gray-100 dark:border-dark-700">
+                  <p className="text-xs text-slate-700 dark:text-zinc-300 bg-slate-50 dark:bg-zinc-950/70 p-3 rounded-lg border border-slate-200 dark:border-zinc-800 leading-relaxed font-sans">
                     A: {mem.answerText}
                   </p>
                 </div>
               ))
             )}
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );

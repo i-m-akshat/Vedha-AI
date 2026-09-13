@@ -99,7 +99,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             b.HasOne(g => g.MasterResume)
              .WithMany(m => m.DerivedTailoredResumes)
              .HasForeignKey(g => g.MasterResumeId)
-             .OnDelete(DeleteBehavior.Restrict);
+             .OnDelete(DeleteBehavior.Cascade);
 
             b.HasOne(g => g.JobDescription)
              .WithMany()

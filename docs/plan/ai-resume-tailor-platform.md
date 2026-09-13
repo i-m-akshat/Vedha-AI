@@ -96,3 +96,7 @@ Build the complete, production-ready Vedha AI Career Operating System across 5 e
 | 2026-09-12 | Principal Engineer | v1.1.0 | Added `infra/` folder configuration & synchronization protocol | Enforces strict centralized infrastructure isolation | `infra/`, `.gitignore` |
 | 2026-09-12 | Principal Engineer | v1.2.0 | Suppressed NuGet Audit warnings during local development via `Directory.Build.props` | Prevents package audit warnings from failing clean builds in .NET 10 | `Directory.Build.props` |
 | 2026-09-12 | Principal Engineer | v1.3.0 | Added SignalR live log streaming & `TailoringProgressHub` | Enables live execution feed in UI terminal | `ResumeTailor.WebApi`, `TailoringProgressNotifier` |
+| 2026-09-12 | Principal Engineer | v1.4.0 | Enhanced Tailor Studio generation UX, Result Studio persistence, complete schema wiring (Projects, Certifications, Achievements), and Interview Prep JSON schema robustness | Fixes blank/lost state on refresh, missing resume sections in preview/DOCX export, and unhandled deserialization errors during interview prep | `useTailorStore`, `ResultStudioPage`, `ToolCommands`, `ResumeExportServices` |
+| 2026-09-12 | Principal Engineer | v1.5.0 | Resolved HTTP 500 in Tailor endpoint via fallback for null TargetCompany/TargetRole, and deployed WSL Podman container startup script | Fixes Postgres 23502 NOT NULL constraint violation when JD omits explicit company name; ensures reliable service orchestration via systemd in WSL | `TailorCommands.cs`, `infra/start_services.sh`, `infra/` |
+
+

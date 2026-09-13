@@ -5,13 +5,19 @@ using ResumeTailor.Application.Features.MasterResumeFeatures;
 
 namespace ResumeTailor.WebApi.Controllers;
 
+public class UploadMasterResumeFormRequest
+{
+    public required IFormFile File { get; set; }
+}
+
 [Authorize]
 public class MasterResumeController : BaseApiController
 {
     [HttpPost("upload")]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> UploadMasterResume([FromForm] IFormFile file)
+    public async Task<IActionResult> UploadMasterResume([FromForm] UploadMasterResumeFormRequest form)
     {
+        var file = form?.File;
         if (file == null || file.Length == 0)
             return BadRequest(new { error = "Please select a valid resume file (PDF, DOCX, or Markdown)." });
 
@@ -63,6 +69,16 @@ public class MasterResumeController : BaseApiController
             return BadRequest(new { error = result.Error });
 
         return Ok(result.Value);
+    }
+
+    [HttpDelete]
+    public async Task<IActionResult> DeleteMasterResume()
+    {
+        var result = await Mediator.Send(new DeleteMasterResumeCommand());
+        if (result.IsFailure)
+            return NotFound(new { error = result.Error });
+
+        return Ok(new { success = true, message = "Master resume and all version history successfully deleted." });
     }
 }
 

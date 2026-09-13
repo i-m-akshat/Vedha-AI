@@ -62,7 +62,7 @@ public record GenerateScreeningAnswersCommand(
 
 public record PrepareApplicationPackageCommand(
     Guid UserId,
-    Guid MasterResumeId,
+    Guid? MasterResumeId,
     string JobUrl,
     string? DirectJobDescriptionText,
     TemplateStyle TemplateStyle = TemplateStyle.ClassicAts,
@@ -237,8 +237,9 @@ CRITICAL RULES:
 - Work Auth: {profile?.WorkAuthorizationStatus}
 - Needs Visa Sponsorship: {(profile?.RequiresVisaSponsorship == true ? "Yes" : "No")}
 - Notice Period: {profile?.NoticePeriodDays} days
-- Current Salary: {profile?.CurrentSalary}
-- Expected Salary: {profile?.ExpectedSalary}
+- Current Salary: {profile?.CurrentSalary} (Currency: {profile?.SalaryCurrency ?? "INR"})
+- Expected Salary: {profile?.ExpectedSalary} (Currency: {profile?.SalaryCurrency ?? "INR"})
+- Currency Conversion Rule: If applying for a foreign or US-based company or if questions ask in USD, convert Indian INR/LPA to USD annually (heuristic: 1 LPA ≈ $1,200 USD/year, e.g. 25 LPA ≈ $30,000/yr, 30 LPA ≈ $36,000/yr) and state clearly in USD.
 - Willing to Relocate: {(profile?.WillingToRelocate == true ? "Yes" : "No")}
 - Remote Preference: {profile?.RemotePreference}
 - LinkedIn: {profile?.LinkedInUrl}
@@ -306,11 +307,34 @@ Respond with JSON array of objects:
         await _progressNotifier.SendProgressAsync(request.UserId, "Initiating", "Starting multi-pipeline application preparation...", 10, cancellationToken);
 
         // 1. Load Master Resume
-        var masterResume = await _context.MasterResumes
-            .FirstOrDefaultAsync(r => r.Id == request.MasterResumeId && r.UserId == request.UserId, cancellationToken);
+        MasterResume? masterResume = null;
+        if (request.MasterResumeId.HasValue && request.MasterResumeId.Value != Guid.Empty)
+        {
+            masterResume = await _context.MasterResumes
+                .FirstOrDefaultAsync(r => r.Id == request.MasterResumeId.Value && r.UserId == request.UserId, cancellationToken);
+        }
 
         if (masterResume == null)
-            return Result<ApplicationQueueItemDto>.Failure("Master resume not found.");
+        {
+            masterResume = await _context.MasterResumes
+                .FirstOrDefaultAsync(r => r.UserId == request.UserId && r.IsActive, cancellationToken);
+        }
+
+        if (masterResume == null)
+            return Result<ApplicationQueueItemDto>.Failure("No active master resume found. Please upload or activate a master resume first.");
+
+        var user = await _context.Users.FindAsync(new object[] { request.UserId }, cancellationToken);
+        if (user == null)
+            return Result<ApplicationQueueItemDto>.Failure("User not found.");
+
+        var aiService = _aiFactory.GetProvider(user.PreferredAiProvider);
+        var customApiKey = user.PreferredAiProvider switch
+        {
+            AiProviderType.OpenAi => user.CustomOpenAiKey,
+            AiProviderType.Claude => user.CustomClaudeKey,
+            AiProviderType.Gemini => user.CustomGeminiKey,
+            _ => null
+        };
 
         ResumeSchema masterSchema;
         try
@@ -346,17 +370,21 @@ Respond with JSON array of objects:
         if (string.IsNullOrWhiteSpace(rawJobText))
             return Result<ApplicationQueueItemDto>.Failure("Job description content could not be found or extracted.");
 
-        // 3. Extract Structured Job Description Schema via Gemini
+        // 3. Extract Structured Job Description Schema
         await _progressNotifier.SendProgressAsync(request.UserId, "Analyzing Role", $"Extracting technical requirements for {role} at {company}...", 40, cancellationToken);
-        var aiService = _aiFactory.GetProvider(AiProviderType.Gemini);
 
         var jobSchemaPrompt = "Extract key skills, responsibilities, and qualifications from this job description into structured JSON schema.";
         var jobSchemaResult = await aiService.GenerateStructuredJsonAsync<JobDescriptionSchema>(
             "You are a job requirement parser. Extract structured JobDescriptionSchema.",
             $"{jobSchemaPrompt}\n\nJob Description:\n{rawJobText}",
+            customApiKey,
+            user.PreferredModel,
             cancellationToken: cancellationToken);
 
-        var jobSchema = jobSchemaResult.IsSuccess && jobSchemaResult.Value != null ? jobSchemaResult.Value : new JobDescriptionSchema { Company = company, Title = role };
+        if (jobSchemaResult.IsFailure || jobSchemaResult.Value == null)
+            return Result<ApplicationQueueItemDto>.Failure($"Failed to parse job description with AI: {jobSchemaResult.Error}");
+
+        var jobSchema = jobSchemaResult.Value;
 
         // Save Job Description Entity
         var jobDescEntity = new JobDescription
@@ -393,9 +421,16 @@ TARGET JOB DESCRIPTION:
 Generate tailored ResumeSchema in JSON.";
 
         var tailorResult = await aiService.GenerateStructuredJsonAsync<ResumeSchema>(
-            tailorSystemPrompt, tailorUserPrompt, cancellationToken: cancellationToken);
+            tailorSystemPrompt,
+            tailorUserPrompt,
+            customApiKey,
+            user.PreferredModel,
+            cancellationToken);
 
-        var tailoredSchema = tailorResult.IsSuccess && tailorResult.Value != null ? tailorResult.Value : masterSchema;
+        if (tailorResult.IsFailure || tailorResult.Value == null)
+            return Result<ApplicationQueueItemDto>.Failure($"Failed to tailor resume with AI: {tailorResult.Error}");
+
+        var tailoredSchema = tailorResult.Value;
 
         // Truth validation
         var truthValidation = _atsEngine.ValidateTruthPreservation(masterSchema, tailoredSchema);
@@ -411,8 +446,8 @@ Generate tailored ResumeSchema in JSON.";
             TailoredStructuredJson = JsonSerializer.Serialize(tailoredSchema),
             DiffSummaryJson = "[]",
             SelectedTemplate = request.TemplateStyle,
-            GeneratedWithProvider = AiProviderType.Gemini,
-            ModelName = "gemini-2.0-flash"
+            GeneratedWithProvider = user.PreferredAiProvider,
+            ModelName = user.PreferredModel ?? "gemini-2.0-flash"
         };
         _context.GeneratedResumes.Add(generatedResume);
         await _context.SaveChangesAsync(cancellationToken);
@@ -540,7 +575,7 @@ Generate tailored ResumeSchema in JSON.";
 
     public async Task<Result<ApplicationAutomationResult>> Handle(ExecuteApplicationQueueItemCommand request, CancellationToken cancellationToken)
     {
-        return await _orchestrator.RunPipelineAsync(request.QueueItemId, request.Headed, request.CopilotMode, cancellationToken);
+        return await _orchestrator.RunPipelineAsync(request.UserId, request.QueueItemId, request.Headed, request.CopilotMode, cancellationToken);
     }
 
     private static ApplicationQueueItemDto MapQueueItemToDto(ApplicationQueueItem item, List<ScreeningQuestionAnswerDto> answers)
@@ -616,13 +651,14 @@ Generate tailored ResumeSchema in JSON.";
 
         if (q.Contains("salary") || q.Contains("compensation") || q.Contains("ctc") || q.Contains("pay expectation"))
         {
+            var answer = FormatExpectedSalaryForQuestion(profile, q);
             return new ScreeningQuestionAnswerDto
             {
                 QuestionText = question,
-                AnswerText = !string.IsNullOrWhiteSpace(profile.ExpectedSalary) ? profile.ExpectedSalary : "Negotiable based on total compensation and role scope",
+                AnswerText = answer,
                 FieldType = "text",
                 ConfidenceScore = 1.0,
-                EvidenceSnippet = "Grounded in Candidate Profile Expected Salary",
+                EvidenceSnippet = $"Grounded in Candidate Profile Expected Salary ({profile.SalaryCurrency ?? "INR"})",
                 Source = "CandidateProfile"
             };
         }
@@ -673,5 +709,38 @@ Generate tailored ResumeSchema in JSON.";
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
         return Convert.ToHexString(bytes).ToLowerInvariant();
+    }
+
+    private static string FormatExpectedSalaryForQuestion(Domain.Entities.CandidateProfile profile, string question)
+    {
+        if (string.IsNullOrWhiteSpace(profile.ExpectedSalary))
+            return "Negotiable based on total compensation and role scope";
+
+        var isUsdRequested = question.Contains('$') ||
+                             question.Contains("usd", StringComparison.OrdinalIgnoreCase) ||
+                             question.Contains("dollar", StringComparison.OrdinalIgnoreCase);
+
+        var currency = profile.SalaryCurrency ?? "INR";
+
+        if (isUsdRequested && currency.Equals("INR", StringComparison.OrdinalIgnoreCase))
+        {
+            // Convert INR / LPA to USD
+            var digitsMatch = System.Text.RegularExpressions.Regex.Match(profile.ExpectedSalary, @"\d+(\.\d+)?");
+            if (digitsMatch.Success && double.TryParse(digitsMatch.Value, out var num))
+            {
+                if (num <= 200)
+                {
+                    int usdAnnual = (int)Math.Round(num * 1200);
+                    return $"${usdAnnual:N0} USD / year (equivalent to {profile.ExpectedSalary})";
+                }
+                else
+                {
+                    int usdAnnual = (int)Math.Round(num / 85.0);
+                    return $"${usdAnnual:N0} USD / year";
+                }
+            }
+        }
+
+        return profile.ExpectedSalary;
     }
 }

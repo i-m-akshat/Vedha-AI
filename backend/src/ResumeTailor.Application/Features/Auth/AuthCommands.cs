@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +24,10 @@ public record UpdateApiKeyCommand(
 
 public record GetCurrentUserQuery : IRequest<Result<UserDto>>;
 
+public record ExportUserDataQuery : IRequest<Result<UserDataExportDto>>;
+
+public record DeleteUserAccountCommand : IRequest<Result<bool>>;
+
 public record AuthResponseDto(string Token, UserDto User);
 
 public record UserDto(
@@ -34,8 +39,23 @@ public record UserDto(
     string? PreferredModel,
     bool HasCustomOpenAiKey,
     bool HasCustomClaudeKey,
-    bool HasCustomGeminiKey
+    bool HasCustomGeminiKey,
+    string? OpenAiKeyMasked = null,
+    string? ClaudeKeyMasked = null,
+    string? GeminiKeyMasked = null
 );
+
+public class UserDataExportDto
+{
+    public UserDto User { get; set; } = null!;
+    public List<MasterResume> MasterResumes { get; set; } = new();
+    public List<GeneratedResume> GeneratedResumes { get; set; } = new();
+    public List<JobDescription> JobDescriptions { get; set; } = new();
+    public List<ApplicationRecord> Applications { get; set; } = new();
+    public Domain.Entities.CandidateProfile? CandidateProfile { get; set; }
+    public List<ScreeningQuestionMemory> ScreeningMemories { get; set; } = new();
+    public DateTime ExportedAtUtc { get; set; } = DateTime.UtcNow;
+}
 
 public class RegisterCommandValidator : AbstractValidator<RegisterCommand>
 {
@@ -60,23 +80,28 @@ public class AuthCommandHandler :
     IRequestHandler<RegisterCommand, Result<AuthResponseDto>>,
     IRequestHandler<LoginCommand, Result<AuthResponseDto>>,
     IRequestHandler<UpdateApiKeyCommand, Result<bool>>,
-    IRequestHandler<GetCurrentUserQuery, Result<UserDto>>
+    IRequestHandler<GetCurrentUserQuery, Result<UserDto>>,
+    IRequestHandler<ExportUserDataQuery, Result<UserDataExportDto>>,
+    IRequestHandler<DeleteUserAccountCommand, Result<bool>>
 {
     private readonly IApplicationDbContext _context;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IEncryptionService _encryptionService;
 
     public AuthCommandHandler(
         IApplicationDbContext context,
         IJwtTokenGenerator jwtTokenGenerator,
         IPasswordHasher passwordHasher,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        IEncryptionService encryptionService)
     {
         _context = context;
         _jwtTokenGenerator = jwtTokenGenerator;
         _passwordHasher = passwordHasher;
         _currentUserService = currentUserService;
+        _encryptionService = encryptionService;
     }
 
     public async Task<Result<AuthResponseDto>> Handle(RegisterCommand request, CancellationToken cancellationToken)
@@ -93,7 +118,7 @@ public class AuthCommandHandler :
             PasswordHash = passwordHash,
             Role = "User",
             PreferredAiProvider = AiProviderType.Gemini,
-            PreferredModel = "gemini-2.0-flash"
+            PreferredModel = "gemini-3.8-flash"
         };
 
         _context.Users.Add(user);
@@ -120,16 +145,21 @@ public class AuthCommandHandler :
     public async Task<Result<bool>> Handle(UpdateApiKeyCommand request, CancellationToken cancellationToken)
     {
         var userId = _currentUserService.UserId ?? throw new UnauthorizedException();
-        var user = await _context.Users.FindAsync(new object[] { userId }, cancellationToken) 
+        var user = await _context.Users.FindAsync(new object[] { userId }, cancellationToken)
             ?? throw new NotFoundException(nameof(User), userId);
 
         user.PreferredAiProvider = request.PreferredProvider;
         if (!string.IsNullOrWhiteSpace(request.PreferredModel))
             user.PreferredModel = request.PreferredModel;
 
-        if (request.OpenAiKey != null) user.CustomOpenAiKey = request.OpenAiKey;
-        if (request.ClaudeKey != null) user.CustomClaudeKey = request.ClaudeKey;
-        if (request.GeminiKey != null) user.CustomGeminiKey = request.GeminiKey;
+        if (request.OpenAiKey != null)
+            user.CustomOpenAiKey = !string.IsNullOrWhiteSpace(request.OpenAiKey) ? _encryptionService.Encrypt(request.OpenAiKey) : null;
+
+        if (request.ClaudeKey != null)
+            user.CustomClaudeKey = !string.IsNullOrWhiteSpace(request.ClaudeKey) ? _encryptionService.Encrypt(request.ClaudeKey) : null;
+
+        if (request.GeminiKey != null)
+            user.CustomGeminiKey = !string.IsNullOrWhiteSpace(request.GeminiKey) ? _encryptionService.Encrypt(request.GeminiKey) : null;
 
         await _context.SaveChangesAsync(cancellationToken);
         return Result<bool>.Success(true);
@@ -138,13 +168,98 @@ public class AuthCommandHandler :
     public async Task<Result<UserDto>> Handle(GetCurrentUserQuery request, CancellationToken cancellationToken)
     {
         var userId = _currentUserService.UserId ?? throw new UnauthorizedException();
-        var user = await _context.Users.FindAsync(new object[] { userId }, cancellationToken) 
+        var user = await _context.Users.FindAsync(new object[] { userId }, cancellationToken)
             ?? throw new NotFoundException(nameof(User), userId);
 
         return Result<UserDto>.Success(MapToUserDto(user));
     }
 
-    private static UserDto MapToUserDto(User user) => new(
+    public async Task<Result<UserDataExportDto>> Handle(ExportUserDataQuery request, CancellationToken cancellationToken)
+    {
+        var userId = _currentUserService.UserId ?? throw new UnauthorizedException();
+        var user = await _context.Users.FindAsync(new object[] { userId }, cancellationToken)
+            ?? throw new NotFoundException(nameof(User), userId);
+
+        var masterResumes = await _context.MasterResumes
+            .Include(m => m.Versions)
+            .Where(m => m.UserId == userId)
+            .ToListAsync(cancellationToken);
+
+        var generatedResumes = await _context.GeneratedResumes
+            .Include(g => g.AtsAnalysis)
+            .Where(g => g.UserId == userId)
+            .ToListAsync(cancellationToken);
+
+        var jobDescriptions = await _context.JobDescriptions
+            .Where(j => j.UserId == userId)
+            .ToListAsync(cancellationToken);
+
+        var applications = await _context.Applications
+            .Where(a => a.UserId == userId)
+            .ToListAsync(cancellationToken);
+
+        var candidateProfile = await _context.CandidateProfiles
+            .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
+
+        var screeningMemories = await _context.ScreeningQuestionMemories
+            .Where(s => s.UserId == userId)
+            .ToListAsync(cancellationToken);
+
+        var export = new UserDataExportDto
+        {
+            User = MapToUserDto(user),
+            MasterResumes = masterResumes,
+            GeneratedResumes = generatedResumes,
+            JobDescriptions = jobDescriptions,
+            Applications = applications,
+            CandidateProfile = candidateProfile,
+            ScreeningMemories = screeningMemories,
+            ExportedAtUtc = DateTime.UtcNow
+        };
+
+        return Result<UserDataExportDto>.Success(export);
+    }
+
+    public async Task<Result<bool>> Handle(DeleteUserAccountCommand request, CancellationToken cancellationToken)
+    {
+        var userId = _currentUserService.UserId ?? throw new UnauthorizedException();
+        var user = await _context.Users.FindAsync(new object[] { userId }, cancellationToken)
+            ?? throw new NotFoundException(nameof(User), userId);
+
+        // 1. Cascade Delete Master Resumes & Versions
+        var masterResumes = await _context.MasterResumes.Include(m => m.Versions).Where(m => m.UserId == userId).ToListAsync(cancellationToken);
+        _context.MasterResumes.RemoveRange(masterResumes);
+
+        // 2. Cascade Delete Generated Resumes & Analyses
+        var generatedResumes = await _context.GeneratedResumes.Include(g => g.AtsAnalysis).Where(g => g.UserId == userId).ToListAsync(cancellationToken);
+        _context.GeneratedResumes.RemoveRange(generatedResumes);
+
+        // 3. Cascade Delete Jobs
+        var jobs = await _context.JobDescriptions.Where(j => j.UserId == userId).ToListAsync(cancellationToken);
+        _context.JobDescriptions.RemoveRange(jobs);
+
+        // 4. Cascade Delete Applications & Queue Items
+        var apps = await _context.Applications.Where(a => a.UserId == userId).ToListAsync(cancellationToken);
+        _context.Applications.RemoveRange(apps);
+
+        var queueItems = await _context.ApplicationQueueItems.Where(q => q.UserId == userId).ToListAsync(cancellationToken);
+        _context.ApplicationQueueItems.RemoveRange(queueItems);
+
+        // 5. Cascade Delete Profile & Memories
+        var profile = await _context.CandidateProfiles.FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
+        if (profile != null) _context.CandidateProfiles.Remove(profile);
+
+        var memories = await _context.ScreeningQuestionMemories.Where(s => s.UserId == userId).ToListAsync(cancellationToken);
+        _context.ScreeningQuestionMemories.RemoveRange(memories);
+
+        // 6. Delete User Record
+        _context.Users.Remove(user);
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return Result<bool>.Success(true);
+    }
+
+    private UserDto MapToUserDto(User user) => new(
         user.Id,
         user.Email,
         user.FullName,
@@ -153,6 +268,9 @@ public class AuthCommandHandler :
         user.PreferredModel,
         !string.IsNullOrEmpty(user.CustomOpenAiKey),
         !string.IsNullOrEmpty(user.CustomClaudeKey),
-        !string.IsNullOrEmpty(user.CustomGeminiKey)
+        !string.IsNullOrEmpty(user.CustomGeminiKey),
+        _encryptionService.Mask(user.CustomOpenAiKey),
+        _encryptionService.Mask(user.CustomClaudeKey),
+        _encryptionService.Mask(user.CustomGeminiKey)
     );
 }

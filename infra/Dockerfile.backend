@@ -23,11 +23,22 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /out .
 
-# Install dependencies for fonts (for ATS PDF generation)
+# Install dependencies for fonts (ATS PDF generation) and headless browser automation (Playwright/Chromium)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     fontconfig \
     fonts-dejavu-core \
+    fonts-liberation \
     libgdiplus \
+    libnss3 \
+    libatk-bridge2.0-0 \
+    libx11-xcb1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libdrm2 \
+    libgbm1 \
+    libasound2t64 \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 ENV ASPNETCORE_URLS=http://+:8080

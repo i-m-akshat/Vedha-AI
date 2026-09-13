@@ -57,22 +57,22 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
   ];
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-zinc-950 text-zinc-100 font-sans">
+    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 text-slate-900 dark:bg-zinc-950 dark:text-zinc-100 font-sans transition-colors duration-200">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-zinc-800/80 bg-zinc-900/40 flex flex-col justify-between p-4 shrink-0">
+      <aside className="w-64 border-r border-slate-200 bg-white/80 dark:border-zinc-800/80 dark:bg-zinc-900/40 flex flex-col justify-between p-4 shrink-0 backdrop-blur-sm">
         <div>
           {/* Logo */}
-          <div className="flex items-center gap-3 px-2 py-3 mb-6 border-b border-zinc-800/60">
+          <div className="flex items-center gap-3 px-2 py-3 mb-6 border-b border-slate-200 dark:border-zinc-800/60">
             <img 
               src="/vedha-logo.png" 
               alt="Vedha AI" 
-              className="h-10 w-10 rounded-xl object-contain bg-zinc-950 p-1 border border-indigo-500/30 shadow-md shadow-indigo-500/20" 
+              className="h-10 w-10 rounded-xl object-contain bg-white dark:bg-zinc-950 p-1 border border-indigo-500/30 shadow-md shadow-indigo-500/20" 
             />
             <div>
-              <div className="font-bold text-sm tracking-tight text-white flex items-center gap-1.5">
-                Vedha <span className="text-xs px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-400 font-semibold border border-indigo-500/30">AI</span>
+              <div className="font-bold text-sm tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+                Vedha <span className="text-xs px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-semibold border border-indigo-500/30">AI</span>
               </div>
-              <div className="text-[10px] text-zinc-400 font-medium">The AI Career Operating System</div>
+              <div className="text-[10px] text-slate-500 dark:text-zinc-400 font-medium">The AI Career Operating System</div>
             </div>
           </div>
 
@@ -86,15 +86,15 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
                   onClick={() => setActivePage(item.id)}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
                     isActive
-                      ? 'bg-indigo-600/15 text-indigo-400 border border-indigo-500/30 shadow-sm font-semibold'
-                      : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-600/15 dark:text-indigo-400 dark:border-indigo-500/30 shadow-sm font-semibold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-zinc-800/50'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     {item.icon}
                     <span>{item.label}</span>
                   </div>
-                  {isActive && <ChevronRight className="w-3.5 h-3.5 text-indigo-400" />}
+                  {isActive && <ChevronRight className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />}
                 </button>
               );
             })}
@@ -102,15 +102,15 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
         </div>
 
         {/* User Card & Controls */}
-        <div className="border-t border-zinc-800/80 pt-4 space-y-3">
+        <div className="border-t border-slate-200 dark:border-zinc-800/80 pt-4 space-y-3">
           <div className="flex items-center justify-between px-2">
             <div className="flex items-center gap-2.5 overflow-hidden">
-              <div className="h-8 w-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center font-bold text-xs text-indigo-400 shrink-0">
+              <div className="h-8 w-8 rounded-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 flex items-center justify-center font-bold text-xs text-indigo-600 dark:text-indigo-400 shrink-0">
                 {user?.fullName?.charAt(0) || 'U'}
               </div>
               <div className="overflow-hidden">
-                <div className="text-xs font-semibold text-zinc-200 truncate">{user?.fullName || 'User'}</div>
-                <div className="text-[10px] text-zinc-500 truncate">{user?.email || 'user@vedha.ai'}</div>
+                <div className="text-xs font-semibold text-slate-800 dark:text-zinc-200 truncate">{user?.fullName || 'User'}</div>
+                <div className="text-[10px] text-slate-500 dark:text-zinc-500 truncate">{user?.email || 'user@vedha.ai'}</div>
               </div>
             </div>
           </div>
@@ -129,7 +129,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
               variant="outline"
               size="sm"
               onClick={logout}
-              className="text-[11px] h-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border-zinc-800"
+              className="text-[11px] h-8 text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 border-slate-300 dark:border-zinc-800"
               title="Logout"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -139,17 +139,29 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-zinc-950">
-        <header className="h-14 border-b border-zinc-800/80 px-6 flex items-center justify-between shrink-0 bg-zinc-900/20 backdrop-blur-md sticky top-0 z-20">
+      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-slate-50 dark:bg-zinc-950">
+        <header className="h-14 border-b border-slate-200 dark:border-zinc-800/80 px-6 flex items-center justify-between shrink-0 bg-white/80 dark:bg-zinc-900/20 backdrop-blur-md sticky top-0 z-20">
           <div className="flex items-center gap-2">
-            <h1 className="text-sm font-semibold capitalize text-zinc-200">
-              {activePage.replace('-', ' ')}
+            <h1 className="text-sm font-semibold text-slate-800 dark:text-zinc-200">
+              {{
+                'dashboard': 'Dashboard',
+                'master-resume': 'Master Resume Center',
+                'candidate-profile': 'Candidate Profile & Memory',
+                'tailor-studio': 'Resume Tailor Studio',
+                'result-studio': 'Inspection Studio',
+                'orchestrator': 'Application Copilot',
+                'tracker': 'Job Tracker',
+                'history': 'Resume History',
+                'analytics': 'Analytics',
+                'prompts': 'AI Prompts',
+                'settings': 'Settings',
+              }[activePage] ?? activePage}
             </h1>
           </div>
           <div className="flex items-center gap-3">
-            <div className="text-xs text-zinc-400 bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded-full flex items-center gap-1.5">
+            <div className="text-xs text-slate-600 dark:text-zinc-400 bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 px-2.5 py-1 rounded-full flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Model: <strong className="text-zinc-200">{user?.preferredModel || 'gemini-2.0-flash'}</strong></span>
+              <span>Model: <strong className="text-slate-800 dark:text-zinc-200">{user?.preferredModel || 'gemini-2.0-flash'}</strong></span>
             </div>
           </div>
         </header>

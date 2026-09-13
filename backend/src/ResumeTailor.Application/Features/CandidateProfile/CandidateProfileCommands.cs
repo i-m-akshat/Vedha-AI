@@ -12,6 +12,7 @@ namespace ResumeTailor.Application.Features.CandidateProfile;
 public class CandidateProfileDto
 {
     public Guid Id { get; set; }
+    public string FullName { get; set; } = string.Empty;
     public string PhoneNumber { get; set; } = string.Empty;
     public string CurrentCity { get; set; } = string.Empty;
     public string CurrentCountry { get; set; } = string.Empty;
@@ -20,6 +21,7 @@ public class CandidateProfileDto
     public int NoticePeriodDays { get; set; } = 30;
     public string CurrentSalary { get; set; } = string.Empty;
     public string ExpectedSalary { get; set; } = string.Empty;
+    public string SalaryCurrency { get; set; } = "INR";
     public bool WillingToRelocate { get; set; } = false;
     public string RemotePreference { get; set; } = "Remote or Hybrid";
     public string LinkedInUrl { get; set; } = string.Empty;
@@ -56,6 +58,7 @@ public record UpdateCandidateProfileCommand(
     int NoticePeriodDays,
     string CurrentSalary,
     string ExpectedSalary,
+    string SalaryCurrency,
     bool WillingToRelocate,
     string RemotePreference,
     string LinkedInUrl,
@@ -94,6 +97,7 @@ public class CandidateProfileHandlers :
     public async Task<Result<CandidateProfileDto>> Handle(GetCandidateProfileQuery request, CancellationToken cancellationToken)
     {
         var profile = await _context.CandidateProfiles
+            .Include(p => p.User)
             .FirstOrDefaultAsync(p => p.UserId == request.UserId, cancellationToken);
 
         if (profile == null)
@@ -102,6 +106,7 @@ public class CandidateProfileHandlers :
             profile = new Domain.Entities.CandidateProfile
             {
                 UserId = request.UserId,
+                User = await _context.Users.FindAsync(new object[] { request.UserId }, cancellationToken),
                 WorkAuthorizationStatus = "Authorized to work in current country",
                 NoticePeriodDays = 30,
                 RemotePreference = "Remote or Hybrid",
@@ -117,13 +122,15 @@ public class CandidateProfileHandlers :
     public async Task<Result<CandidateProfileDto>> Handle(UpdateCandidateProfileCommand request, CancellationToken cancellationToken)
     {
         var profile = await _context.CandidateProfiles
+            .Include(p => p.User)
             .FirstOrDefaultAsync(p => p.UserId == request.UserId, cancellationToken);
 
         if (profile == null)
         {
             profile = new Domain.Entities.CandidateProfile
             {
-                UserId = request.UserId
+                UserId = request.UserId,
+                User = await _context.Users.FindAsync(new object[] { request.UserId }, cancellationToken)
             };
             _context.CandidateProfiles.Add(profile);
         }
@@ -136,6 +143,7 @@ public class CandidateProfileHandlers :
         profile.NoticePeriodDays = request.NoticePeriodDays;
         profile.CurrentSalary = request.CurrentSalary ?? string.Empty;
         profile.ExpectedSalary = request.ExpectedSalary ?? string.Empty;
+        profile.SalaryCurrency = request.SalaryCurrency ?? "INR";
         profile.WillingToRelocate = request.WillingToRelocate;
         profile.RemotePreference = request.RemotePreference ?? "Remote or Hybrid";
         profile.LinkedInUrl = request.LinkedInUrl ?? string.Empty;
@@ -245,6 +253,7 @@ public class CandidateProfileHandlers :
         return new CandidateProfileDto
         {
             Id = profile.Id,
+            FullName = profile.User?.FullName ?? string.Empty,
             PhoneNumber = profile.PhoneNumber,
             CurrentCity = profile.CurrentCity,
             CurrentCountry = profile.CurrentCountry,
@@ -253,6 +262,7 @@ public class CandidateProfileHandlers :
             NoticePeriodDays = profile.NoticePeriodDays,
             CurrentSalary = profile.CurrentSalary,
             ExpectedSalary = profile.ExpectedSalary,
+            SalaryCurrency = profile.SalaryCurrency ?? "INR",
             WillingToRelocate = profile.WillingToRelocate,
             RemotePreference = profile.RemotePreference,
             LinkedInUrl = profile.LinkedInUrl,

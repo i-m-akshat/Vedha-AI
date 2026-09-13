@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Sparkles, 
   Link2, 
@@ -20,7 +20,7 @@ import { ActivePage } from '../components/layout/AppLayout';
 
 export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void }> = ({ setActivePage }) => {
   const { user } = useAuthStore();
-  const { masterResume } = useResumeStore();
+  const { masterResume, fetchMasterResume } = useResumeStore();
   const { 
     isGenerating, 
     progressLogs, 
@@ -36,6 +36,10 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
   const [jobText, setJobText] = useState('');
   const [provider, setProvider] = useState<AiProviderType>(user?.preferredAiProvider || AiProviderType.Gemini);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchMasterResume();
+  }, []);
 
   const handleStartGeneration = async () => {
     if (!user) return;
@@ -82,31 +86,31 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Title */}
       <div>
-        <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-indigo-400" />
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
           Resume Tailor Studio
         </h2>
-        <p className="text-xs text-zinc-400 mt-0.5">
+        <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
           Generate an ATS-optimized, truth-preserving tailored resume against any target opening.
         </p>
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-300 text-xs flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500 dark:text-rose-400" />
           <span>{error}</span>
         </div>
       )}
 
       {/* Main Input Configuration */}
-      <Card className="space-y-5">
+      <Card className="space-y-5 p-6">
         {/* Source Switcher */}
-        <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
-          <div className="flex bg-zinc-950 p-1 rounded-xl border border-zinc-800">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-zinc-800">
+          <div className="flex bg-slate-100 dark:bg-zinc-950 p-1 rounded-xl border border-slate-200 dark:border-zinc-800">
             <button
               onClick={() => setInputMode('url')}
               className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition ${
-                inputMode === 'url' ? 'bg-indigo-600 text-white' : 'text-zinc-400 hover:text-zinc-200'
+                inputMode === 'url' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200'
               }`}
             >
               <Link2 className="w-3.5 h-3.5" /> Job Posting URL
@@ -114,7 +118,7 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
             <button
               onClick={() => setInputMode('text')}
               className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition ${
-                inputMode === 'text' ? 'bg-indigo-600 text-white' : 'text-zinc-400 hover:text-zinc-200'
+                inputMode === 'text' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200'
               }`}
             >
               <FileText className="w-3.5 h-3.5" /> Paste Raw Job Description
@@ -129,28 +133,28 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
         {/* Inputs */}
         {inputMode === 'url' ? (
           <div className="space-y-2">
-            <label className="text-xs font-medium text-zinc-300">Target Job URL</label>
+            <label className="text-xs font-medium text-slate-700 dark:text-zinc-300">Target Job URL</label>
             <Input
               placeholder="https://jobs.lever.co/company/job-id or LinkedIn, Greenhouse, Ashby, Workday, Indeed..."
               value={jobUrl}
               onChange={(e) => setJobUrl(e.target.value)}
               disabled={isGenerating}
-              className="h-11 text-sm bg-zinc-950"
+              className="h-11 text-sm"
             />
-            <p className="text-[11px] text-zinc-500">
+            <p className="text-[11px] text-slate-500 dark:text-zinc-500">
               The scraper will automatically extract title, company, requirements, and keywords while stripping ads and scripts.
             </p>
           </div>
         ) : (
           <div className="space-y-2">
-            <label className="text-xs font-medium text-zinc-300">Paste Full Job Description</label>
+            <label className="text-xs font-medium text-slate-700 dark:text-zinc-300">Paste Full Job Description</label>
             <Textarea
               placeholder="Paste the full job posting description including responsibilities, requirements, and skills..."
               value={jobText}
               onChange={(e) => setJobText(e.target.value)}
               disabled={isGenerating}
               rows={7}
-              className="bg-zinc-950 text-xs"
+              className="text-xs"
             />
           </div>
         )}
@@ -159,8 +163,8 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
           {/* Template Style */}
           <div className="space-y-2">
-            <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
-              <LayoutTemplate className="w-3.5 h-3.5 text-indigo-400" /> Resume Template
+            <label className="text-xs font-medium text-slate-700 dark:text-zinc-300 flex items-center gap-1.5">
+              <LayoutTemplate className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" /> Resume Template
             </label>
             <div className="grid grid-cols-2 gap-2">
               {templates.map((tpl) => (
@@ -170,12 +174,12 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
                   onClick={() => setSelectedTemplate(tpl.id)}
                   className={`p-2.5 text-left rounded-xl border text-xs transition ${
                     selectedTemplate === tpl.id
-                      ? 'border-indigo-500 bg-indigo-500/10 text-white font-semibold'
-                      : 'border-zinc-800 bg-zinc-950 text-zinc-400 hover:border-zinc-700'
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-900 dark:bg-indigo-500/10 dark:text-white font-semibold'
+                      : 'border-slate-200 bg-slate-50/70 text-slate-700 hover:border-slate-300 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400 dark:hover:border-zinc-700'
                   }`}
                 >
-                  <div className="font-semibold text-xs text-zinc-200">{tpl.name}</div>
-                  <div className="text-[10px] text-zinc-500 mt-0.5 line-clamp-1">{tpl.desc}</div>
+                  <div className="font-semibold text-xs text-slate-900 dark:text-zinc-200">{tpl.name}</div>
+                  <div className="text-[10px] text-slate-500 dark:text-zinc-500 mt-0.5 line-clamp-1">{tpl.desc}</div>
                 </button>
               ))}
             </div>
@@ -183,8 +187,8 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
 
           {/* AI Provider */}
           <div className="space-y-2">
-            <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
-              <Cpu className="w-3.5 h-3.5 text-purple-400" /> AI Engine
+            <label className="text-xs font-medium text-slate-700 dark:text-zinc-300 flex items-center gap-1.5">
+              <Cpu className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" /> AI Engine
             </label>
             <div className="grid grid-cols-3 gap-2">
               {[
@@ -198,12 +202,12 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
                   onClick={() => setProvider(prov.id)}
                   className={`p-2.5 text-left rounded-xl border text-xs transition ${
                     provider === prov.id
-                      ? 'border-purple-500 bg-purple-500/10 text-white font-semibold'
-                      : 'border-zinc-800 bg-zinc-950 text-zinc-400 hover:border-zinc-700'
+                      ? 'border-purple-500 bg-purple-50 text-purple-900 dark:bg-purple-500/10 dark:text-white font-semibold'
+                      : 'border-slate-200 bg-slate-50/70 text-slate-700 hover:border-slate-300 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400 dark:hover:border-zinc-700'
                   }`}
                 >
-                  <div className="font-semibold text-xs text-zinc-200">{prov.label}</div>
-                  <div className="text-[10px] text-zinc-500 mt-0.5">{prov.sub}</div>
+                  <div className="font-semibold text-xs text-slate-900 dark:text-zinc-200">{prov.label}</div>
+                  <div className="text-[10px] text-slate-500 dark:text-zinc-500 mt-0.5">{prov.sub}</div>
                 </button>
               ))}
             </div>
@@ -235,8 +239,8 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
 
       {/* Real-time Streaming Terminal */}
       {isGenerating && (
-        <Card className="p-4 bg-zinc-950 border-zinc-800 space-y-3 font-mono">
-          <div className="flex items-center justify-between pb-2 border-b border-zinc-900">
+        <Card className="p-4 bg-slate-950 border-slate-800 dark:bg-zinc-950 dark:border-zinc-800 space-y-3 font-mono">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800 dark:border-zinc-900">
             <div className="flex items-center gap-2 text-xs font-semibold text-zinc-300">
               <Terminal className="w-3.5 h-3.5 text-emerald-400" />
               <span>Live Generation Feed</span>

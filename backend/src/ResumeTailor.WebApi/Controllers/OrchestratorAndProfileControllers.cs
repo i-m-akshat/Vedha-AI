@@ -46,6 +46,7 @@ public class CandidateProfileController : BaseApiController
             req.NoticePeriodDays,
             req.CurrentSalary,
             req.ExpectedSalary,
+            req.SalaryCurrency ?? "INR",
             req.WillingToRelocate,
             req.RemotePreference,
             req.LinkedInUrl,
@@ -108,6 +109,7 @@ public record UpdateCandidateProfileRequest(
     int NoticePeriodDays,
     string CurrentSalary,
     string ExpectedSalary,
+    string? SalaryCurrency,
     bool WillingToRelocate,
     string RemotePreference,
     string LinkedInUrl,
@@ -255,7 +257,7 @@ public record GenerateAnswersRequest(
 );
 
 public record PreparePackageRequest(
-    Guid MasterResumeId,
+    Guid? MasterResumeId,
     string JobUrl,
     string? DirectJobDescriptionText,
     TemplateStyle TemplateStyle = TemplateStyle.ClassicAts,

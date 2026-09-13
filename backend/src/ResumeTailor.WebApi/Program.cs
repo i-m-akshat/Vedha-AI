@@ -36,9 +36,12 @@ builder.Services.AddControllers()
     });
 
 // Configure JWT Authentication
-var jwtSecret = builder.Configuration["JwtSettings:Secret"] ?? "super_secret_jwt_key_at_least_32_characters_long_for_security_hs256";
-var jwtIssuer = builder.Configuration["JwtSettings:Issuer"] ?? "VedhaApi";
-var jwtAudience = builder.Configuration["JwtSettings:Audience"] ?? "VedhaClient";
+var rawJwtSecret = builder.Configuration["JwtSettings:Secret"];
+var jwtSecret = !string.IsNullOrWhiteSpace(rawJwtSecret) && rawJwtSecret.Trim().Length >= 32
+    ? rawJwtSecret.Trim()
+    : "super_secret_jwt_key_at_least_32_characters_long_for_security_hs256";
+var jwtIssuer = !string.IsNullOrWhiteSpace(builder.Configuration["JwtSettings:Issuer"]) ? builder.Configuration["JwtSettings:Issuer"]!.Trim() : "VedhaApi";
+var jwtAudience = !string.IsNullOrWhiteSpace(builder.Configuration["JwtSettings:Audience"]) ? builder.Configuration["JwtSettings:Audience"]!.Trim() : "VedhaClient";
 
 builder.Services.AddAuthentication(options =>
 {
@@ -102,6 +105,9 @@ builder.Services.AddSwaggerGen(c =>
         Description = "Production-ready AI Resume Tailoring, Parsing, ATS Optimization & Multi-Pipeline Application Orchestrator"
     });
 
+    c.CustomSchemaIds(type => type.FullName?.Replace("+", "."));
+    c.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
+
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
@@ -138,6 +144,20 @@ using (var scope = app.Services.CreateScope())
         if (dbContext.Database.IsRelational())
         {
             dbContext.Database.EnsureCreated();
+            if (dbContext.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                try
+                {
+                    dbContext.Database.ExecuteSqlRaw(@"
+                    ALTER TABLE ""CandidateProfiles"" 
+                    ADD COLUMN IF NOT EXISTS ""SalaryCurrency"" text NOT NULL DEFAULT 'INR';
+                ");
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Schema migration check for CandidateProfiles encountered an issue: {Message}", ex.Message);
+                }
+            }
         }
 
         // Seed demo user if empty
@@ -150,7 +170,7 @@ using (var scope = app.Services.CreateScope())
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123!"),
                 Role = "User",
                 PreferredAiProvider = AiProviderType.Gemini,
-                PreferredModel = "gemini-2.0-flash"
+                PreferredModel = "gemini-3.8-flash"
             };
             dbContext.Users.Add(demoUser);
 
@@ -198,7 +218,8 @@ using (var scope = app.Services.CreateScope())
 // Middleware Pipeline
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-if (app.Environment.IsDevelopment() || true)
+if (app.Environment.IsDevelopment() || app.Environment.IsStaging() ||
+    string.Equals(builder.Configuration["EnableSwagger"], "true", StringComparison.OrdinalIgnoreCase))
 {
     app.UseSwagger();
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Vedha AI API v1"));
@@ -211,12 +232,36 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<TailoringProgressHub>("/hubs/progress");
 
+app.MapGet("/healthz", async ([Microsoft.AspNetCore.Mvc.FromServices] ApplicationDbContext db) =>
+{
+    var isDbHealthy = await db.Database.CanConnectAsync();
+    return Results.Ok(new
+    {
+        Status = isDbHealthy ? "Healthy" : "Degraded",
+        Database = isDbHealthy ? "Connected" : "Unreachable",
+        Timestamp = DateTime.UtcNow,
+        Version = "1.0.0"
+    });
+}).ExcludeFromDescription();
+
+app.MapGet("/health", async ([Microsoft.AspNetCore.Mvc.FromServices] ApplicationDbContext db) =>
+{
+    var isDbHealthy = await db.Database.CanConnectAsync();
+    return Results.Ok(new
+    {
+        Status = isDbHealthy ? "Healthy" : "Degraded",
+        Database = isDbHealthy ? "Connected" : "Unreachable",
+        Timestamp = DateTime.UtcNow,
+        Version = "1.0.0"
+    });
+}).ExcludeFromDescription();
+
 app.MapGet("/", () => Results.Ok(new
 {
     Name = "Vedha AI Platform API",
     Status = "Healthy",
     Version = "1.0.0",
     Timestamp = DateTime.UtcNow
-}));
+})).ExcludeFromDescription();
 
 app.Run();

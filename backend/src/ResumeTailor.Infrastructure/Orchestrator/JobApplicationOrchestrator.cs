@@ -28,6 +28,7 @@ public class JobApplicationOrchestrator : IJobApplicationOrchestrator
     }
 
     public async Task<Result<ApplicationAutomationResult>> RunPipelineAsync(
+        Guid userId,
         Guid queueItemId,
         bool headed,
         bool copilotMode,
@@ -35,7 +36,7 @@ public class JobApplicationOrchestrator : IJobApplicationOrchestrator
     {
         var queueItem = await _context.ApplicationQueueItems
             .Include(q => q.GeneratedResume)
-            .FirstOrDefaultAsync(q => q.Id == queueItemId, cancellationToken);
+            .FirstOrDefaultAsync(q => q.Id == queueItemId && q.UserId == userId, cancellationToken);
 
         if (queueItem == null)
             return Result<ApplicationAutomationResult>.Failure("Queue item not found.");
@@ -55,7 +56,8 @@ public class JobApplicationOrchestrator : IJobApplicationOrchestrator
             catch { }
         }
 
-        var pdfBytes = await _exportService.ExportPdfAsync(resumeSchema, TemplateStyle.ClassicAts, cancellationToken);
+        var selectedTemplate = queueItem.GeneratedResume?.SelectedTemplate ?? TemplateStyle.ClassicAts;
+        var pdfBytes = await _exportService.ExportPdfAsync(resumeSchema, selectedTemplate, cancellationToken);
 
         // 2. Prepare Answers Payload
         var answersPayload = new List<ScreeningAnswerPayload>();
@@ -82,10 +84,18 @@ public class JobApplicationOrchestrator : IJobApplicationOrchestrator
 
         // 3. Resolve Provider
         var targetUrl = !string.IsNullOrWhiteSpace(queueItem.ResolvedDestinationUrl) ? queueItem.ResolvedDestinationUrl : queueItem.JobUrl;
-        
+
         var provider = _providers.FirstOrDefault(p => p.SupportedSource != JobSource.CompanyCareers && p.CanHandle(targetUrl))
                        ?? _providers.FirstOrDefault(p => p is GenericBrowserProvider)
-                       ?? new GenericBrowserProvider();
+                       ?? _providers.FirstOrDefault(); // final fallback: any registered provider
+
+        if (provider == null)
+        {
+            queueItem.Status = PipelineExecutionStatus.Failed;
+            queueItem.ErrorMessage = "No application provider registered.";
+            await _context.SaveChangesAsync(cancellationToken);
+            return Result<ApplicationAutomationResult>.Failure("No application provider registered. Check service configuration.");
+        }
 
         // 4. Update status to Running Automation
         queueItem.Status = PipelineExecutionStatus.RunningAutomation;
@@ -105,6 +115,7 @@ public class JobApplicationOrchestrator : IJobApplicationOrchestrator
         }
 
         await _progressNotifier.SendProgressAsync(queueItem.UserId, "Starting Pipeline", $"Launching {provider.SupportedSource} pipeline adapter...", 10, cancellationToken);
+
 
         var result = await provider.ExecuteFlowAsync(
             targetUrl,

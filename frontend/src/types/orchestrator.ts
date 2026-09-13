@@ -20,6 +20,7 @@ export interface CandidateProfileDto {
   noticePeriodDays: number;
   currentSalary: string;
   expectedSalary: string;
+  salaryCurrency: string; // 'INR' | 'USD' | 'GBP' | 'EUR'
   willingToRelocate: boolean;
   remotePreference: string;
   linkedInUrl: string;

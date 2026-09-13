@@ -10,6 +10,7 @@
     .logo { font-size: 14px; font-weight: 800; color: #818cf8; display: flex; align-items: center; gap: 8px; }
     .logo img { width: 22px; height: 22px; border-radius: 6px; object-fit: contain; }
     .badge { font-size: 10px; background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 2px 6px; font-weight: 600; border-radius: 4px; }
+    .quota-badge { font-size: 10px; background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 6px; font-weight: 600; border-radius: 4px; }
     .job-card { background: #18181b; border: 1px solid #27272a; border-radius: 10px; padding: 12px; margin-bottom: 14px; }
     .job-title { font-size: 13px; font-weight: 700; color: #ffffff; margin-bottom: 2px; }
     .job-company { font-size: 11px; color: #a1a1aa; }
@@ -19,7 +20,7 @@
     .btn:hover { background: #4338ca; }
     .btn-secondary { background: #27272a; color: #e4e4e7; border: 1px solid #3f3f46; }
     .btn-secondary:hover { background: #3f3f46; }
-    .footer { font-size: 10px; color: #71717a; text-align: center; margin-top: 12px; }
+    .footer { font-size: 10px; color: #71717a; text-align: center; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; }
     .status { font-size: 11px; color: #a1a1aa; text-align: center; padding: 20px 0; }
     .fill-status { font-size: 11px; color: #34d399; text-align: center; margin-top: 6px; }
   </style>
@@ -30,7 +31,7 @@
       <img src="vedha-logo.png" alt="Vedha AI" />
       <span>Vedha AI</span>
     </div>
-    <div class="badge" id="sourceBadge">Copilot</div>
+    <div class="quota-badge" id="dailyQuotaBadge">🛡️ Safe: 0/25 today</div>
   </div>
 
   <div id="loading" class="status">Analyzing current job page...</div>
@@ -43,14 +44,17 @@
     </div>
 
     <div class="btn-group">
-      <button class="btn" id="sendBtn">✨ Send to Vedha AI Studio</button>
-      <button class="btn btn-secondary" id="autoFillBtn">🤖 1-Click Auto-Fill Active Page</button>
+      <button class="btn" id="sendBtn">✨ Send to Vedha AI Orchestrator</button>
+      <button class="btn btn-secondary" id="autoFillBtn">🤖 Safe Biometric Auto-Fill (Anti-Ban)</button>
     </div>
 
     <div id="fillStatus" class="fill-status" style="display: none;"></div>
   </div>
 
-  <div class="footer">Vedha AI — The AI Career Operating System</div>
+  <div class="footer">
+    <span>Review Gateway Active</span>
+    <span style="color: #818cf8;">v1.2.0</span>
+  </div>
 
   <script src="popup.js"></script>
 </body>

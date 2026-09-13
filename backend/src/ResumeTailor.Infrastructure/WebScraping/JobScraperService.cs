@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using System.Text;
 using AngleSharp;
 using AngleSharp.Dom;
 using AngleSharp.Html.Dom;
@@ -12,6 +13,7 @@ namespace ResumeTailor.Infrastructure.WebScraping;
 
 public class JobScraperService : IJobScraperService
 {
+    private const int MaxResponseBytes = 2 * 1024 * 1024;
     private readonly HttpClient _httpClient;
     private readonly ILogger<JobScraperService> _logger;
 
@@ -28,22 +30,56 @@ public class JobScraperService : IJobScraperService
             return Result<(string, string?, string?, JobSource)>.Failure("Invalid URL format.");
         }
 
+        if (uri.Scheme is not "http" and not "https" || !string.IsNullOrWhiteSpace(uri.UserInfo))
+        {
+            return Result<(string, string?, string?, JobSource)>.Failure("Only HTTP(S) job URLs without embedded credentials are supported.");
+        }
+
         try
         {
             var source = DetectJobSource(uri);
+
+            // Fast-path: Workday public CXS REST API avoids client-side SPA empty rendering
+            if (source == JobSource.Workday && uri.Host.Contains("myworkdayjobs.com", StringComparison.OrdinalIgnoreCase))
+            {
+                var workdayApiData = await TryScrapeWorkdayApiAsync(uri, cancellationToken);
+                if (workdayApiData != null && !string.IsNullOrWhiteSpace(workdayApiData.Value.CleanedText))
+                {
+                    return Result<(string, string?, string?, JobSource)>.Success((workdayApiData.Value.CleanedText, workdayApiData.Value.Company, workdayApiData.Value.Title, JobSource.Workday));
+                }
+            }
 
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
             request.Headers.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8");
             request.Headers.Add("Accept-Language", "en-US,en;q=0.9");
 
-            var response = await _httpClient.SendAsync(request, cancellationToken);
+            var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 return Result<(string, string?, string?, JobSource)>.Failure($"Failed to fetch job page. HTTP Status: {response.StatusCode}. If the job board requires authentication (e.g. LinkedIn private post), please paste the job description text directly.");
             }
 
-            var html = await response.Content.ReadAsStringAsync(cancellationToken);
+            if (response.Content.Headers.ContentLength > MaxResponseBytes)
+            {
+                return Result<(string, string?, string?, JobSource)>.Failure("The job page is too large to process. Please paste the job description text directly.");
+            }
+
+            await using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var contentBuffer = new MemoryStream();
+            var buffer = new byte[81920];
+            int bytesRead;
+            while ((bytesRead = await responseStream.ReadAsync(buffer, cancellationToken)) > 0)
+            {
+                if (contentBuffer.Length + bytesRead > MaxResponseBytes)
+                {
+                    return Result<(string, string?, string?, JobSource)>.Failure("The job page is too large to process. Please paste the job description text directly.");
+                }
+
+                await contentBuffer.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken);
+            }
+
+            var html = Encoding.UTF8.GetString(contentBuffer.ToArray());
             var parser = new HtmlParser();
             var document = await parser.ParseDocumentAsync(html, cancellationToken);
 
@@ -106,6 +142,27 @@ public class JobScraperService : IJobScraperService
                     extractedText = indeedContent != null ? CleanElementText(indeedContent) : CleanElementText(document.Body);
                     break;
 
+                case JobSource.Workday:
+                    detectedTitle = document.QuerySelector("[data-automation-id='jobPostingHeader'], h1")?.TextContent?.Trim();
+                    detectedCompany = document.QuerySelector("[data-automation-id='companyName'], [data-automation-id='headerCompanyName']")?.TextContent?.Trim();
+                    var wdContent = document.QuerySelector("[data-automation-id='jobPostingDescription'], .job-description, main");
+                    extractedText = wdContent != null ? CleanElementText(wdContent) : CleanElementText(document.Body);
+                    break;
+
+                case JobSource.Wellfound:
+                    detectedTitle = document.QuerySelector("h1")?.TextContent?.Trim();
+                    detectedCompany = document.QuerySelector("h2, [data-test='company-name']")?.TextContent?.Trim();
+                    var wfContent = document.QuerySelector("[data-test='JobDescription'], .job-description, main");
+                    extractedText = wfContent != null ? CleanElementText(wfContent) : CleanElementText(document.Body);
+                    break;
+
+                case JobSource.Naukri:
+                    detectedTitle = document.QuerySelector("h1, [class*='styles_jd-header-title']")?.TextContent?.Trim();
+                    detectedCompany = document.QuerySelector("[class*='styles_jd-header-comp-name'], .company-name")?.TextContent?.Trim();
+                    var nkContent = document.QuerySelector("section.job-desc, [class*='styles_job-desc-container'], .job-desc");
+                    extractedText = nkContent != null ? CleanElementText(nkContent) : CleanElementText(document.Body);
+                    break;
+
                 default:
                     // Generic corporate careers / readability fallback
                     detectedTitle = document.QuerySelector("h1")?.TextContent?.Trim();
@@ -143,7 +200,54 @@ public class JobScraperService : IJobScraperService
         if (host.Contains("ashbyhq.com")) return JobSource.Ashby;
         if (host.Contains("wellfound.com") || host.Contains("angel.co")) return JobSource.Wellfound;
         if (host.Contains("indeed.com")) return JobSource.Indeed;
+        if (host.Contains("naukri.com")) return JobSource.Naukri;
         return JobSource.CompanyCareers;
+    }
+
+    private async Task<(string CleanedText, string? Company, string? Title)?> TryScrapeWorkdayApiAsync(Uri uri, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Length < 2) return null;
+
+            var hostParts = uri.Host.Split('.');
+            var tenant = hostParts[0];
+
+            var careerSiteIndex = segments[0].Contains('-') && segments[0].Length <= 5 ? 1 : 0;
+            if (careerSiteIndex >= segments.Length) return null;
+            var careerSite = segments[careerSiteIndex];
+            var jobId = segments[^1];
+
+            var apiUrl = $"https://{uri.Host}/wday/cxs/{tenant}/{careerSite}/job/{jobId}";
+            using var request = new HttpRequestMessage(HttpMethod.Get, apiUrl);
+            request.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
+            request.Headers.Add("Accept", "application/json");
+
+            var response = await _httpClient.SendAsync(request, cancellationToken);
+            if (!response.IsSuccessStatusCode) return null;
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("jobPostingInfo", out var info)) return null;
+
+            var title = info.TryGetProperty("title", out var t) ? t.GetString() : null;
+            var company = info.TryGetProperty("company", out var c) ? c.GetString() : tenant;
+            var rawDescription = info.TryGetProperty("jobDescription", out var d) ? d.GetString() : null;
+
+            if (string.IsNullOrWhiteSpace(rawDescription)) return null;
+
+            var parser = new HtmlParser();
+            var parsedHtml = await parser.ParseDocumentAsync(rawDescription, cancellationToken);
+            var cleaned = CleanElementText(parsedHtml.Body);
+
+            return (cleaned, company, title);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Workday CXS API parse attempt was not applicable or failed");
+            return null;
+        }
     }
 
     private static string CleanElementText(IElement? element)

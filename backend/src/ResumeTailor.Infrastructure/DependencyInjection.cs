@@ -35,11 +35,12 @@ public static class DependencyInjection
 
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
 
-        // 2. Identity & HTTP Context
+        // 2. Identity & HTTP Context & Security
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
+        services.AddScoped<IEncryptionService, ResumeTailor.Infrastructure.Security.AesGcmEncryptionService>();
 
         // 3. Document Parsers
         services.AddScoped<IDocumentParser, PdfDocumentParser>();
@@ -50,6 +51,10 @@ public static class DependencyInjection
         services.AddHttpClient<IJobScraperService, JobScraperService>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);
+        }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+        {
+            AllowAutoRedirect = true,
+            MaxAutomaticRedirections = 10
         });
 
         // 5. AI Providers & Factory
@@ -79,7 +84,19 @@ public static class DependencyInjection
         services.AddScoped<IJobApplicationProvider, LinkedInCopilotProvider>();
         services.AddScoped<IJobApplicationProvider, NaukriProvider>();
         services.AddScoped<IJobApplicationProvider, WorkdayProvider>();
-        services.AddScoped<IJobApplicationProvider, GenericBrowserProvider>();
+
+        // GenericBrowserProvider needs a typed HttpClient for real DOM fetching
+        services.AddHttpClient<GenericBrowserProvider>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(20);
+        }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+        {
+            AllowAutoRedirect = true,
+            MaxAutomaticRedirections = 5
+        });
+        // Register as both concrete (for HttpClient resolution) and as IJobApplicationProvider
+        services.AddScoped<IJobApplicationProvider>(sp => sp.GetRequiredService<GenericBrowserProvider>());
+
         services.AddScoped<IJobApplicationOrchestrator, JobApplicationOrchestrator>();
         services.AddScoped<SemanticDomFormMapper>();
 

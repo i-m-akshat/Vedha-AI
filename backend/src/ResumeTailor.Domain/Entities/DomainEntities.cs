@@ -133,6 +133,7 @@ public class CandidateProfile : AuditableEntity
     public int NoticePeriodDays { get; set; } = 30; // 0 for immediate, 15, 30, 60, 90
     public string CurrentSalary { get; set; } = string.Empty;
     public string ExpectedSalary { get; set; } = string.Empty;
+    public string SalaryCurrency { get; set; } = "INR";
     public bool WillingToRelocate { get; set; } = false;
     public string RemotePreference { get; set; } = "Remote or Hybrid"; // Remote, Hybrid, On-site, Any
     public string LinkedInUrl { get; set; } = string.Empty;

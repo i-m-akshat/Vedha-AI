@@ -37,6 +37,7 @@ public interface IAiProvider
     AiProviderType ProviderType { get; }
     Task<Result<TResponse>> GenerateStructuredJsonAsync<TResponse>(string systemPrompt, string userPrompt, string? customApiKey = null, string? modelName = null, CancellationToken cancellationToken = default);
     Task<Result<string>> GenerateTextAsync(string systemPrompt, string userPrompt, string? customApiKey = null, string? modelName = null, CancellationToken cancellationToken = default);
+    Task<Result<TResponse>> ParseDocumentBytesAsync<TResponse>(byte[] fileBytes, string mimeType, string systemPrompt, string userPrompt, string? customApiKey = null, string? modelName = null, CancellationToken cancellationToken = default);
 }
 
 public interface IAiServiceFactory
@@ -99,6 +100,7 @@ public class ScreeningAnswerPayload
 public interface IJobApplicationOrchestrator
 {
     Task<Result<ApplicationAutomationResult>> RunPipelineAsync(
+        Guid userId,
         Guid queueItemId,
         bool headed,
         bool copilotMode,

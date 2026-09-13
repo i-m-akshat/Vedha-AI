@@ -6,8 +6,11 @@ using ResumeTailor.Application.Features.Prompts;
 using ResumeTailor.Application.Features.Tailoring;
 using ResumeTailor.Application.Features.Tools;
 using ResumeTailor.Domain.Enums;
+using ResumeTailor.Domain.ValueObjects;
 
 namespace ResumeTailor.WebApi.Controllers;
+
+public record UpdateTailoredResumeRequest(ResumeSchema UpdatedSchema, TemplateStyle? SelectedTemplate = null);
 
 [Authorize]
 public class TailorController : BaseApiController
@@ -36,6 +39,16 @@ public class TailorController : BaseApiController
     public async Task<IActionResult> GetHistory()
     {
         var result = await Mediator.Send(new GetGeneratedResumesListQuery());
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
+
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> UpdateTailoredResume(Guid id, [FromBody] UpdateTailoredResumeRequest req)
+    {
+        var result = await Mediator.Send(new UpdateTailoredResumeCommand(id, req.UpdatedSchema, req.SelectedTemplate));
         if (result.IsFailure)
             return BadRequest(new { error = result.Error });
 

@@ -54,8 +54,15 @@ public record GeneratedResumeSummaryDto(
     DateTime CreatedAtUtc
 );
 
+public record UpdateTailoredResumeCommand(
+    Guid Id,
+    ResumeSchema UpdatedSchema,
+    TemplateStyle? SelectedTemplate = null
+) : IRequest<Result<TailoredResumeResultDto>>;
+
 public class TailorCommandHandler :
     IRequestHandler<GenerateTailoredResumeCommand, Result<TailoredResumeResultDto>>,
+    IRequestHandler<UpdateTailoredResumeCommand, Result<TailoredResumeResultDto>>,
     IRequestHandler<GetTailoredResumeByIdQuery, Result<TailoredResumeResultDto>>,
     IRequestHandler<GetGeneratedResumesListQuery, Result<List<GeneratedResumeSummaryDto>>>,
     IRequestHandler<ExportResumeQuery, Result<ExportFileDto>>
@@ -124,28 +131,30 @@ public class TailorCommandHandler :
         {
             await _progressNotifier.SendProgressAsync(userId, "Scraping", $"Scraping job opening from {request.DirectJobUrl}...", 25, cancellationToken);
             var scrapeResult = await _scraperService.ScrapeAsync(request.DirectJobUrl, cancellationToken);
-            if (scrapeResult.IsSuccess)
+            if (scrapeResult.IsFailure)
             {
-                var (cleanedText, company, title, source) = scrapeResult.Value;
-                var aiProv = _aiServiceFactory.GetProvider(request.ProviderOverride ?? user.PreferredAiProvider);
-                var jdSchema = await ExtractJdSchemaAsync(aiProv, user, cleanedText, cancellationToken);
-                if (!string.IsNullOrEmpty(company)) jdSchema.Company = company;
-                if (!string.IsNullOrEmpty(title)) jdSchema.Title = title;
-
-                jobDescription = new JobDescription
-                {
-                    UserId = userId,
-                    Source = source,
-                    SourceUrl = request.DirectJobUrl,
-                    TargetCompany = !string.IsNullOrWhiteSpace(jdSchema.Company) ? jdSchema.Company : "Target Company",
-                    TargetRole = !string.IsNullOrWhiteSpace(jdSchema.Title) ? jdSchema.Title : "Target Role",
-                    RawText = cleanedText,
-                    CleanedText = cleanedText,
-                    ExtractedSchemaJson = JsonSerializer.Serialize(jdSchema, JsonOptions)
-                };
-                _context.JobDescriptions.Add(jobDescription);
-                await _context.SaveChangesAsync(cancellationToken);
+                return Result<TailoredResumeResultDto>.Failure($"Failed to scrape job opening: {scrapeResult.Error}");
             }
+
+            var (cleanedText, company, title, source) = scrapeResult.Value;
+            var aiProv = _aiServiceFactory.GetProvider(request.ProviderOverride ?? user.PreferredAiProvider);
+            var jdSchema = await ExtractJdSchemaAsync(aiProv, user, cleanedText, cancellationToken);
+            if (!string.IsNullOrEmpty(company)) jdSchema.Company = company;
+            if (!string.IsNullOrEmpty(title)) jdSchema.Title = title;
+
+            jobDescription = new JobDescription
+            {
+                UserId = userId,
+                Source = source,
+                SourceUrl = request.DirectJobUrl,
+                TargetCompany = !string.IsNullOrWhiteSpace(jdSchema.Company) ? jdSchema.Company : (company ?? "Company"),
+                TargetRole = !string.IsNullOrWhiteSpace(jdSchema.Title) ? jdSchema.Title : (title ?? "Role"),
+                RawText = cleanedText,
+                CleanedText = cleanedText,
+                ExtractedSchemaJson = JsonSerializer.Serialize(jdSchema, JsonOptions)
+            };
+            _context.JobDescriptions.Add(jobDescription);
+            await _context.SaveChangesAsync(cancellationToken);
         }
         else if (!string.IsNullOrWhiteSpace(request.DirectJobText))
         {
@@ -187,7 +196,19 @@ STRICT TRUTH-PRESERVATION RULES (MANDATORY & ZERO TOLERANCE):
 2. NEVER invent fake projects, fake achievements, or fake certifications.
 3. ONLY improve wording, strengthen action verbs, rephrase bullet points with quantifiable impact (STAR method), reorganize experience/projects in order of relevance, and optimize keywords naturally.
 4. If the candidate lacks a required skill from the JD, DO NOT falsely inject it into their experience. Leave missing skills for the gap report.
-5. Return the tailored resume as valid JSON matching ResumeSchema.";
+5. You MUST return ALL sections: personalInfo, summary, experience, projects, skills, education, certifications, and achievements.
+
+Output valid JSON matching ResumeSchema:
+{
+  ""personalInfo"": { ""fullName"": ""..."", ""email"": ""..."", ""phone"": ""..."", ""location"": ""..."", ""title"": ""..."", ""linkedInUrl"": ""..."", ""gitHubUrl"": ""..."", ""portfolioUrl"": ""..."" },
+  ""summary"": ""tailored professional summary"",
+  ""experience"": [ { ""id"": ""uuid"", ""company"": ""..."", ""role"": ""..."", ""location"": ""..."", ""startDate"": ""..."", ""endDate"": ""..."", ""isCurrent"": false, ""highlights"": [""bullet 1""] } ],
+  ""projects"": [ { ""id"": ""uuid"", ""title"": ""..."", ""description"": ""..."", ""technologies"": ""..."", ""url"": null, ""highlights"": [""bullet 1""] } ],
+  ""skills"": [ { ""categoryName"": ""Languages"", ""skills"": [""C#""] } ],
+  ""education"": [ { ""id"": ""uuid"", ""institution"": ""..."", ""degree"": ""..."", ""fieldOfStudy"": ""..."", ""graduationYear"": ""2024"", ""gpa"": null, ""honors"": null } ],
+  ""certifications"": [ { ""id"": ""uuid"", ""name"": ""..."", ""issuer"": ""..."", ""issueDate"": ""..."", ""expirationDate"": null, ""credentialId"": null, ""url"": null } ],
+  ""achievements"": [ { ""id"": ""uuid"", ""title"": ""..."", ""description"": ""..."", ""date"": null } ]
+}";
 
         var userPrompt = $@"
 TARGET JOB DESCRIPTION:
@@ -218,10 +239,28 @@ Please return the tailored ResumeSchema JSON:";
             cancellationToken
         );
 
-        var tailoredSchema = tailoringResult.IsSuccess ? tailoringResult.Value : masterSchema;
+        if (tailoringResult.IsFailure)
+        {
+            return Result<TailoredResumeResultDto>.Failure($"AI resume tailoring failed: {tailoringResult.Error}");
+        }
+
+        var tailoredSchema = tailoringResult.Value;
 
         // Ensure PersonalInfo is preserved exactly
         tailoredSchema.PersonalInfo = masterSchema.PersonalInfo;
+
+        // Preserve unedited sections if AI omitted them
+        if (tailoredSchema.Projects == null || !tailoredSchema.Projects.Any())
+            tailoredSchema.Projects = masterSchema.Projects;
+
+        if (tailoredSchema.Education == null || !tailoredSchema.Education.Any())
+            tailoredSchema.Education = masterSchema.Education;
+
+        if (tailoredSchema.Certifications == null || !tailoredSchema.Certifications.Any())
+            tailoredSchema.Certifications = masterSchema.Certifications;
+
+        if (tailoredSchema.Achievements == null || !tailoredSchema.Achievements.Any())
+            tailoredSchema.Achievements = masterSchema.Achievements;
 
         // 4. Validate Truth Preservation
         var truthCheck = _atsScoringEngine.ValidateTruthPreservation(masterSchema, tailoredSchema);
@@ -231,26 +270,37 @@ Please return the tailored ResumeSchema JSON:";
             tailoredSchema.Experience = masterSchema.Experience;
             tailoredSchema.Education = masterSchema.Education;
             tailoredSchema.Certifications = masterSchema.Certifications;
+            tailoredSchema.Projects = masterSchema.Projects;
         }
+
 
         // 5. Calculate ATS Score & Recruiter Feedback
         await _progressNotifier.SendProgressAsync(userId, "ATS Scoring", "Performing keyword density, semantic match, and recruiter scorecard analysis...", 80, cancellationToken);
         var atsScore = _atsScoringEngine.CalculateScore(tailoredSchema, jobSchema);
 
         // 6. Save Generated Resume & ATS Analysis
+        var resolvedRole = !string.IsNullOrWhiteSpace(jobSchema.Title)
+            ? jobSchema.Title
+            : (!string.IsNullOrWhiteSpace(jobDescription.TargetRole) ? jobDescription.TargetRole : "Target Role");
+
+        var resolvedCompany = !string.IsNullOrWhiteSpace(jobSchema.Company)
+            ? jobSchema.Company
+            : (!string.IsNullOrWhiteSpace(jobDescription.TargetCompany) ? jobDescription.TargetCompany : "Target Company");
+
         var generatedResume = new GeneratedResume
         {
             UserId = userId,
             MasterResumeId = masterResume.Id,
             JobDescriptionId = jobDescription.Id,
-            TargetRole = jobSchema.Title,
-            TargetCompany = jobSchema.Company,
+            TargetRole = resolvedRole,
+            TargetCompany = resolvedCompany,
             TailoredStructuredJson = JsonSerializer.Serialize(tailoredSchema, JsonOptions),
             DiffSummaryJson = JsonSerializer.Serialize(new { MasterSummary = masterSchema.Summary, TailoredSummary = tailoredSchema.Summary }),
             SelectedTemplate = request.SelectedTemplate,
             GeneratedWithProvider = providerType,
             ModelName = modelName ?? "default"
         };
+
 
         _context.GeneratedResumes.Add(generatedResume);
         await _context.SaveChangesAsync(cancellationToken);
@@ -269,7 +319,7 @@ Please return the tailored ResumeSchema JSON:";
 
         // Also track in applications if not already added
         var existingApp = await _context.Applications
-            .FirstOrDefaultAsync(a => a.UserId == userId && a.CompanyName == jobSchema.Company && a.JobTitle == jobSchema.Title, cancellationToken);
+            .FirstOrDefaultAsync(a => a.UserId == userId && a.CompanyName == resolvedCompany && a.JobTitle == resolvedRole, cancellationToken);
 
         if (existingApp == null)
         {
@@ -277,14 +327,15 @@ Please return the tailored ResumeSchema JSON:";
             {
                 UserId = userId,
                 GeneratedResumeId = generatedResume.Id,
-                CompanyName = !string.IsNullOrWhiteSpace(jobSchema.Company) ? jobSchema.Company : "Target Company",
-                JobTitle = !string.IsNullOrWhiteSpace(jobSchema.Title) ? jobSchema.Title : "Target Role",
+                CompanyName = resolvedCompany,
+                JobTitle = resolvedRole,
                 JobUrl = jobDescription.SourceUrl,
                 Location = jobSchema.Location,
                 SalaryRange = jobSchema.Salary,
                 Status = ApplicationStatus.Saved
             });
         }
+
 
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -332,6 +383,73 @@ Please return the tailored ResumeSchema JSON:";
         ));
     }
 
+    public async Task<Result<TailoredResumeResultDto>> Handle(UpdateTailoredResumeCommand request, CancellationToken cancellationToken)
+    {
+        var userId = _currentUserService.UserId ?? throw new UnauthorizedException();
+        var generatedResume = await _context.GeneratedResumes
+            .Include(g => g.MasterResume)
+            .Include(g => g.JobDescription)
+            .Include(g => g.AtsAnalysis)
+            .FirstOrDefaultAsync(g => g.Id == request.Id && g.UserId == userId, cancellationToken)
+            ?? throw new NotFoundException(nameof(GeneratedResume), request.Id);
+
+        var masterSchema = JsonSerializer.Deserialize<ResumeSchema>(generatedResume.MasterResume?.StructuredJson ?? "{}", JsonOptions) ?? new ResumeSchema();
+
+        // Validate truth preservation
+        var truthResult = _atsScoringEngine.ValidateTruthPreservation(masterSchema, request.UpdatedSchema);
+        if (truthResult.IsFailure)
+        {
+            return Result<TailoredResumeResultDto>.Failure($"Truth preservation check failed: {truthResult.Error}");
+        }
+
+        // Recalculate ATS score
+        var jdSchema = JsonSerializer.Deserialize<JobDescriptionSchema>(generatedResume.JobDescription?.ExtractedSchemaJson ?? "{}", JsonOptions) ?? new JobDescriptionSchema();
+        var atsBreakdown = _atsScoringEngine.CalculateScore(request.UpdatedSchema, jdSchema);
+
+        generatedResume.TailoredStructuredJson = JsonSerializer.Serialize(request.UpdatedSchema, JsonOptions);
+        if (request.SelectedTemplate.HasValue)
+        {
+            generatedResume.SelectedTemplate = request.SelectedTemplate.Value;
+        }
+
+        if (generatedResume.AtsAnalysis != null)
+        {
+            generatedResume.AtsAnalysis.MatchScore = atsBreakdown.OverallScore;
+            generatedResume.AtsAnalysis.MatchingKeywordsCount = atsBreakdown.MatchingKeywords.Count;
+            generatedResume.AtsAnalysis.MissingKeywordsCount = atsBreakdown.MissingKeywords.Count;
+            generatedResume.AtsAnalysis.RecruiterFeedbackSummary = atsBreakdown.RecruiterFeedback;
+            generatedResume.AtsAnalysis.AnalysisDataJson = JsonSerializer.Serialize(atsBreakdown, JsonOptions);
+        }
+        else
+        {
+            generatedResume.AtsAnalysis = new AtsAnalysis
+            {
+                GeneratedResumeId = generatedResume.Id,
+                MatchScore = atsBreakdown.OverallScore,
+                AnalysisDataJson = JsonSerializer.Serialize(atsBreakdown, JsonOptions),
+                RecruiterFeedbackSummary = atsBreakdown.RecruiterFeedback,
+                MatchingKeywordsCount = atsBreakdown.MatchingKeywords.Count,
+                MissingKeywordsCount = atsBreakdown.MissingKeywords.Count
+            };
+            _context.AtsAnalyses.Add(generatedResume.AtsAnalysis);
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return Result<TailoredResumeResultDto>.Success(new TailoredResumeResultDto(
+            generatedResume.Id,
+            generatedResume.MasterResumeId,
+            generatedResume.JobDescriptionId,
+            generatedResume.TargetRole,
+            generatedResume.TargetCompany,
+            generatedResume.SelectedTemplate,
+            masterSchema,
+            request.UpdatedSchema,
+            atsBreakdown,
+            generatedResume.CreatedAtUtc
+        ));
+    }
+
     public async Task<Result<List<GeneratedResumeSummaryDto>>> Handle(GetGeneratedResumesListQuery request, CancellationToken cancellationToken)
     {
         var userId = _currentUserService.UserId ?? throw new UnauthorizedException();
@@ -374,6 +492,10 @@ Please return the tailored ResumeSchema JSON:";
                 var docxBytes = await _exportService.ExportDocxAsync(schema, request.Style, cancellationToken);
                 return Result<ExportFileDto>.Success(new ExportFileDto(docxBytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", $"{sanitizedName}_Resume.docx"));
 
+            case ResumeFormat.Json:
+                var jsonBytes = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(schema, JsonOptions));
+                return Result<ExportFileDto>.Success(new ExportFileDto(jsonBytes, "application/json", $"{sanitizedName}_Resume.json"));
+
             case ResumeFormat.Markdown:
             default:
                 var mdText = _exportService.ExportMarkdown(schema);
@@ -404,11 +526,20 @@ Please return the tailored ResumeSchema JSON:";
             cancellationToken
         );
 
-        return result.IsSuccess ? result.Value : new JobDescriptionSchema
+        if (result.IsSuccess)
         {
-            Title = "Target Position",
-            Company = "Target Company",
-            Responsibilities = rawText.Split('\n', StringSplitOptions.RemoveEmptyEntries).Take(5).ToList()
+            return result.Value;
+        }
+
+        var lines = rawText.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var inferredTitle = lines.FirstOrDefault(l => l.Length > 3 && l.Length < 60 && !l.StartsWith("http", StringComparison.OrdinalIgnoreCase)) ?? "Target Role";
+        var inferredCompany = lines.Skip(1).FirstOrDefault(l => l.Length > 2 && l.Length < 50 && !l.StartsWith("http", StringComparison.OrdinalIgnoreCase)) ?? "Target Company";
+
+        return new JobDescriptionSchema
+        {
+            Title = inferredTitle,
+            Company = inferredCompany,
+            Responsibilities = lines.Take(5).ToList()
         };
     }
 }

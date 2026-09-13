@@ -1,7 +1,6 @@
-using System.Text.Json;
-using AngleSharp;
-using AngleSharp.Dom;
-using AngleSharp.Html.Dom;
+using AngleSharp.Html.Parser;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using ResumeTailor.Application.Common.Interfaces;
 using ResumeTailor.Domain.Entities;
 using ResumeTailor.Domain.Enums;
@@ -229,7 +228,7 @@ public class LinkedInCopilotProvider : IJobApplicationProvider
         await Log("[LinkedIn Copilot] Detected LinkedIn Easy Apply flow");
         await Log($"[LinkedIn Copilot] Contact Step: Phone '{profile.PhoneNumber}', Email '{resumeData.PersonalInfo.Email}'");
         await Log($"[LinkedIn Copilot] Resume Upload Step: Injected tailored ATS PDF ({resumePdfBytes.Length / 1024} KB)");
-        
+
         await Log("[LinkedIn Copilot] Screening Questionnaire Step:");
         foreach (var ans in prefilledAnswers)
         {
@@ -278,9 +277,16 @@ public class NaukriProvider : IJobApplicationProvider
             if (logCallback != null) await logCallback(msg);
         }
 
+        // Flatten SkillCategory[] into readable skill names for logging
+        var topSkills = resumeData.Skills
+            .SelectMany(cat => cat.Skills)
+            .Take(8)
+            .ToList();
+        var skillsSummary = topSkills.Any() ? string.Join(", ", topSkills) : "N/A";
+
         await Log($"[Naukri Pipeline] Inspecting posting at {targetUrl}");
         await Log($"[Naukri Pipeline] Populating candidate criteria: Notice Period: {profile.NoticePeriodDays} days, Expected CTC: {profile.ExpectedSalary}, Current CTC: {profile.CurrentSalary}");
-        await Log($"[Naukri Pipeline] Key skills mapped: {string.Join(", ", resumeData.Skills.Take(8))}");
+        await Log($"[Naukri Pipeline] Key skills mapped: {skillsSummary}");
         await Log($"[Naukri Pipeline] Tailored resume attached ({resumePdfBytes.Length / 1024} KB)");
 
         if (copilotReviewMode)
@@ -337,8 +343,8 @@ public class WorkdayProvider : IJobApplicationProvider
         }
 
         await Log($"[Workday Pipeline] Connecting to Workday multi-step portal: {targetUrl}");
-        await Log($"[Workday Pipeline] Step 1: Candidate Profile & Contact Info populated");
-        await Log($"[Workday Pipeline] Step 2: Experience & Education mapped from Master Resume");
+        await Log("[Workday Pipeline] Step 1: Candidate Profile & Contact Info populated");
+        await Log("[Workday Pipeline] Step 2: Experience & Education mapped from Master Resume");
         await Log($"[Workday Pipeline] Step 3: Resume file uploaded ({resumePdfBytes.Length / 1024} KB)");
         await Log($"[Workday Pipeline] Step 4: Voluntary EEO & Demographics filled (Gender: {profile.EqualEmploymentGender ?? "Decline to Self Identify"})");
         await Log($"[Workday Pipeline] Step 5: {prefilledAnswers.Count} screening questions filled");
@@ -355,11 +361,37 @@ public class WorkdayProvider : IJobApplicationProvider
     }
 }
 
+/// <summary>
+/// Fallback provider for any unknown/custom company career portal.
+/// Uses SemanticDomFormMapper to fetch and parse the job page HTML,
+/// extracting semantic form fields and grounding answers against candidate data.
+/// </summary>
 public class GenericBrowserProvider : IJobApplicationProvider
 {
+    private readonly HttpClient _httpClient;
+    private readonly SemanticDomFormMapper? _mapper;
+    private readonly IApplicationDbContext? _context;
+    private readonly ILogger<GenericBrowserProvider>? _logger;
+
+    public GenericBrowserProvider() : this(null, null, null, null)
+    {
+    }
+
+    public GenericBrowserProvider(
+        HttpClient? httpClient = null,
+        SemanticDomFormMapper? mapper = null,
+        IApplicationDbContext? context = null,
+        ILogger<GenericBrowserProvider>? logger = null)
+    {
+        _httpClient = httpClient ?? new HttpClient();
+        _mapper = mapper;
+        _context = context;
+        _logger = logger;
+    }
+
     public JobSource SupportedSource => JobSource.CompanyCareers;
 
-    public bool CanHandle(string url) => true; // Fallback provider for any unknown/custom company career portal
+    public bool CanHandle(string url) => true; // Fallback for any unknown portal
 
     public async Task<ApplicationAutomationResult> ExecuteFlowAsync(
         string targetUrl,
@@ -380,7 +412,61 @@ public class GenericBrowserProvider : IJobApplicationProvider
         }
 
         await Log($"[Generic AI Browser Agent] Navigating to custom career portal: {targetUrl}");
-        await Log("[Generic AI Browser Agent] Executing dynamic semantic DOM form detection...");
+        await Log("[Generic AI Browser Agent] Fetching page HTML for semantic DOM analysis...");
+
+        // 1. Fetch page HTML and parse DOM semantically if mapper and db context are available
+        List<DomFieldDescriptor> mappedFields = new();
+        if (_mapper != null && _context != null)
+        {
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, targetUrl);
+                request.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
+                request.Headers.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+
+                var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                if (response.IsSuccessStatusCode)
+                {
+                    var html = await response.Content.ReadAsStringAsync(cancellationToken);
+                    var parser = new HtmlParser();
+                    var document = await parser.ParseDocumentAsync(html, cancellationToken);
+
+                    var rawFields = _mapper.ExtractSemanticFields(document);
+                    await Log($"[Generic AI Browser Agent] Discovered {rawFields.Count} semantic form fields in DOM.");
+
+                    // 2. Load screening memories for this domain
+                    var host = new Uri(targetUrl).Host;
+                    var memories = await _context.ScreeningQuestionMemories
+                        .Where(m => m.UserId == profile.UserId && m.Company.ToLower().Contains(host.ToLower()))
+                        .ToListAsync(cancellationToken);
+
+                    // 3. Map fields to candidate data + AI grounding for unknowns
+                    mappedFields = await _mapper.MapFieldsToCandidateAsync(rawFields, profile, resumeData, memories, cancellationToken);
+
+                    var aiGroundedCount = mappedFields.Count(f => f.MappingSource == "AIGrounding");
+                    var profileMappedCount = mappedFields.Count(f => f.MappingSource == "CandidateProfile");
+                    var memoryMappedCount = mappedFields.Count(f => f.MappingSource == "BrowserAgentMemory");
+
+                    await Log($"[Generic AI Browser Agent] Field mapping complete: {profileMappedCount} from profile, {memoryMappedCount} from memory, {aiGroundedCount} AI-grounded.");
+
+                    foreach (var field in mappedFields.Where(f => !string.IsNullOrEmpty(f.InferredMappedValue)))
+                    {
+                        await Log($"  - [{field.Type}] '{field.Label}' -> '{TruncateForLog(field.InferredMappedValue!)}' (Source: {field.MappingSource})");
+                    }
+                }
+                else
+                {
+                    await Log($"[Generic AI Browser Agent] Warning: Could not fetch page HTML (HTTP {response.StatusCode}). Proceeding with pre-filled screening answers only.");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "GenericBrowserProvider: Failed to fetch or parse page DOM for {Url}", targetUrl);
+                await Log($"[Generic AI Browser Agent] Warning: DOM analysis skipped ({ex.Message}). Proceeding with pre-filled data.");
+            }
+        }
+
+        // 4. Log pre-filled screening answers from orchestrator
         await Log($"[Generic AI Browser Agent] Mapped standard fields: Name: {resumeData.PersonalInfo.FullName}, Email: {resumeData.PersonalInfo.Email}, Phone: {profile.PhoneNumber}");
         await Log($"[Generic AI Browser Agent] Attached ATS PDF resume ({resumePdfBytes.Length / 1024} KB)");
 
@@ -394,10 +480,13 @@ public class GenericBrowserProvider : IJobApplicationProvider
         return new ApplicationAutomationResult
         {
             Success = true,
-            Message = "Custom career portal form pre-filled. Review gateway activated.",
+            Message = $"Custom career portal form pre-filled ({mappedFields.Count} fields mapped). Review gateway activated.",
             FinalPageUrl = targetUrl,
             PausedForUserReview = true,
             ExecutionLogs = logs
         };
     }
+
+    private static string TruncateForLog(string value, int maxLength = 60)
+        => value.Length <= maxLength ? value : value[..maxLength] + "...";
 }

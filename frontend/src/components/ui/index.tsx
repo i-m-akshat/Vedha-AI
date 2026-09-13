@@ -17,9 +17,9 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     
     const variants = {
       primary: 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm hover:shadow',
-      secondary: 'bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700',
-      outline: 'border border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white',
-      ghost: 'text-zinc-300 hover:bg-zinc-800/60 hover:text-white',
+      secondary: 'bg-slate-200 hover:bg-slate-300 text-slate-900 border border-slate-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-100 dark:border-zinc-700',
+      outline: 'border border-slate-300 text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white',
+      ghost: 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-zinc-300 dark:hover:bg-zinc-800/60 dark:hover:text-white',
       danger: 'bg-rose-600 hover:bg-rose-700 text-white shadow-sm',
     };
 
@@ -46,7 +46,7 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
     <input
       ref={ref}
       className={cn(
-        'flex h-10 w-full rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all',
+        'flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all dark:border-zinc-700 dark:bg-zinc-900/80 dark:text-zinc-100 dark:placeholder:text-zinc-500',
         className
       )}
       {...props}
@@ -60,7 +60,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTML
     <textarea
       ref={ref}
       className={cn(
-        'flex min-h-[80px] w-full rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all',
+        'flex min-h-[80px] w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all dark:border-zinc-700 dark:bg-zinc-900/80 dark:text-zinc-100 dark:placeholder:text-zinc-500',
         className
       )}
       {...props}
@@ -70,7 +70,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTML
 Textarea.displayName = 'Textarea';
 
 export const Card: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className, ...props }) => (
-  <div className={cn('rounded-xl border border-zinc-800 bg-zinc-900/70 backdrop-blur-sm p-5 shadow-sm', className)} {...props} />
+  <div className={cn('rounded-xl border border-slate-200 bg-white/95 text-slate-900 backdrop-blur-sm p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-100', className)} {...props} />
 );
 
 export const Badge: React.FC<React.HTMLAttributes<HTMLSpanElement> & { variant?: 'default' | 'success' | 'warning' | 'danger' | 'purple' | 'outline' }> = ({
@@ -79,12 +79,12 @@ export const Badge: React.FC<React.HTMLAttributes<HTMLSpanElement> & { variant?:
   ...props
 }) => {
   const variants = {
-    default: 'bg-zinc-800 text-zinc-300 border-zinc-700',
-    success: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-    warning: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    danger: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-    purple: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
-    outline: 'border border-zinc-700 text-zinc-300',
+    default: 'bg-slate-100 text-slate-800 border-slate-300 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700',
+    success: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+    warning: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+    danger: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
+    purple: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
+    outline: 'border border-slate-300 text-slate-700 dark:border-zinc-700 dark:text-zinc-300',
   };
 
   return (
@@ -110,16 +110,16 @@ export const Modal: React.FC<{
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-      <div className={cn('w-full rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl relative', maxWidth)}>
-        <div className="flex items-center justify-between pb-4 border-b border-zinc-800 mb-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+      <div className={cn('w-full rounded-2xl border border-slate-200 bg-white text-slate-900 p-6 shadow-2xl relative dark:border-zinc-800 dark:bg-zinc-900 dark:text-white', maxWidth)}>
+        <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-zinc-800 mb-4">
           <div>
-            <h3 className="text-lg font-bold text-white">{title}</h3>
-            {description && <p className="text-xs text-zinc-400 mt-0.5">{description}</p>}
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">{title}</h3>
+            {description && <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">{description}</p>}
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-800 transition"
           >
             ✕
           </button>

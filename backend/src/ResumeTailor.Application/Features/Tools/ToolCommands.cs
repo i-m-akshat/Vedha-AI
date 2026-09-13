@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using ResumeTailor.Application.Common.Exceptions;
@@ -26,22 +27,107 @@ public record GenerateSkillRoadmapCommand(
 
 public record CoverLetterDto(string Company, string Role, string Content, DateTime CreatedAtUtc);
 
+public class FlexibleStringConverter : JsonConverter<string>
+{
+    public override string Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.String)
+            return reader.GetString() ?? string.Empty;
+
+        if (reader.TokenType == JsonTokenType.StartObject)
+        {
+            using var doc = JsonDocument.ParseValue(ref reader);
+            var parts = new List<string>();
+            foreach (var prop in doc.RootElement.EnumerateObject())
+            {
+                var val = prop.Value.ValueKind == JsonValueKind.String ? prop.Value.GetString() : prop.Value.GetRawText();
+                parts.Add($"{prop.Name}: {val}");
+            }
+            return string.Join(" | ", parts);
+        }
+
+        return string.Empty;
+    }
+
+    public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options)
+    {
+        writer.WriteStringValue(value);
+    }
+}
+
+public class FlexibleStringListConverter : JsonConverter<List<string>>
+{
+    public override List<string> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        var list = new List<string>();
+        if (reader.TokenType != JsonTokenType.StartArray)
+            return list;
+
+        while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+        {
+            if (reader.TokenType == JsonTokenType.String)
+            {
+                var s = reader.GetString();
+                if (!string.IsNullOrWhiteSpace(s)) list.Add(s);
+            }
+            else if (reader.TokenType == JsonTokenType.StartObject)
+            {
+                using var doc = JsonDocument.ParseValue(ref reader);
+                if (doc.RootElement.TryGetProperty("question", out var q) && q.ValueKind == JsonValueKind.String)
+                {
+                    var qStr = q.GetString();
+                    if (doc.RootElement.TryGetProperty("category", out var c) && c.ValueKind == JsonValueKind.String)
+                    {
+                        list.Add($"[{c.GetString()}] {qStr}");
+                    }
+                    else
+                    {
+                        list.Add(qStr ?? string.Empty);
+                    }
+                }
+                else
+                {
+                    list.Add(doc.RootElement.GetRawText());
+                }
+            }
+            else
+            {
+                reader.Skip();
+            }
+        }
+        return list;
+    }
+
+    public override void Write(Utf8JsonWriter writer, List<string> value, JsonSerializerOptions options)
+    {
+        writer.WriteStartArray();
+        foreach (var item in value)
+        {
+            writer.WriteStringValue(item);
+        }
+        writer.WriteEndArray();
+    }
+}
+
 public record InterviewPrepDto(
     string Company,
     string Role,
     List<InterviewQuestionItem> BehavioralQuestions,
     List<InterviewQuestionItem> TechnicalQuestions,
     List<InterviewQuestionItem> GapProbeQuestions,
-    List<string> QuestionsToAskEmployer
+    [property: JsonConverter(typeof(FlexibleStringListConverter))] List<string> QuestionsToAskEmployer
 );
 
 public class InterviewQuestionItem
 {
     public string Question { get; set; } = string.Empty;
     public string ContextWhyAsked { get; set; } = string.Empty;
+    [JsonConverter(typeof(FlexibleStringConverter))]
     public string SuggestedStarApproach { get; set; } = string.Empty;
+    [JsonConverter(typeof(FlexibleStringConverter))]
     public string ExampleTalkingPoint { get; set; } = string.Empty;
 }
+
 
 public class ToolCommandHandler :
     IRequestHandler<GenerateCoverLetterCommand, Result<CoverLetterDto>>,
@@ -112,9 +198,12 @@ Job Requirements:
             cancellationToken
         );
 
-        var content = textResult.IsSuccess ? textResult.Value : $"Dear Hiring Team at {resume.TargetCompany},\n\nI am excited to submit my application for the {resume.TargetRole} position...";
+        if (textResult.IsFailure)
+        {
+            return Result<CoverLetterDto>.Failure($"Failed to generate cover letter: {textResult.Error}");
+        }
 
-        return Result<CoverLetterDto>.Success(new CoverLetterDto(resume.TargetCompany, resume.TargetRole, content, DateTime.UtcNow));
+        return Result<CoverLetterDto>.Success(new CoverLetterDto(resume.TargetCompany, resume.TargetRole, textResult.Value, DateTime.UtcNow));
     }
 
     public async Task<Result<InterviewPrepDto>> Handle(GenerateInterviewPrepCommand request, CancellationToken cancellationToken)
@@ -135,8 +224,41 @@ Job Requirements:
 
         var aiProvider = _aiServiceFactory.GetProvider(user.PreferredAiProvider);
         var systemPrompt = @"You are a Senior Technical Hiring Manager and Career Coach. Generate a comprehensive interview preparation guide tailored to the exact role and candidate profile.
-Return a structured JSON object matching InterviewPrepDto with BehavioralQuestions, TechnicalQuestions, GapProbeQuestions, and QuestionsToAskEmployer.
-Include STAR method guidance and talking points.";
+Output ONLY a valid JSON object with this EXACT structure (no markdown fences, no extra fields):
+{
+  ""company"": ""Company Name"",
+  ""role"": ""Role Title"",
+  ""behavioralQuestions"": [
+    {
+      ""question"": ""Behavioral interview question"",
+      ""contextWhyAsked"": ""Why the hiring manager asks this question"",
+      ""suggestedStarApproach"": ""Recommended Situation, Task, Action, Result response guidance"",
+      ""exampleTalkingPoint"": ""Key highlight or story from candidate's experience to share""
+    }
+  ],
+  ""technicalQuestions"": [
+    {
+      ""question"": ""Technical deep-dive question assessing required competencies"",
+      ""contextWhyAsked"": ""Why this technical concept is critical for this job"",
+      ""suggestedStarApproach"": ""Technical approach, trade-offs, and architecture best practices"",
+      ""exampleTalkingPoint"": ""Real-world project example from candidate's background""
+    }
+  ],
+  ""gapProbeQuestions"": [
+    {
+      ""question"": ""Probe regarding missing or adjacent skills"",
+      ""contextWhyAsked"": ""Addresses potential gap identified in resume match"",
+      ""suggestedStarApproach"": ""How to frame fast learning agility and transferable skills"",
+      ""exampleTalkingPoint"": ""Adjacent technology candidate has mastered successfully""
+    }
+  ],
+  ""questionsToAskEmployer"": [
+    ""Strategic question 1 candidate should ask interviewer"",
+    ""Strategic question 2 candidate should ask interviewer"",
+    ""Strategic question 3 candidate should ask interviewer""
+  ]
+}";
+
 
         var userPrompt = $@"
 Role: {resume.TargetRole} at {resume.TargetCompany}
@@ -159,32 +281,12 @@ Candidate Background:
             cancellationToken
         );
 
-        if (result.IsSuccess)
+        if (result.IsFailure)
         {
-            return Result<InterviewPrepDto>.Success(result.Value);
+            return Result<InterviewPrepDto>.Failure($"Failed to generate interview preparation guide: {result.Error}");
         }
 
-        return Result<InterviewPrepDto>.Success(new InterviewPrepDto(
-            resume.TargetCompany,
-            resume.TargetRole,
-            new List<InterviewQuestionItem>
-            {
-                new() { Question = "Describe a high-impact project you led and how you handled technical tradeoffs.", ContextWhyAsked = "Evaluates architectural leadership and execution.", SuggestedStarApproach = "Situation: Legacy scale bottleneck. Task: Redesign. Action: Decoupled services. Result: 40% latency reduction.", ExampleTalkingPoint = "Mention your recent architecture refactoring." }
-            },
-            new List<InterviewQuestionItem>
-            {
-                new() { Question = $"How do you design scalable systems using {string.Join(", ", jobSchema.Tools.Take(2))}?", ContextWhyAsked = "Verifies technical depth for key JD stack.", SuggestedStarApproach = "Discuss caching, consistency patterns, and concurrency.", ExampleTalkingPoint = "Reference your backend scaling achievements." }
-            },
-            new List<InterviewQuestionItem>
-            {
-                new() { Question = $"We see you have extensive backend experience, but how would you ramp up on {atsAnalysis.MissingSkills.FirstOrDefault() ?? "new cloud stacks"}?", ContextWhyAsked = "Probes potential skill gap identified in ATS scan.", SuggestedStarApproach = "Demonstrate fast learning agility and prior transferable patterns.", ExampleTalkingPoint = "Emphasize how quickly you mastered new frameworks previously." }
-            },
-            new List<string>
-            {
-                "What does the engineering team's current deployment cadence look like?",
-                "What is the biggest architectural bottleneck the team is looking to solve this quarter?"
-            }
-        ));
+        return Result<InterviewPrepDto>.Success(result.Value);
     }
 
     public async Task<Result<List<SkillRoadmapItem>>> Handle(GenerateSkillRoadmapCommand request, CancellationToken cancellationToken)

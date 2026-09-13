@@ -58,7 +58,8 @@ services:
       - AiSettings__AnthropicApiKey=${ANTHROPIC_API_KEY}
       - AiSettings__GeminiApiKey=${GEMINI_API_KEY}
       - AiSettings__DefaultProvider=${DEFAULT_AI_PROVIDER:-Gemini}
-      - AiSettings__DefaultModel=${DEFAULT_AI_MODEL:-gemini-2.0-flash}
+      - AiSettings__DefaultModel=${DEFAULT_AI_MODEL:-gemini-3.8-flash}
+      - EnableSwagger=${ENABLE_SWAGGER:-true}
     ports:
       - "${APP_PORT:-5000}:8080"
     networks:

@@ -58,4 +58,26 @@ public class AuthController : BaseApiController
 
         return Ok(new { success = true });
     }
+
+    [HttpGet("export-data")]
+    [Authorize]
+    public async Task<IActionResult> ExportUserData()
+    {
+        var result = await Mediator.Send(new ExportUserDataQuery());
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
+
+    [HttpDelete("delete-account")]
+    [Authorize]
+    public async Task<IActionResult> DeleteAccount()
+    {
+        var result = await Mediator.Send(new DeleteUserAccountCommand());
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(new { success = true, message = "Account and all associated records permanently purged." });
+    }
 }

@@ -1,0 +1,12 @@
+**/.git
+**/.vs
+**/.idea
+**/node_modules
+**/bin
+**/obj
+**/dist
+**/build
+**/coverage
+**/.system_generated
+**/.antigravity
+*.log
