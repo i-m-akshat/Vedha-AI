@@ -11,15 +11,18 @@
   "dependencies": {
     "@microsoft/signalr": "^8.0.7",
     "@tanstack/react-query": "^5.66.0",
+    "@types/three": "^0.186.0",
     "axios": "^1.7.9",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "framer-motion": "^12.4.7",
+    "gsap": "^3.15.0",
     "lucide-react": "^0.475.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-dropzone": "^14.3.8",
     "tailwind-merge": "^3.0.1",
+    "three": "^0.186.1",
     "zustand": "^5.0.3"
   },
   "devDependencies": {

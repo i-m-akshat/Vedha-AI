@@ -230,6 +230,60 @@ Please generate an ATS-optimized, elegant single-column Markdown resume emphasiz
         }
 
         // 4. Render to ATS PDF
+        // Build experience list: start with existing master resume experiences, add the application job, then sort reverse-chronological
+        var experienceItems = new List<WorkExperienceItem>();
+
+        // 1. Extract existing experiences from master resume's structured JSON (if available)
+        if (user.MasterResumes.Any())
+        {
+            var activeMaster = user.MasterResumes.FirstOrDefault(m => m.IsActive) ?? user.MasterResumes.First();
+            if (!string.IsNullOrWhiteSpace(activeMaster.StructuredJson) && activeMaster.StructuredJson != "{}")
+            {
+                try
+                {
+                    var parsed = JsonSerializer.Deserialize<ResumeSchema>(activeMaster.StructuredJson);
+                    if (parsed?.Experience != null)
+                    {
+                        foreach (var exp in parsed.Experience)
+                        {
+                            var startYear = int.TryParse(exp.StartDate, out var sy) ? sy : 0;
+                            experienceItems.Add(new WorkExperienceItem
+                            {
+                                Id = exp.Id,
+                                Company = exp.Company,
+                                Role = exp.Role,
+                                Location = exp.Location,
+                                StartDate = exp.StartDate,
+                                EndDate = exp.EndDate,
+                                IsCurrent = exp.IsCurrent,
+                                Highlights = exp.Highlights
+                            });
+                        }
+                    }
+                }
+                catch { }
+            }
+        }
+
+        // 2. Add the application job as a work experience item
+        experienceItems.Add(new WorkExperienceItem
+        {
+            Id = Guid.NewGuid().ToString(),
+            Role = jobTitle,
+            Company = companyName,
+            Location = candidateLocation,
+            StartDate = "2022", // Default; will be sorted; actual date handled by IsCurrent logic
+            EndDate = "Present",
+            IsCurrent = true,
+            Highlights = selectedAchievements.Take(6).ToList()
+        });
+
+        // 3. Sort all experiences in reverse-chronological order (most recent start date first)
+        experienceItems = experienceItems
+            .OrderByDescending(x => int.TryParse(x.StartDate, out var s) ? s : 0)
+            .ThenByDescending(x => x.IsCurrent)
+            .ToList();
+
         var resumeSchema = new ResumeSchema
         {
             PersonalInfo = new PersonalInfo
@@ -241,19 +295,7 @@ Please generate an ATS-optimized, elegant single-column Markdown resume emphasiz
                 LinkedInUrl = user.CandidateProfile?.LinkedInUrl ?? "",
                 GitHubUrl = user.CandidateProfile?.GithubUrl ?? ""
             },
-            Experience = new List<WorkExperienceItem>
-            {
-                new()
-                {
-                    Role = jobTitle,
-                    Company = companyName,
-                    Location = candidateLocation,
-                    StartDate = "2022",
-                    EndDate = "Present",
-                    IsCurrent = true,
-                    Highlights = selectedAchievements.Take(6).ToList()
-                }
-            }
+            Experience = experienceItems
         };
 
         var pdfBytes = await _exportService.ExportPdfAsync(resumeSchema, TemplateStyle.ClassicAts, cancellationToken);

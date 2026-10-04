@@ -27,24 +27,24 @@
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 6%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 4.5%;
-    --popover-foreground: 0 0% 98%;
+    --background: 240 18% 2.2%;
+    --foreground: 210 20% 98%;
+    --card: 240 16% 4.2%;
+    --card-foreground: 210 20% 98%;
+    --popover: 240 18% 3.5%;
+    --popover-foreground: 210 20% 98%;
     --primary: 239 84% 67%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 12% 10%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 240 12% 10%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 240 12% 12%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 10% 12%;
+    --input: 240 10% 12%;
     --ring: 239 84% 67%;
   }
 }
@@ -58,10 +58,63 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Studio & Editorial Utilities inspired by Depth & Ciao Energy */
+@layer utilities {
+  .font-mono-tech {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-feature-settings: "zero" 1;
+    letter-spacing: 0.05em;
+  }
+
+  .studio-surface {
+    background: radial-gradient(120% 120% at 50% 0%, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.005) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .studio-glow {
+    box-shadow: 0 0 50px -10px rgba(99, 102, 241, 0.15);
+  }
+
+  .studio-glow-emerald {
+    box-shadow: 0 0 50px -10px rgba(16, 185, 129, 0.15);
+  }
+
+  .hairline-border {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .hairline-border-light {
+    border: 1px solid rgba(0, 0, 0, 0.08);
+  }
+}
+
+/* Liquid Gradient Animation for Progress */
+@keyframes liquidFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-liquid {
+  background-size: 200% 200%;
+  animation: liquidFlow 4s ease infinite;
+}
+
+/* Live Audio Wave Animation for Status Pulse */
+@keyframes wavePulse {
+  0%, 100% { height: 4px; }
+  50% { height: 14px; }
+}
+
+.wave-bar-1 { animation: wavePulse 1.2s ease-in-out infinite; }
+.wave-bar-2 { animation: wavePulse 1.2s ease-in-out infinite 0.2s; }
+.wave-bar-3 { animation: wavePulse 1.2s ease-in-out infinite 0.4s; }
+.wave-bar-4 { animation: wavePulse 1.2s ease-in-out infinite 0.1s; }
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -69,18 +122,18 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.3);
+  background: rgba(148, 163, 184, 0.25);
   border-radius: 9999px;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.5);
+  background: rgba(148, 163, 184, 0.4);
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.2);
 }
