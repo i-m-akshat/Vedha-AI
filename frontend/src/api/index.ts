@@ -311,3 +311,35 @@ export const orchestratorApi = {
       >(`/orchestrator/queue/${id}/execute`, { headed, copilotMode })
       .then((res) => res.data),
 };
+
+export const autonomousApi = {
+  ingestJob: (data: import("../types/orchestrator").IngestJobRequest) =>
+    apiClient
+      .post<{ applicationId: string; status: string; queueTopic: string; message: string }>("/autonomousapplications/ingest-job", data)
+      .then((res) => res.data),
+
+  getApplications: (status?: string) =>
+    apiClient
+      .get<import("../types/orchestrator").ApplicationAuditDto[]>("/autonomousapplications/applications", { params: { status } })
+      .then((res) => res.data),
+
+  getAchievements: () =>
+    apiClient
+      .get<import("../types/orchestrator").CareerAchievementDto[]>("/autonomousapplications/achievements")
+      .then((res) => res.data),
+
+  addAchievement: (content: string) =>
+    apiClient
+      .post<import("../types/orchestrator").CareerAchievementDto>("/autonomousapplications/achievements", { content })
+      .then((res) => res.data),
+
+  resolveHitl: (applicationId: string, answer: string) =>
+    apiClient
+      .post<{ success: boolean; message: string }>("/autonomousapplications/resolve-hitl", { applicationId, answer })
+      .then((res) => res.data),
+
+  getCredits: () =>
+    apiClient
+      .get<import("../types/orchestrator").UserCreditsDto>("/autonomousapplications/credits")
+      .then((res) => res.data),
+};

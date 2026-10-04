@@ -189,19 +189,60 @@ public class TailorCommandHandler :
         var modelName = request.ModelOverride ?? user.PreferredModel;
 
         var systemPrompt = @"You are a Principal Executive Resume Strategist & ATS Optimization Specialist.
-Your goal is to tailor the candidate's Master Resume specifically for the Target Job Description.
+Your task is to produce a HEAVILY TAILORED resume that is visibly and structurally different for each unique Job Description.
 
-STRICT TRUTH-PRESERVATION RULES (MANDATORY & ZERO TOLERANCE):
-1. NEVER invent any companies, employment periods, job titles, or institutions.
-2. NEVER invent fake projects, fake achievements, or fake certifications.
-3. ONLY improve wording, strengthen action verbs, rephrase bullet points with quantifiable impact (STAR method), reorganize experience/projects in order of relevance, and optimize keywords naturally.
-4. If the candidate lacks a required skill from the JD, DO NOT falsely inject it into their experience. Leave missing skills for the gap report.
-5. You MUST return ALL sections: personalInfo, summary, experience, projects, skills, education, certifications, and achievements.
+---------------------------------------------------------------------------
+STRICT ZERO-LIE RULES (MANDATORY - ZERO TOLERANCE):
+---------------------------------------------------------------------------
+1. NEVER invent companies, employment periods, job titles, institutions, projects, certifications, or achievements.
+2. NEVER inject a skill or technology into a bullet that did not actually appear in that role/project.
+3. NEVER fabricate metrics - only use numbers or percentages that exist in the master resume.
+4. You MAY rephrase, reframe, restructure, reorder, consolidate, or expand existing bullet points.
+5. You MAY add or remove bullet points from a role AS LONG AS every bullet reflects something real that was in the master resume for that role.
 
-Output valid JSON matching ResumeSchema:
+---------------------------------------------------------------------------
+AGGRESSIVE TAILORING MANDATES (EVERY POINT IS REQUIRED):
+---------------------------------------------------------------------------
+
+[SUMMARY]
+- The very first sentence MUST name the exact target job title from the JD (e.g., ""Dot Net Developer"", ""Backend Developer"").
+- Highlight 2-3 of the candidate's skills that DIRECTLY MATCH the JD's Must-Have Skills in the first 2 sentences.
+- Do NOT write a generic summary - it must read as if written specifically for THIS job and this company.
+
+[EXPERIENCE - BULLET COUNT RULES - CRITICAL]:
+- Each experience role MUST receive a bullet count proportional to its relevance to the JD:
+    * HIGH relevance (role directly matches JD stack/responsibilities): 5-7 bullets - expand with maximum detail and JD-aligned language.
+    * MEDIUM relevance (partial match - some overlap with JD): 3-4 bullets - focus only on overlapping skills.
+    * LOW relevance (minimal overlap with JD): 2 bullets max - use only the 2 most transferable points.
+- NEVER give every role the same number of bullets - this signals un-tailored output and is FORBIDDEN.
+- Reorder experience entries so the most JD-relevant role appears FIRST in the list (even if not chronological).
+
+[EXPERIENCE - BULLET CONTENT RULES]:
+- Directly mirror JD vocabulary and action verbs in bullets (e.g., if JD says ""design implement and support"", use those words in the bullet).
+- Every HIGH-relevance bullet MUST contain at least one specific JD keyword from Must-Have Skills or Key Responsibilities.
+- If a bullet from the master resume is not relevant to this JD, DROP IT - do not rephrase irrelevant bullets just to keep bullet count.
+
+[SKILLS]:
+- Reorder skill categories so the categories most relevant to the JD appear first.
+- Within each category, sort skills so JD-matching skills appear first.
+- REMOVE skills from the list that are completely irrelevant to this JD.
+- DO NOT add skills the candidate does not have.
+
+[PROJECTS]:
+- Reorder projects so the most JD-relevant projects appear first.
+- For each project, rewrite bullets to emphasize aspects matching the JD.
+- If a project has zero relevance to the JD, reduce it to 1-line description only.
+
+[PERSONALINFO]:
+- Set the 'title' field to exactly the target job title from the JD.
+
+---------------------------------------------------------------------------
+OUTPUT FORMAT:
+---------------------------------------------------------------------------
+Output valid JSON exactly matching this ResumeSchema structure:
 {
-  ""personalInfo"": { ""fullName"": ""..."", ""email"": ""..."", ""phone"": ""..."", ""location"": ""..."", ""title"": ""..."", ""linkedInUrl"": ""..."", ""gitHubUrl"": ""..."", ""portfolioUrl"": ""..."" },
-  ""summary"": ""tailored professional summary"",
+  ""personalInfo"": { ""fullName"": ""..."", ""email"": ""..."", ""phone"": ""..."", ""location"": ""..."", ""title"": ""TARGET JOB TITLE"", ""linkedInUrl"": ""..."", ""gitHubUrl"": ""..."", ""portfolioUrl"": ""..."" },
+  ""summary"": ""[First sentence names the target role. Second sentence highlights 2-3 directly matched skills. Rest is tailored to THIS JD.]"",
   ""experience"": [ { ""id"": ""uuid"", ""company"": ""..."", ""role"": ""..."", ""location"": ""..."", ""startDate"": ""..."", ""endDate"": ""..."", ""isCurrent"": false, ""highlights"": [""bullet 1""] } ],
   ""projects"": [ { ""id"": ""uuid"", ""title"": ""..."", ""description"": ""..."", ""technologies"": ""..."", ""url"": null, ""highlights"": [""bullet 1""] } ],
   ""skills"": [ { ""categoryName"": ""Languages"", ""skills"": [""C#""] } ],
@@ -214,14 +255,27 @@ Output valid JSON matching ResumeSchema:
 TARGET JOB DESCRIPTION:
 Title: {jobSchema.Title}
 Company: {jobSchema.Company}
+Seniority: {jobSchema.Seniority}
+Experience Required: {jobSchema.ExperienceRequired}
+Employment Type: {jobSchema.EmploymentType}
 Must-Have Skills: {string.Join(", ", jobSchema.MustHaveSkills)}
+Nice-To-Have Skills: {string.Join(", ", jobSchema.NiceToHaveSkills)}
 Key Responsibilities: {string.Join("; ", jobSchema.Responsibilities)}
+Required Frameworks: {string.Join(", ", jobSchema.Frameworks)}
+Required Tools: {string.Join(", ", jobSchema.Tools)}
+Required Databases: {string.Join(", ", jobSchema.Databases)}
+Required Cloud: {string.Join(", ", jobSchema.Cloud)}
 Keywords: {string.Join(", ", jobSchema.Keywords)}
 
-MASTER RESUME:
+MASTER RESUME (JSON):
 {JsonSerializer.Serialize(masterSchema, JsonOptions)}
 
-Please return the tailored ResumeSchema JSON:";
+INSTRUCTIONS:
+1. Classify each experience role as HIGH, MEDIUM, or LOW relevance against the JD above.
+2. Assign bullet counts strictly per the rules: HIGH=5-7, MEDIUM=3-4, LOW=2 max.
+3. NEVER give every role the same number of bullets.
+4. The summary MUST begin with the exact job title: ""{jobSchema.Title}"".
+5. Return only the tailored ResumeSchema JSON with no commentary.";
 
         var apiKey = providerType switch
         {

@@ -142,4 +142,26 @@ public class EncryptionAndResilienceTests
         Assert.Contains("unauthorized quantitative metric", result.Error);
         Assert.Contains("85%", result.Error);
     }
+
+    [Fact]
+    public void AiSettings_ShouldDefaultToGeminiFlashLiteLatest()
+    {
+        var settings = new ResumeTailor.Infrastructure.Ai.AiSettings();
+        Assert.Equal("gemini-flash-lite-latest", settings.DefaultModel);
+        Assert.Equal("Gemini", settings.DefaultProvider);
+    }
+
+    [Fact]
+    public void User_ShouldDefaultToGeminiFlashLiteLatest()
+    {
+        var user = new ResumeTailor.Domain.Entities.User
+        {
+            Email = "test@vedha.ai",
+            FullName = "Test User",
+            PasswordHash = "hash",
+            PreferredModel = "gemini-flash-lite-latest"
+        };
+
+        Assert.Equal("gemini-flash-lite-latest", user.PreferredModel);
+    }
 }

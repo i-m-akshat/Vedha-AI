@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: vedha-postgres
     restart: unless-stopped
     environment:
@@ -35,6 +35,33 @@ services:
     networks:
       - vedha-network
 
+  nats:
+    image: nats:latest
+    container_name: vedha-nats
+    restart: unless-stopped
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "${NATS_PORT:-4222}:4222"
+      - "8222:8222"
+    networks:
+      - vedha-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: vedha-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - vedha-network
+
   backend:
     build:
       context: ..
@@ -46,10 +73,21 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      nats:
+        condition: service_started
+      minio:
+        condition: service_started
     environment:
       - ASPNETCORE_ENVIRONMENT=${ENVIRONMENT:-Production}
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-vedha_db};Username=${POSTGRES_USER:-vedha_admin};Password=${POSTGRES_PASSWORD:-vedha_secret_password_change_me};
       - ConnectionStrings__Redis=${REDIS_CONNECTION_STRING:-redis:6379}
+      - NatsSettings__Url=${NATS_URL:-nats://nats:4222}
+      - S3Settings__Endpoint=${MINIO_ENDPOINT:-minio:9000}
+      - S3Settings__PublicEndpoint=${MINIO_PUBLIC_ENDPOINT:-http://localhost:9000}
+      - S3Settings__AccessKey=${MINIO_ACCESS_KEY:-minioadmin}
+      - S3Settings__SecretKey=${MINIO_SECRET_KEY:-minioadmin}
+      - S3Settings__BucketName=${MINIO_BUCKET:-vedha-resumes}
+      - S3Settings__UseSsl=${MINIO_USE_SSL:-false}
       - JwtSettings__Secret=${JWT_SECRET}
       - JwtSettings__Issuer=${JWT_ISSUER:-VedhaApi}
       - JwtSettings__Audience=${JWT_AUDIENCE:-VedhaClient}
@@ -58,10 +96,31 @@ services:
       - AiSettings__AnthropicApiKey=${ANTHROPIC_API_KEY}
       - AiSettings__GeminiApiKey=${GEMINI_API_KEY}
       - AiSettings__DefaultProvider=${DEFAULT_AI_PROVIDER:-Gemini}
-      - AiSettings__DefaultModel=${DEFAULT_AI_MODEL:-gemini-3.8-flash}
+      - AiSettings__DefaultModel=${DEFAULT_AI_MODEL:-gemini-flash-lite-latest}
+      - AiSettings__MaxTokens=${AI_MAX_TOKENS:-16384}
       - EnableSwagger=${ENABLE_SWAGGER:-true}
     ports:
       - "${APP_PORT:-5000}:8080"
+    networks:
+      - vedha-network
+
+  worker:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.worker
+    container_name: vedha-worker
+    restart: unless-stopped
+    depends_on:
+      - nats
+      - minio
+    environment:
+      - NATS_URL=nats://nats:4222
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_BUCKET=${MINIO_BUCKET:-vedha-resumes}
+      - AGENTQL_API_KEY=${AGENTQL_API_KEY}
+      - RESIDENTIAL_PROXY_URL=${RESIDENTIAL_PROXY_URL}
     networks:
       - vedha-network
 
@@ -81,6 +140,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  minio_data:
 
 networks:
   vedha-network:

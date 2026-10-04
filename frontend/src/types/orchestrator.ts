@@ -97,3 +97,38 @@ export interface ApplicationAutomationResultDto {
   executionLogs: string[];
   errorDetails?: string;
 }
+
+// --- Autonomous Job Application SaaS Types (BRD Architecture) ---
+
+export interface ApplicationAuditDto {
+  id: string;
+  jobTitle: string;
+  companyName: string;
+  jobUrl: string;
+  status: 'pending' | 'generating_resume' | 'applying' | 'success' | 'failed' | 'hitl_required';
+  resumeS3Url?: string;
+  errorMessage?: string;
+  hitlQuestion?: string;
+  hitlAnswer?: string;
+  appliedAtUtc?: string;
+  createdAtUtc: string;
+}
+
+export interface CareerAchievementDto {
+  id: string;
+  content: string;
+  embeddingDimension: number;
+  createdAtUtc: string;
+}
+
+export interface UserCreditsDto {
+  creditsBalance: number;
+  email: string;
+}
+
+export interface IngestJobRequest {
+  jobTitle?: string;
+  companyName?: string;
+  jobUrl: string;
+  jobDescription?: string;
+}

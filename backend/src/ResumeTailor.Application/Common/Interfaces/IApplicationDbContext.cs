@@ -18,5 +18,10 @@ public interface IApplicationDbContext
     DbSet<ScreeningQuestionMemory> ScreeningQuestionMemories { get; }
     DbSet<ApplicationQueueItem> ApplicationQueueItems { get; }
 
+    // Autonomous Job Application SaaS
+    DbSet<CareerAchievement> CareerAchievements { get; }
+    DbSet<ApplicationAudit> ApplicationAudits { get; }
+    DbSet<IdempotentTransaction> IdempotentTransactions { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

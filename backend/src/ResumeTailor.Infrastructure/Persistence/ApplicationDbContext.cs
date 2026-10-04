@@ -25,6 +25,11 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<ScreeningQuestionMemory> ScreeningQuestionMemories => Set<ScreeningQuestionMemory>();
     public DbSet<ApplicationQueueItem> ApplicationQueueItems => Set<ApplicationQueueItem>();
 
+    // Autonomous Job Application SaaS
+    public DbSet<CareerAchievement> CareerAchievements => Set<CareerAchievement>();
+    public DbSet<ApplicationAudit> ApplicationAudits => Set<ApplicationAudit>();
+    public DbSet<IdempotentTransaction> IdempotentTransactions => Set<IdempotentTransaction>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -68,6 +73,37 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             b.HasIndex(u => u.Email).IsUnique();
             b.Property(u => u.Email).IsRequired().HasMaxLength(256);
             b.Property(u => u.FullName).IsRequired().HasMaxLength(150);
+            b.Property(u => u.CreditsBalance).HasDefaultValue(50);
+        });
+
+        modelBuilder.Entity<CareerAchievement>(b =>
+        {
+            b.HasKey(c => c.Id);
+            b.HasIndex(c => c.UserId);
+            b.HasOne(c => c.User)
+             .WithMany(u => u.CareerAchievements)
+             .HasForeignKey(c => c.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ApplicationAudit>(b =>
+        {
+            b.HasKey(a => a.Id);
+            b.HasIndex(a => new { a.UserId, a.Status });
+            b.HasOne(a => a.User)
+             .WithMany(u => u.ApplicationAudits)
+             .HasForeignKey(a => a.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<IdempotentTransaction>(b =>
+        {
+            b.HasKey(t => t.IdempotencyKey);
+            b.HasIndex(t => t.ApplicationId);
+            b.HasOne(t => t.User)
+             .WithMany(u => u.IdempotentTransactions)
+             .HasForeignKey(t => t.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<MasterResume>(b =>

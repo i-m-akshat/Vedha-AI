@@ -192,7 +192,7 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
             </label>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { id: AiProviderType.Gemini, label: 'Gemini 2.0', sub: 'Fast & Accurate' },
+                { id: AiProviderType.Gemini, label: 'Flash Lite', sub: 'Fast & Efficient' },
                 { id: AiProviderType.OpenAi, label: 'OpenAI GPT-4o', sub: 'High Reasoning' },
                 { id: AiProviderType.Claude, label: 'Claude 3.5', sub: 'Best Writing' },
               ].map((prov) => (

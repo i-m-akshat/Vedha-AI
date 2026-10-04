@@ -17,7 +17,8 @@ public class AiSettings
     public string? AnthropicApiKey { get; set; }
     public string? GeminiApiKey { get; set; }
     public string DefaultProvider { get; set; } = "Gemini";
-    public string DefaultModel { get; set; } = "gemini-3.8-flash";
+    public string DefaultModel { get; set; } = "gemini-flash-lite-latest";
+    public int MaxTokens { get; set; } = 16384;
 }
 
 public class OpenAiProvider : IAiProvider
@@ -45,13 +46,57 @@ public class OpenAiProvider : IAiProvider
         string? modelName = null,
         CancellationToken cancellationToken = default)
     {
-        var textResult = await GenerateTextAsync(systemPrompt + "\nIMPORTANT: Return ONLY raw JSON without markdown code fences.", userPrompt, customApiKey, modelName, cancellationToken);
-        if (textResult.IsFailure)
-            return Result<TResponse>.Failure(textResult.Error!);
+        var rawKey = !string.IsNullOrWhiteSpace(customApiKey) ? customApiKey : _config["AiSettings:OpenAiApiKey"];
+        var apiKey = _encryptionService.Decrypt(rawKey) ?? rawKey;
+
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            return Result<TResponse>.Failure("OpenAI API Key is not configured. Please configure it in Settings.");
+        }
+
+        var model = !string.IsNullOrWhiteSpace(modelName) ? modelName : "gpt-4o-mini";
+        var maxTokens = int.TryParse(_config["AiSettings:MaxTokens"], out var mt) && mt > 0 ? mt : 8192;
 
         try
         {
-            var cleanedJson = CleanJsonFences(textResult.Value);
+            using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/chat/completions");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+            var body = new
+            {
+                model = model,
+                messages = new[]
+                {
+                    new { role = "system", content = systemPrompt + "\nIMPORTANT: Return ONLY valid raw JSON matching the required schema." },
+                    new { role = "user", content = userPrompt }
+                },
+                response_format = new { type = "json_object" },
+                temperature = 0.2,
+                max_tokens = maxTokens
+            };
+
+            request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+            var response = await _httpClient.SendAsync(request, cancellationToken);
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return Result<TResponse>.Failure($"OpenAI API error ({response.StatusCode}): {responseContent}");
+            }
+
+            var node = JsonNode.Parse(responseContent);
+            var finishReason = node?["choices"]?[0]?["finish_reason"]?.ToString();
+            if (string.Equals(finishReason, "length", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("OpenAI output was truncated due to token limit ({MaxTokens}).", maxTokens);
+                return Result<TResponse>.Failure($"AI output was truncated due to exceeding maximum token limit ({maxTokens}).");
+            }
+
+            var content = node?["choices"]?[0]?["message"]?["content"]?.ToString();
+            if (string.IsNullOrEmpty(content))
+                return Result<TResponse>.Failure("Empty content returned from OpenAI.");
+
+            var cleanedJson = CleanJsonFences(content);
             var parsed = JsonSerializer.Deserialize<TResponse>(cleanedJson, JsonOptions);
             if (parsed == null)
                 return Result<TResponse>.Failure("AI returned empty or null JSON.");
@@ -60,7 +105,7 @@ public class OpenAiProvider : IAiProvider
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to deserialize JSON from OpenAI response: {Response}", textResult.Value);
+            _logger.LogError(ex, "Failed to deserialize JSON from OpenAI response");
             return Result<TResponse>.Failure($"Failed to parse AI output into required schema: {ex.Message}");
         }
     }
@@ -81,6 +126,7 @@ public class OpenAiProvider : IAiProvider
         }
 
         var model = !string.IsNullOrWhiteSpace(modelName) ? modelName : "gpt-4o-mini";
+        var maxTokens = int.TryParse(_config["AiSettings:MaxTokens"], out var mt) && mt > 0 ? mt : 8192;
 
         try
         {
@@ -95,7 +141,8 @@ public class OpenAiProvider : IAiProvider
                     new { role = "system", content = systemPrompt },
                     new { role = "user", content = userPrompt }
                 },
-                temperature = 0.2
+                temperature = 0.2,
+                max_tokens = maxTokens
             };
 
             request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
@@ -283,13 +330,54 @@ public class ClaudeProvider : IAiProvider
         string? modelName = null,
         CancellationToken cancellationToken = default)
     {
-        var textResult = await GenerateTextAsync(systemPrompt + "\nIMPORTANT: Return ONLY raw JSON without markdown code fences.", userPrompt, customApiKey, modelName, cancellationToken);
-        if (textResult.IsFailure)
-            return Result<TResponse>.Failure(textResult.Error!);
+        var rawKey = !string.IsNullOrWhiteSpace(customApiKey) ? customApiKey : _config["AiSettings:AnthropicApiKey"];
+        var apiKey = _encryptionService.Decrypt(rawKey) ?? rawKey;
+
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            return Result<TResponse>.Failure("Anthropic Claude API Key is not configured. Please configure it in Settings.");
+        }
+
+        var model = !string.IsNullOrWhiteSpace(modelName) ? modelName : "claude-3-5-sonnet-20241022";
+        var maxTokens = int.TryParse(_config["AiSettings:MaxTokens"], out var mt) && mt > 0 ? mt : 8192;
 
         try
         {
-            var cleanedJson = CleanJsonFences(textResult.Value);
+            using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages");
+            request.Headers.Add("x-api-key", apiKey);
+            request.Headers.Add("anthropic-version", "2023-06-01");
+
+            var body = new
+            {
+                model = model,
+                system = systemPrompt + "\nIMPORTANT: Return ONLY valid raw JSON matching the required schema without markdown code fences.",
+                messages = new[] { new { role = "user", content = userPrompt } },
+                max_tokens = maxTokens,
+                temperature = 0.2
+            };
+
+            request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+            var response = await _httpClient.SendAsync(request, cancellationToken);
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return Result<TResponse>.Failure($"Claude API error ({response.StatusCode}): {responseContent}");
+            }
+
+            var node = JsonNode.Parse(responseContent);
+            var stopReason = node?["stop_reason"]?.ToString();
+            if (string.Equals(stopReason, "max_tokens", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Claude output was truncated due to token limit ({MaxTokens}).", maxTokens);
+                return Result<TResponse>.Failure($"AI output was truncated due to exceeding maximum token limit ({maxTokens}).");
+            }
+
+            var content = node?["content"]?[0]?["text"]?.ToString();
+            if (string.IsNullOrEmpty(content))
+                return Result<TResponse>.Failure("Empty content returned from Claude.");
+
+            var cleanedJson = CleanJsonFences(content);
             var parsed = JsonSerializer.Deserialize<TResponse>(cleanedJson, JsonOptions);
             if (parsed == null)
                 return Result<TResponse>.Failure("AI returned empty or null JSON.");
@@ -298,7 +386,7 @@ public class ClaudeProvider : IAiProvider
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to deserialize JSON from Claude response: {Response}", textResult.Value);
+            _logger.LogError(ex, "Failed to deserialize JSON from Claude response");
             return Result<TResponse>.Failure($"Failed to parse AI output into required schema: {ex.Message}");
         }
     }
@@ -319,6 +407,7 @@ public class ClaudeProvider : IAiProvider
         }
 
         var model = !string.IsNullOrWhiteSpace(modelName) ? modelName : "claude-3-5-sonnet-20241022";
+        var maxTokens = int.TryParse(_config["AiSettings:MaxTokens"], out var mt) && mt > 0 ? mt : 8192;
 
         try
         {
@@ -331,7 +420,7 @@ public class ClaudeProvider : IAiProvider
                 model = model,
                 system = systemPrompt,
                 messages = new[] { new { role = "user", content = userPrompt } },
-                max_tokens = 4096,
+                max_tokens = maxTokens,
                 temperature = 0.2
             };
 
@@ -498,13 +587,89 @@ public class GeminiProvider : IAiProvider
         string? modelName = null,
         CancellationToken cancellationToken = default)
     {
-        var textResult = await GenerateTextAsync(systemPrompt + "\nIMPORTANT: Return ONLY raw JSON without markdown code fences.", userPrompt, customApiKey, modelName, cancellationToken);
-        if (textResult.IsFailure)
-            return Result<TResponse>.Failure(textResult.Error!);
+        var rawKey = !string.IsNullOrWhiteSpace(customApiKey) ? customApiKey : _config["AiSettings:GeminiApiKey"];
+        var apiKey = _encryptionService.Decrypt(rawKey) ?? rawKey;
+
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            return Result<TResponse>.Failure("Google Gemini API Key is not configured. Please configure it in Settings.");
+        }
+
+        var model = ResolveModelName(modelName);
+        var maxTokens = int.TryParse(_config["AiSettings:MaxTokens"], out var mt) && mt > 0 ? mt : 16384;
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
+
+        var body = new
+        {
+            system_instruction = new { parts = new[] { new { text = systemPrompt + "\nIMPORTANT: Return ONLY valid raw JSON matching the required schema without markdown code fences." } } },
+            contents = new[] { new { parts = new[] { new { text = userPrompt } } } },
+            generationConfig = CreateGenerationConfig(maxTokens, 0.2, true, model)
+        };
+
+        HttpResponseMessage? response = null;
+        string? responseContent = null;
+
+        for (var attempt = 1; attempt <= 3; attempt++)
+        {
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Post, url);
+                request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+                response = await _httpClient.SendAsync(request, cancellationToken);
+                responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound && !model.Contains("gemini-flash-lite-latest"))
+                {
+                    _logger.LogWarning("Gemini model '{Model}' returned 404 Not Found. Retrying with fallback model gemini-flash-lite-latest...", model);
+                    model = "gemini-flash-lite-latest";
+                    url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
+                    body = new
+                    {
+                        system_instruction = new { parts = new[] { new { text = systemPrompt + "\nIMPORTANT: Return ONLY valid raw JSON matching the required schema without markdown code fences." } } },
+                        contents = new[] { new { parts = new[] { new { text = userPrompt } } } },
+                        generationConfig = CreateGenerationConfig(maxTokens, 0.2, true, model)
+                    };
+                    continue;
+                }
+
+                if ((response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable || (int)response.StatusCode == 429) && attempt < 3)
+                {
+                    _logger.LogWarning("Gemini API transient {StatusCode} on attempt {Attempt}. Retrying in {Delay}ms...", response.StatusCode, attempt, attempt * 1500);
+                    await Task.Delay(attempt * 1500, cancellationToken);
+                    continue;
+                }
+
+                break;
+            }
+            catch (Exception ex) when (attempt < 3 && !cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning(ex, "Gemini HTTP request exception on attempt {Attempt}. Retrying...", attempt);
+                await Task.Delay(attempt * 1000, cancellationToken);
+            }
+        }
+
+        if (response == null || !response.IsSuccessStatusCode)
+        {
+            return Result<TResponse>.Failure($"Gemini API error ({response?.StatusCode}): {responseContent}");
+        }
 
         try
         {
-            var cleanedJson = CleanJsonFences(textResult.Value);
+            var node = JsonNode.Parse(responseContent!);
+            var candidate = node?["candidates"]?[0];
+            var finishReason = candidate?["finishReason"]?.ToString();
+
+            if (string.Equals(finishReason, "MAX_TOKENS", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Gemini output was truncated due to token limit ({MaxTokens}).", maxTokens);
+                return Result<TResponse>.Failure($"AI output was truncated due to exceeding maximum token limit ({maxTokens}).");
+            }
+
+            var content = candidate?["content"]?["parts"]?[0]?["text"]?.ToString();
+            if (string.IsNullOrWhiteSpace(content))
+                return Result<TResponse>.Failure("Empty content returned from Gemini.");
+
+            var cleanedJson = CleanJsonFences(content);
             var parsed = JsonSerializer.Deserialize<TResponse>(cleanedJson, JsonOptions);
             if (parsed == null)
                 return Result<TResponse>.Failure("AI returned empty or null JSON.");
@@ -513,7 +678,7 @@ public class GeminiProvider : IAiProvider
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to deserialize JSON from Gemini response: {Response}", textResult.Value);
+            _logger.LogError(ex, "Failed to deserialize JSON from Gemini response: {Response}", responseContent);
             return Result<TResponse>.Failure($"Failed to parse AI output into required schema: {ex.Message}");
         }
     }
@@ -534,50 +699,73 @@ public class GeminiProvider : IAiProvider
         }
 
         var model = ResolveModelName(modelName);
+        var maxTokens = int.TryParse(_config["AiSettings:MaxTokens"], out var mt) && mt > 0 ? mt : 16384;
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
 
-        try
+        var body = new
         {
-            using var request = new HttpRequestMessage(HttpMethod.Post, url);
-            var body = new
-            {
-                system_instruction = new { parts = new[] { new { text = systemPrompt } } },
-                contents = new[] { new { parts = new[] { new { text = userPrompt } } } },
-                generationConfig = new
-                {
-                    temperature = 0.2,
-                    maxOutputTokens = 4096
-                }
-            };
+            system_instruction = new { parts = new[] { new { text = systemPrompt } } },
+            contents = new[] { new { parts = new[] { new { text = userPrompt } } } },
+            generationConfig = CreateGenerationConfig(maxTokens, 0.2, false, model)
+        };
 
-            request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
-            var response = await _httpClient.SendAsync(request, cancellationToken);
-            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+        HttpResponseMessage? response = null;
+        string? responseContent = null;
 
-            if (response.StatusCode == System.Net.HttpStatusCode.NotFound && !model.Contains("gemini-2.5-flash"))
+        for (var attempt = 1; attempt <= 3; attempt++)
+        {
+            try
             {
-                _logger.LogWarning("Gemini model '{Model}' returned 404 Not Found. Retrying with fallback model gemini-2.5-flash...", model);
-                var fallbackUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={apiKey}";
-                using var fallbackRequest = new HttpRequestMessage(HttpMethod.Post, fallbackUrl);
-                fallbackRequest.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
-                response = await _httpClient.SendAsync(fallbackRequest, cancellationToken);
+                using var request = new HttpRequestMessage(HttpMethod.Post, url);
+                request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+                response = await _httpClient.SendAsync(request, cancellationToken);
                 responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
-            }
 
-            if (!response.IsSuccessStatusCode)
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound && !model.Contains("gemini-flash-lite-latest"))
+                {
+                    _logger.LogWarning("Gemini model '{Model}' returned 404 Not Found. Retrying with fallback model gemini-flash-lite-latest...", model);
+                    model = "gemini-flash-lite-latest";
+                    url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
+                    body = new
+                    {
+                        system_instruction = new { parts = new[] { new { text = systemPrompt } } },
+                        contents = new[] { new { parts = new[] { new { text = userPrompt } } } },
+                        generationConfig = CreateGenerationConfig(maxTokens, 0.2, false, model)
+                    };
+                    continue;
+                }
+
+                if ((response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable || (int)response.StatusCode == 429) && attempt < 3)
+                {
+                    _logger.LogWarning("Gemini API transient {StatusCode} on attempt {Attempt}. Retrying in {Delay}ms...", response.StatusCode, attempt, attempt * 1500);
+                    await Task.Delay(attempt * 1500, cancellationToken);
+                    continue;
+                }
+
+                break;
+            }
+            catch (Exception ex) when (attempt < 3 && !cancellationToken.IsCancellationRequested)
             {
-                return Result<string>.Failure($"Gemini API error ({response.StatusCode}): {responseContent}");
+                _logger.LogWarning(ex, "Gemini HTTP request exception on attempt {Attempt}. Retrying...", attempt);
+                await Task.Delay(attempt * 1000, cancellationToken);
             }
+        }
 
-            var node = JsonNode.Parse(responseContent);
-            var content = node?["candidates"]?[0]?["content"]?["parts"]?[0]?["text"]?.ToString();
-            return !string.IsNullOrEmpty(content) ? Result<string>.Success(content) : Result<string>.Failure("Empty content returned from Gemini.");
-        }
-        catch (Exception ex)
+        if (response == null || !response.IsSuccessStatusCode)
         {
-            _logger.LogError(ex, "Gemini generation error");
-            return Result<string>.Failure($"Gemini request failed: {ex.Message}");
+            return Result<string>.Failure($"Gemini API error ({response?.StatusCode}): {responseContent}");
         }
+
+        var node = JsonNode.Parse(responseContent!);
+        var candidate = node?["candidates"]?[0];
+        var finishReason = candidate?["finishReason"]?.ToString();
+        if (string.Equals(finishReason, "MAX_TOKENS", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning("Gemini text output was truncated due to token limit ({MaxTokens}).", maxTokens);
+        }
+
+        var content = candidate?["content"]?["parts"]?[0]?["text"]?.ToString();
+        return !string.IsNullOrEmpty(content) ? Result<string>.Success(content) : Result<string>.Failure("Empty content returned from Gemini.");
     }
 
     public async Task<Result<TResponse>> ParseDocumentBytesAsync<TResponse>(
@@ -596,11 +784,11 @@ public class GeminiProvider : IAiProvider
             return Result<TResponse>.Failure("Google Gemini API Key is not configured. Please configure it in Settings.");
 
         var model = ResolveModelName(modelName);
+        var maxTokens = int.TryParse(_config["AiSettings:MaxTokens"], out var mt) && mt > 0 ? mt : 16384;
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
 
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Post, url);
             var base64 = Convert.ToBase64String(fileBytes);
             var resolvedMime = mimeType.Contains("pdf", StringComparison.OrdinalIgnoreCase) ? "application/pdf" : mimeType;
 
@@ -628,32 +816,41 @@ public class GeminiProvider : IAiProvider
                         }
                     }
                 },
-                generationConfig = new
-                {
-                    temperature = 0.1,
-                    maxOutputTokens = 8192,
-                    responseMimeType = "application/json"
-                }
+                generationConfig = CreateGenerationConfig(maxTokens, 0.1, true, model)
             };
 
-            request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
-            var response = await _httpClient.SendAsync(request, cancellationToken);
-            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            HttpResponseMessage? response = null;
+            string? responseContent = null;
 
-            if (response.StatusCode == System.Net.HttpStatusCode.NotFound && !model.Contains("gemini-2.5-flash"))
+            for (var attempt = 1; attempt <= 3; attempt++)
             {
-                _logger.LogWarning("Gemini document parse model '{Model}' returned 404 Not Found. Retrying with fallback model gemini-2.5-flash...", model);
-                var fallbackUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={apiKey}";
-                using var fallbackRequest = new HttpRequestMessage(HttpMethod.Post, fallbackUrl);
-                fallbackRequest.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
-                response = await _httpClient.SendAsync(fallbackRequest, cancellationToken);
+                using var request = new HttpRequestMessage(HttpMethod.Post, url);
+                request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+                response = await _httpClient.SendAsync(request, cancellationToken);
                 responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound && !model.Contains("gemini-flash-lite-latest"))
+                {
+                    _logger.LogWarning("Gemini document parse model '{Model}' returned 404 Not Found. Retrying with fallback model gemini-flash-lite-latest...", model);
+                    model = "gemini-flash-lite-latest";
+                    url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
+                    continue;
+                }
+
+                if ((response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable || (int)response.StatusCode == 429) && attempt < 3)
+                {
+                    _logger.LogWarning("Gemini document parse transient {StatusCode} on attempt {Attempt}. Retrying...", response.StatusCode, attempt);
+                    await Task.Delay(attempt * 1500, cancellationToken);
+                    continue;
+                }
+
+                break;
             }
 
-            if (!response.IsSuccessStatusCode)
-                return Result<TResponse>.Failure($"Gemini API error ({response.StatusCode}): {responseContent}");
+            if (response == null || !response.IsSuccessStatusCode)
+                return Result<TResponse>.Failure($"Gemini API error ({response?.StatusCode}): {responseContent}");
 
-            var node = JsonNode.Parse(responseContent);
+            var node = JsonNode.Parse(responseContent!);
             var rawText = node?["candidates"]?[0]?["content"]?["parts"]?[0]?["text"]?.ToString();
             if (string.IsNullOrEmpty(rawText))
                 return Result<TResponse>.Failure("Empty content returned from Gemini visual document parser.");
@@ -667,6 +864,48 @@ public class GeminiProvider : IAiProvider
             _logger.LogError(ex, "Gemini multimodal document parsing error");
             return Result<TResponse>.Failure($"Gemini visual document parsing failed: {ex.Message}");
         }
+    }
+
+    private static object CreateGenerationConfig(int maxTokens, double temperature, bool isJson, string model)
+    {
+        var isThinkingModel = model.Contains("-2.5-flash", StringComparison.OrdinalIgnoreCase) || 
+                              model.Contains("-pro", StringComparison.OrdinalIgnoreCase);
+
+        if (isJson)
+        {
+            if (isThinkingModel)
+            {
+                return new
+                {
+                    temperature = temperature,
+                    maxOutputTokens = maxTokens,
+                    responseMimeType = "application/json",
+                    thinkingConfig = new { thinkingBudget = 0 }
+                };
+            }
+            return new
+            {
+                temperature = temperature,
+                maxOutputTokens = maxTokens,
+                responseMimeType = "application/json"
+            };
+        }
+
+        if (isThinkingModel)
+        {
+            return new
+            {
+                temperature = temperature,
+                maxOutputTokens = maxTokens,
+                thinkingConfig = new { thinkingBudget = 0 }
+            };
+        }
+
+        return new
+        {
+            temperature = temperature,
+            maxOutputTokens = maxTokens
+        };
     }
 
     private static string CleanJsonFences(string input)
@@ -686,15 +925,20 @@ public class GeminiProvider : IAiProvider
     private static string ResolveModelName(string? modelName)
     {
         if (string.IsNullOrWhiteSpace(modelName))
-            return "gemini-3.8-flash";
+            return "gemini-flash-lite-latest";
 
-        // Map any legacy/fictitious model strings to valid current model
-        if (string.Equals(modelName, "gemini-3.6-flash", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(modelName, "gemini-2.0-flash", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(modelName, "gemini-3.8-flash", StringComparison.OrdinalIgnoreCase))
-            return "gemini-3.8-flash";
+        var clean = modelName.Trim();
+        if (string.Equals(clean, "gemini-3.6-flash", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(clean, "gemini-2.0-flash", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(clean, "gemini-1.5-flash", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(clean, "gemini-3.8-flash", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(clean, "gemini-2.5-flash-lite", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(clean, "flash lite latest", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(clean, "flash-lite-latest", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(clean, "gemini-flash-lite", StringComparison.OrdinalIgnoreCase))
+            return "gemini-flash-lite-latest";
 
-        return modelName;
+        return clean;
     }
 }
 

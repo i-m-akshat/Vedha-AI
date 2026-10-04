@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { orchestratorApi, masterResumeApi } from '../api';
-import { ApplicationQueueItemDto, PipelineExecutionStatus, ScreeningQuestionAnswerDto } from '../types/orchestrator';
+import { orchestratorApi, masterResumeApi, autonomousApi } from '../api';
+import { ApplicationQueueItemDto, PipelineExecutionStatus, ScreeningQuestionAnswerDto, ApplicationAuditDto } from '../types/orchestrator';
 import { 
   Bot, 
   Send, 
@@ -21,7 +21,11 @@ import {
   Search,
   ArrowRight,
   HelpCircle,
-  Edit3
+  Edit3,
+  Coins,
+  AlertTriangle,
+  Download,
+  Zap
 } from 'lucide-react';
 import { Button, Card, Badge, Input } from '../components/ui';
 
@@ -33,6 +37,7 @@ export const OrchestratorQueuePage: React.FC = () => {
   const [isHeadedBrowser, setIsHeadedBrowser] = useState(false);
   const [customQuestionInput, setCustomQuestionInput] = useState('');
   const [customQuestions, setCustomQuestions] = useState<string[]>([]);
+  const [hitlAnswerInput, setHitlAnswerInput] = useState('');
 
   useEffect(() => {
     const jobUrl = new URLSearchParams(window.location.search).get('jobUrl');
@@ -55,6 +60,20 @@ export const OrchestratorQueuePage: React.FC = () => {
     refetchInterval: 5000,
   });
 
+  // Fetch User Credits (BRD Architecture)
+  const { data: credits } = useQuery({
+    queryKey: ['userCredits'],
+    queryFn: autonomousApi.getCredits,
+    refetchInterval: 5000,
+  });
+
+  // Fetch Autonomous Applications Audit (NATS JetStream State Machine)
+  const { data: autonomousApps } = useQuery({
+    queryKey: ['autonomousApps'],
+    queryFn: () => autonomousApi.getApplications(),
+    refetchInterval: 3000,
+  });
+
   // Mutation: Prepare Application Package
   const prepareMutation = useMutation({
     mutationFn: orchestratorApi.preparePackage,
@@ -63,6 +82,26 @@ export const OrchestratorQueuePage: React.FC = () => {
       setSelectedQueueItem(newItem);
       setJobUrlInput('');
       setCustomQuestions([]);
+    }
+  });
+
+  // Mutation: Autonomous Ingest (NATS JetStream)
+  const ingestMutation = useMutation({
+    mutationFn: autonomousApi.ingestJob,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['autonomousApps'] });
+      queryClient.invalidateQueries({ queryKey: ['userCredits'] });
+      setJobUrlInput('');
+    }
+  });
+
+  // Mutation: Resolve HitL Question
+  const resolveHitlMutation = useMutation({
+    mutationFn: ({ applicationId, answer }: { applicationId: string; answer: string }) =>
+      autonomousApi.resolveHitl(applicationId, answer),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['autonomousApps'] });
+      setHitlAnswerInput('');
     }
   });
 
@@ -100,6 +139,15 @@ export const OrchestratorQueuePage: React.FC = () => {
       customQuestions: customQuestions.length > 0 ? customQuestions : undefined
     });
   };
+
+  const handleAutonomousIngest = () => {
+    if (!jobUrlInput.trim()) return;
+    ingestMutation.mutate({
+      jobUrl: jobUrlInput.trim()
+    });
+  };
+
+  const hitlApp = autonomousApps?.find(a => a.status === 'hitl_required');
 
   const addCustomQuestion = () => {
     if (!customQuestionInput.trim()) return;
@@ -142,13 +190,59 @@ export const OrchestratorQueuePage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
             <Bot className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
-            Job Application Orchestrator & Copilot
+            Job Application Orchestrator & Autonomous SaaS
           </h1>
           <p className="text-sm text-slate-600 dark:text-zinc-400 mt-1">
-            Multi-pipeline application engine: Paste any job URL to unwind redirects, auto-tailor resume, generate evidence-grounded screening answers, and execute via Copilot.
+            Autonomous multi-pipeline event engine (NATS JetStream + AgentQL Playwright + Context pgvector RAG + S3 Storage).
           </p>
         </div>
+
+        {/* User Credits Balance Badge */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/40 dark:to-purple-950/40 border border-indigo-200 dark:border-indigo-800 px-4 py-2 rounded-xl shadow-sm">
+            <Coins className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            <div>
+              <div className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium leading-none">Application Credits</div>
+              <div className="text-base font-bold text-indigo-700 dark:text-indigo-300 leading-tight">
+                {credits?.creditsBalance ?? 50} <span className="text-xs font-normal text-slate-500">credits</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Human-In-The-Loop (HitL) Escalation Banner */}
+      {hitlApp && (
+        <Card className="p-5 border-2 border-amber-500/40 bg-amber-50/50 dark:bg-amber-950/20 shadow-md space-y-3">
+          <div className="flex items-center gap-2.5 text-amber-700 dark:text-amber-400 font-bold text-base">
+            <AlertTriangle className="w-5 h-5 animate-pulse text-amber-600 dark:text-amber-400" />
+            Human-In-The-Loop Escalation: {hitlApp.companyName} Application Paused
+          </div>
+          <p className="text-sm text-slate-700 dark:text-zinc-300">
+            The autonomous Playwright worker encountered a subjective screening question requiring your direct authentic input:
+          </p>
+          <div className="p-3 bg-white dark:bg-zinc-900 border border-amber-200 dark:border-amber-800 rounded-lg text-sm font-medium text-slate-800 dark:text-zinc-200">
+            "{hitlApp.hitlQuestion}"
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+            <Input
+              type="text"
+              placeholder="Type your authentic response here..."
+              value={hitlAnswerInput}
+              onChange={e => setHitlAnswerInput(e.target.value)}
+              className="flex-1 text-sm h-11"
+            />
+            <Button
+              variant="primary"
+              onClick={() => resolveHitlMutation.mutate({ applicationId: hitlApp.id, answer: hitlAnswerInput })}
+              disabled={!hitlAnswerInput.trim() || resolveHitlMutation.isPending}
+              className="h-11 px-6 shadow-sm"
+            >
+              {resolveHitlMutation.isPending ? 'Resuming Worker...' : 'Submit & Resume Worker'}
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* URL Input & Launch Bar */}
       <Card className="p-6 space-y-4">
@@ -171,7 +265,7 @@ export const OrchestratorQueuePage: React.FC = () => {
               disabled={prepareMutation.isPending || !jobUrlInput.trim()}
               variant="primary"
               size="lg"
-              className="px-6 h-12 shadow-md gap-2"
+              className="px-5 h-12 shadow-md gap-2"
             >
               {prepareMutation.isPending ? (
                 <>
@@ -181,7 +275,28 @@ export const OrchestratorQueuePage: React.FC = () => {
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  <span>Prepare Application Package</span>
+                  <span>Prepare Package (Copilot)</span>
+                </>
+              )}
+            </Button>
+
+            <Button
+              type="button"
+              onClick={handleAutonomousIngest}
+              disabled={ingestMutation.isPending || !jobUrlInput.trim()}
+              variant="outline"
+              size="lg"
+              className="px-5 h-12 shadow-sm gap-2 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 bg-indigo-50/50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
+            >
+              {ingestMutation.isPending ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Publishing to NATS...</span>
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <span>Autonomous Ingest (NATS + RAG)</span>
                 </>
               )}
             </Button>
@@ -441,6 +556,126 @@ export const OrchestratorQueuePage: React.FC = () => {
           )}
         </Card>
       </div>
+
+      {/* Autonomous Event-Driven Applications Audit (NATS JetStream & S3 Engine) */}
+      <Card className="p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-zinc-800">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Zap className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              Autonomous Applications (NATS JetStream State Machine)
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
+              Decoupled event queue transitions (pending ➔ generating_resume ➔ applying ➔ success). S3 PDF downloads & atomic credit tracking.
+            </p>
+          </div>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 self-start sm:self-auto">
+            {autonomousApps?.length || 0} Autonomous Runs
+          </span>
+        </div>
+
+        {(!autonomousApps || autonomousApps.length === 0) ? (
+          <div className="text-center py-10 text-slate-400 dark:text-zinc-500 text-sm">
+            No autonomous event-driven applications yet. Click &quot;Autonomous Ingest (NATS + RAG)&quot; above to trigger an end-to-end background run!
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-zinc-800 text-slate-500 dark:text-zinc-400">
+                  <th className="py-2.5 px-3 font-semibold">Target Opening</th>
+                  <th className="py-2.5 px-3 font-semibold">Status Lifecycle</th>
+                  <th className="py-2.5 px-3 font-semibold">S3 Resume PDF</th>
+                  <th className="py-2.5 px-3 font-semibold">HitL / Alert</th>
+                  <th className="py-2.5 px-3 font-semibold">Initiated</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-zinc-800/60">
+                {autonomousApps.map((app) => (
+                  <tr key={app.id} className="hover:bg-slate-50/60 dark:hover:bg-zinc-900/40 transition">
+                    <td className="py-3 px-3">
+                      <div className="font-semibold text-slate-900 dark:text-zinc-100">{app.companyName || 'Company'}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-zinc-400">{app.jobTitle || 'Role'}</div>
+                      <a
+                        href={app.jobUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 mt-0.5"
+                      >
+                        {app.jobUrl.slice(0, 35)}... <ExternalLink className="w-2.5 h-2.5" />
+                      </a>
+                    </td>
+
+                    <td className="py-3 px-3">
+                      {app.status === 'pending' && (
+                        <span className="px-2.5 py-1 rounded-full font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-[11px] flex items-center gap-1 w-max">
+                          <Clock className="w-3 h-3" /> In NATS Queue
+                        </span>
+                      )}
+                      {app.status === 'generating_resume' && (
+                        <span className="px-2.5 py-1 rounded-full font-semibold bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-[11px] flex items-center gap-1 w-max">
+                          <RefreshCw className="w-3 h-3 animate-spin" /> RAG & Vector Search
+                        </span>
+                      )}
+                      {app.status === 'applying' && (
+                        <span className="px-2.5 py-1 rounded-full font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[11px] flex items-center gap-1 w-max">
+                          <Bot className="w-3 h-3 animate-pulse" /> Playwright + AgentQL
+                        </span>
+                      )}
+                      {app.status === 'hitl_required' && (
+                        <span className="px-2.5 py-1 rounded-full font-semibold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-[11px] flex items-center gap-1 w-max animate-bounce">
+                          <AlertTriangle className="w-3 h-3 text-amber-600" /> Action Required (HitL)
+                        </span>
+                      )}
+                      {app.status === 'success' && (
+                        <span className="px-2.5 py-1 rounded-full font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[11px] flex items-center gap-1 w-max">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Submitted (1 Credit Deducted)
+                        </span>
+                      )}
+                      {app.status === 'failed' && (
+                        <span className="px-2.5 py-1 rounded-full font-semibold bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-[11px] flex items-center gap-1 w-max">
+                          <AlertCircle className="w-3 h-3" /> Failed
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="py-3 px-3">
+                      {app.resumeS3Url ? (
+                        <a
+                          href={app.resumeS3Url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 font-medium text-xs transition"
+                        >
+                          <Download className="w-3 h-3" /> S3 PDF
+                        </a>
+                      ) : (
+                        <span className="text-slate-400 dark:text-zinc-600 italic">Generating...</span>
+                      )}
+                    </td>
+
+                    <td className="py-3 px-3">
+                      {app.status === 'hitl_required' && app.hitlQuestion ? (
+                        <div className="text-amber-700 dark:text-amber-400 font-medium">
+                          Question: &quot;{app.hitlQuestion.slice(0, 30)}...&quot;
+                        </div>
+                      ) : app.errorMessage ? (
+                        <span className="text-rose-600 dark:text-rose-400">{app.errorMessage}</span>
+                      ) : (
+                        <span className="text-slate-400 dark:text-zinc-600">-</span>
+                      )}
+                    </td>
+
+                    <td className="py-3 px-3 text-slate-500 dark:text-zinc-400 text-[11px]">
+                      {new Date(app.createdAtUtc).toLocaleTimeString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
     </div>
   );
 };

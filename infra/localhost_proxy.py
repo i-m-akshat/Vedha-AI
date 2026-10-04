@@ -13,23 +13,45 @@ def get_wsl_ip():
         print(f"Error resolving WSL IP: {e}", file=sys.stderr)
     return "127.0.0.1"
 
-def forward(src, dst):
+def forward(src, dst, done_event):
     try:
         while True:
             data = src.recv(65536)
             if not data:
                 break
             dst.sendall(data)
-    except:
+    except Exception:
         pass
     finally:
         try:
-            src.close()
-        except:
+            dst.shutdown(socket.SHUT_WR)
+        except Exception:
+            pass
+        done_event.set()
+
+def handle_connection(client, target_ip, port):
+    remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        remote.connect((target_ip, port))
+        c2r_done = threading.Event()
+        r2c_done = threading.Event()
+
+        t1 = threading.Thread(target=forward, args=(client, remote, c2r_done), daemon=True)
+        t2 = threading.Thread(target=forward, args=(remote, client, r2c_done), daemon=True)
+        t1.start()
+        t2.start()
+
+        r2c_done.wait()
+    except Exception:
+        pass
+    finally:
+        try:
+            client.close()
+        except Exception:
             pass
         try:
-            dst.close()
-        except:
+            remote.close()
+        except Exception:
             pass
 
 def proxy_port(port, target_ip):
@@ -45,10 +67,7 @@ def proxy_port(port, target_ip):
     while True:
         try:
             client, _ = server.accept()
-            remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            remote.connect((target_ip, port))
-            threading.Thread(target=forward, args=(client, remote), daemon=True).start()
-            threading.Thread(target=forward, args=(remote, client), daemon=True).start()
+            threading.Thread(target=handle_connection, args=(client, target_ip, port), daemon=True).start()
         except Exception:
             pass
 
@@ -56,7 +75,7 @@ def main():
     target_ip = get_wsl_ip()
     print(f"[Proxy] Routing localhost traffic to WSL target ({target_ip})...")
     threads = []
-    for port in [3000, 5000]:
+    for port in [3000, 5000, 6379, 4222]:
         t = threading.Thread(target=proxy_port, args=(port, target_ip), daemon=True)
         t.start()
         threads.append(t)

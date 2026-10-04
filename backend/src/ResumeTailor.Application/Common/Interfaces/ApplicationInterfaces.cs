@@ -107,3 +107,50 @@ public interface IJobApplicationOrchestrator
         CancellationToken cancellationToken = default);
 }
 
+// --- Autonomous Job Application SaaS Contracts (System Architecture BRD) ---
+
+public interface IS3StorageService
+{
+    Task<string> UploadResumePdfAsync(Guid applicationId, byte[] pdfBytes, string fileName = "resume.pdf", CancellationToken cancellationToken = default);
+    Task<byte[]> DownloadFileAsync(string s3UrlOrKey, CancellationToken cancellationToken = default);
+}
+
+public interface IEmbeddingService
+{
+    Task<float[]> GenerateEmbeddingAsync(string text, string? customApiKey = null, CancellationToken cancellationToken = default);
+    double CalculateCosineSimilarity(float[] vectorA, float[] vectorB);
+}
+
+public interface INatsEventBus
+{
+    Task PublishAsync<T>(string subject, T payload, CancellationToken cancellationToken = default);
+    Task SubscribeAsync<T>(string subject, string queueGroup, Func<T, Task> handler, CancellationToken cancellationToken = default);
+}
+
+public class RagResumeResult
+{
+    public bool Success { get; set; }
+    public string MarkdownResume { get; set; } = string.Empty;
+    public string ResumeS3Url { get; set; } = string.Empty;
+    public byte[] PdfBytes { get; set; } = Array.Empty<byte>();
+    public List<string> SelectedAchievements { get; set; } = new();
+    public string? ErrorMessage { get; set; }
+}
+
+public interface IRagResumeGenerator
+{
+    Task<RagResumeResult> GenerateTailoredResumeAsync(
+        Guid userId,
+        Guid applicationId,
+        string jobTitle,
+        string companyName,
+        string jobDescription,
+        CancellationToken cancellationToken = default);
+}
+
+public interface ICreditTransactionService
+{
+    Task<bool> DeductCreditOnWorkerSuccessAsync(Guid userId, Guid applicationId, string idempotencyKey, CancellationToken cancellationToken = default);
+    Task<int> GetUserCreditsBalanceAsync(Guid userId, CancellationToken cancellationToken = default);
+}
+

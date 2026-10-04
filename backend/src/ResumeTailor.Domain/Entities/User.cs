@@ -10,6 +10,12 @@ public class User : AuditableEntity
     public string FullName { get; set; } = string.Empty;
     public string Role { get; set; } = "User"; // User, Admin
     
+    // User credit balance for SaaS applications
+    public int CreditsBalance { get; set; } = 50;
+
+    // Complete career history, master skills, links, demographics (JSONB)
+    public string MasterContextJson { get; set; } = "{}";
+
     // User-specific AI configuration overrides
     public string? CustomOpenAiKey { get; set; }
     public string? CustomClaudeKey { get; set; }
@@ -25,6 +31,11 @@ public class User : AuditableEntity
     public CandidateProfile? CandidateProfile { get; set; }
     public ICollection<ScreeningQuestionMemory> ScreeningMemories { get; set; } = new List<ScreeningQuestionMemory>();
     public ICollection<ApplicationQueueItem> ApplicationQueue { get; set; } = new List<ApplicationQueueItem>();
+
+    // Autonomous Job Application SaaS entities
+    public ICollection<CareerAchievement> CareerAchievements { get; set; } = new List<CareerAchievement>();
+    public ICollection<ApplicationAudit> ApplicationAudits { get; set; } = new List<ApplicationAudit>();
+    public ICollection<IdempotentTransaction> IdempotentTransactions { get; set; } = new List<IdempotentTransaction>();
 }
 
 public class MasterResume : AuditableEntity

@@ -161,7 +161,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
           <div className="flex items-center gap-3">
             <div className="text-xs text-slate-600 dark:text-zinc-400 bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 px-2.5 py-1 rounded-full flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Model: <strong className="text-slate-800 dark:text-zinc-200">{user?.preferredModel || 'gemini-2.0-flash'}</strong></span>
+              <span>Model: <strong className="text-slate-800 dark:text-zinc-200">{user?.preferredModel || 'gemini-flash-lite-latest'}</strong></span>
             </div>
           </div>
         </header>

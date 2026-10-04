@@ -4,13 +4,17 @@ using Microsoft.Extensions.DependencyInjection;
 using ResumeTailor.Application.Common.Interfaces;
 using ResumeTailor.Infrastructure.Ai;
 using ResumeTailor.Infrastructure.AtsEngine;
+using ResumeTailor.Infrastructure.Billing;
 using ResumeTailor.Infrastructure.Export;
 using ResumeTailor.Infrastructure.Identity;
+using ResumeTailor.Infrastructure.Messaging;
+using ResumeTailor.Infrastructure.Orchestrator;
 using ResumeTailor.Infrastructure.Parsing;
 using ResumeTailor.Infrastructure.Persistence;
+using ResumeTailor.Infrastructure.Rag;
 using ResumeTailor.Infrastructure.SignalR;
+using ResumeTailor.Infrastructure.Storage;
 using ResumeTailor.Infrastructure.WebScraping;
-using ResumeTailor.Infrastructure.Orchestrator;
 
 namespace ResumeTailor.Infrastructure;
 
@@ -85,7 +89,6 @@ public static class DependencyInjection
         services.AddScoped<IJobApplicationProvider, NaukriProvider>();
         services.AddScoped<IJobApplicationProvider, WorkdayProvider>();
 
-        // GenericBrowserProvider needs a typed HttpClient for real DOM fetching
         services.AddHttpClient<GenericBrowserProvider>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(20);
@@ -94,11 +97,18 @@ public static class DependencyInjection
             AllowAutoRedirect = true,
             MaxAutomaticRedirections = 5
         });
-        // Register as both concrete (for HttpClient resolution) and as IJobApplicationProvider
         services.AddScoped<IJobApplicationProvider>(sp => sp.GetRequiredService<GenericBrowserProvider>());
 
         services.AddScoped<IJobApplicationOrchestrator, JobApplicationOrchestrator>();
         services.AddScoped<SemanticDomFormMapper>();
+
+        // 10. Autonomous Job Application SaaS (NATS, S3, Embeddings, RAG, Billing)
+        services.AddHttpClient<IS3StorageService, MinioS3StorageService>();
+        services.AddHttpClient<IEmbeddingService, EmbeddingService>();
+        services.AddSingleton<INatsEventBus, NatsEventBus>();
+        services.AddScoped<IRagResumeGenerator, RagResumeGenerator>();
+        services.AddScoped<ICreditTransactionService, CreditTransactionService>();
+        services.AddHostedService<NatsWorkerEventConsumerHostedService>();
 
         return services;
     }

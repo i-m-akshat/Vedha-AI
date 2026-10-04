@@ -118,7 +118,7 @@ public class AuthCommandHandler :
             PasswordHash = passwordHash,
             Role = "User",
             PreferredAiProvider = AiProviderType.Gemini,
-            PreferredModel = "gemini-3.8-flash"
+            PreferredModel = "gemini-flash-lite-latest"
         };
 
         _context.Users.Add(user);

@@ -7,7 +7,7 @@ import { AiProviderType } from '../types/shared';
 export const SettingsPage: React.FC = () => {
   const { user, updateKeys } = useAuthStore();
   const [provider, setProvider] = useState<AiProviderType>(user?.preferredAiProvider || AiProviderType.Gemini);
-  const [model, setModel] = useState<string>(user?.preferredModel || 'gemini-2.0-flash');
+  const [model, setModel] = useState<string>(user?.preferredModel || 'gemini-flash-lite-latest');
   const [openAiKey, setOpenAiKey] = useState('');
   const [claudeKey, setClaudeKey] = useState('');
   const [geminiKey, setGeminiKey] = useState('');
@@ -64,7 +64,7 @@ export const SettingsPage: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
-            { id: AiProviderType.Gemini, label: 'Google Gemini', defaultModel: 'gemini-2.0-flash' },
+            { id: AiProviderType.Gemini, label: 'Google Gemini', defaultModel: 'gemini-flash-lite-latest' },
             { id: AiProviderType.OpenAi, label: 'OpenAI GPT-4o', defaultModel: 'gpt-4o-mini' },
             { id: AiProviderType.Claude, label: 'Anthropic Claude', defaultModel: 'claude-3-5-sonnet-20241022' },
           ].map((prov) => (
