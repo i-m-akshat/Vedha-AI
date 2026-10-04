@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { orchestratorApi, masterResumeApi, autonomousApi } from '../api';
 import { ApplicationQueueItemDto, PipelineExecutionStatus, ScreeningQuestionAnswerDto, ApplicationAuditDto } from '../types/orchestrator';
+import { ActivePage } from '../components/layout/AppLayout';
 import { 
   Bot, 
   Send, 
@@ -25,11 +26,16 @@ import {
   Coins,
   AlertTriangle,
   Download,
-  Zap
+  Zap,
+  Kanban
 } from 'lucide-react';
-import { Button, Card, Badge, Input } from '../components/ui';
+import { Button, Card, Badge, Input, cn } from '../components/ui';
 
-export const OrchestratorQueuePage: React.FC = () => {
+interface OrchestratorQueuePageProps {
+  setActivePage?: (page: ActivePage) => void;
+}
+
+export const OrchestratorQueuePage: React.FC<OrchestratorQueuePageProps> = ({ setActivePage }) => {
   const queryClient = useQueryClient();
   const [jobUrlInput, setJobUrlInput] = useState('');
   const [selectedQueueItem, setSelectedQueueItem] = useState<ApplicationQueueItemDto | null>(null);
@@ -38,6 +44,11 @@ export const OrchestratorQueuePage: React.FC = () => {
   const [customQuestionInput, setCustomQuestionInput] = useState('');
   const [customQuestions, setCustomQuestions] = useState<string[]>([]);
   const [hitlAnswerInput, setHitlAnswerInput] = useState('');
+  const [executionFeedback, setExecutionFeedback] = useState<{
+    type: 'success' | 'info' | 'warning' | 'error';
+    message: string;
+    finalUrl?: string;
+  } | null>(null);
 
   useEffect(() => {
     const jobUrl = new URLSearchParams(window.location.search).get('jobUrl');
@@ -111,9 +122,39 @@ export const OrchestratorQueuePage: React.FC = () => {
       orchestratorApi.execute(id, headed, copilot),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['orchestratorQueue'] });
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+      queryClient.invalidateQueries({ queryKey: ['userCredits'] });
       if (selectedQueueItem) {
         orchestratorApi.getQueueItem(selectedQueueItem.id).then(item => setSelectedQueueItem(item));
       }
+
+      if (result.pausedForUserReview) {
+        setExecutionFeedback({
+          type: 'warning',
+          message: selectedQueueItem?.jobUrl?.includes('linkedin.com')
+            ? 'LinkedIn Easy Apply requires your authenticated browser session to submit. Click "Open & 1-Click Apply" to auto-fill the application in your logged-in tab with the Vedha Extension, or click "Mark Submitted" once complete.'
+            : (result.message || 'Automation package staged at the review gateway. Please review and authorize final submit.'),
+          finalUrl: result.finalPageUrl
+        });
+      } else if (result.success) {
+        setExecutionFeedback({
+          type: 'success',
+          message: result.message || 'Application submitted successfully! Synced with your Applications tracker.',
+          finalUrl: result.finalPageUrl
+        });
+      } else {
+        setExecutionFeedback({
+          type: 'error',
+          message: result.errorDetails || result.message || 'Execution paused or encountered an error. Check execution logs.',
+          finalUrl: result.finalPageUrl
+        });
+      }
+    },
+    onError: (err: any) => {
+      setExecutionFeedback({
+        type: 'error',
+        message: err?.response?.data?.error || err?.message || 'Failed to dispatch automation.'
+      });
     }
   });
 
@@ -121,10 +162,18 @@ export const OrchestratorQueuePage: React.FC = () => {
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       orchestratorApi.updateStatus(id, status),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['orchestratorQueue'] });
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+      queryClient.invalidateQueries({ queryKey: ['userCredits'] });
       if (selectedQueueItem) {
         orchestratorApi.getQueueItem(selectedQueueItem.id).then(item => setSelectedQueueItem(item));
+      }
+      if (variables.status === 'Submitted') {
+        setExecutionFeedback({
+          type: 'success',
+          message: 'Marked as Submitted! Application is now tracked in your Applications board.'
+        });
       }
     }
   });
@@ -420,64 +469,198 @@ export const OrchestratorQueuePage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Copilot Options Bar */}
-              <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-indigo-50/60 dark:bg-indigo-950/30 rounded-xl border border-indigo-200 dark:border-indigo-900/50">
-                <div className="flex items-center gap-6">
-                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-zinc-200 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isCopilotMode}
-                      onChange={e => setIsCopilotMode(e.target.checked)}
-                      className="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
-                    />
-                    Copilot Mode (Pause at Review Gateway)
-                  </label>
+              {/* Submission State Banner or Copilot Options Bar */}
+              {selectedQueueItem.status === PipelineExecutionStatus.Submitted ? (
+                <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-emerald-50/80 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-emerald-900 dark:text-emerald-200 tracking-wide uppercase">
+                        Application Package Submitted Successfully
+                      </h4>
+                      <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">
+                        {selectedQueueItem.appliedAtUtc ? `Submitted on ${new Date(selectedQueueItem.appliedAtUtc).toLocaleString()}` : 'Submitted'} • Synchronized to Job Tracker
+                      </p>
+                    </div>
+                  </div>
 
-                  <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-zinc-400 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isHeadedBrowser}
-                      onChange={e => setIsHeadedBrowser(e.target.checked)}
-                      className="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
-                    />
-                    Headed Browser Window
-                  </label>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    onClick={() => executeMutation.mutate({
-                      id: selectedQueueItem.id,
-                      headed: isHeadedBrowser,
-                      copilot: isCopilotMode
-                    })}
-                    disabled={executeMutation.isPending}
-                    variant="primary"
-                    size="sm"
-                    className="gap-2 text-xs font-semibold"
-                  >
-                    {executeMutation.isPending ? (
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Play className="w-4 h-4" />
+                  <div className="flex items-center gap-2">
+                    {setActivePage && (
+                      <Button
+                        onClick={() => setActivePage('tracker')}
+                        size="sm"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition"
+                      >
+                        <Kanban className="w-3.5 h-3.5" /> View in Job Tracker
+                      </Button>
                     )}
-                    {selectedQueueItem.status === PipelineExecutionStatus.PausedForUserReview
-                      ? 'Confirm & Finalize'
-                      : 'Launch Copilot Automation'}
-                  </Button>
-
-                  {selectedQueueItem.status === PipelineExecutionStatus.PausedForUserReview && (
-                    <Button
-                      onClick={() => updateStatusMutation.mutate({ id: selectedQueueItem.id, status: 'Submitted' })}
-                      variant="primary"
-                      size="sm"
-                      className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs font-medium"
-                    >
-                      <CheckCircle className="w-3.5 h-3.5" /> Mark Submitted
-                    </Button>
-                  )}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-indigo-50/60 dark:bg-indigo-950/30 rounded-xl border border-indigo-200 dark:border-indigo-900/50">
+                  <div className="flex items-center gap-6">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-zinc-200 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isCopilotMode}
+                        onChange={e => setIsCopilotMode(e.target.checked)}
+                        className="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
+                      />
+                      Copilot Mode (Pause at Review Gateway)
+                    </label>
+
+                    <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-zinc-400 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isHeadedBrowser}
+                        onChange={e => setIsHeadedBrowser(e.target.checked)}
+                        className="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
+                      />
+                      Headed Browser Window
+                    </label>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {selectedQueueItem.jobUrl && (
+                      <a
+                        href={selectedQueueItem.jobUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold shadow-sm transition"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" /> Open & 1-Click Apply
+                      </a>
+                    )}
+
+                    {selectedQueueItem.status === PipelineExecutionStatus.PausedForUserReview ? (
+                      <>
+                        <Button
+                          onClick={() => {
+                            executeMutation.mutate({
+                              id: selectedQueueItem.id,
+                              headed: isHeadedBrowser,
+                              copilot: false // Review is finished; proceed with final submission!
+                            });
+                            if (selectedQueueItem.jobUrl?.includes('linkedin.com')) {
+                              window.open(selectedQueueItem.jobUrl, '_blank');
+                            }
+                          }}
+                          disabled={executeMutation.isPending}
+                          size="sm"
+                          className="gap-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-500 shadow-md shadow-emerald-600/20"
+                        >
+                          {executeMutation.isPending ? (
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <CheckCircle className="w-4 h-4" />
+                          )}
+                          Confirm & Finalize
+                        </Button>
+
+                        <Button
+                          onClick={() => updateStatusMutation.mutate({ id: selectedQueueItem.id, status: 'Submitted' })}
+                          variant="secondary"
+                          size="sm"
+                          className="gap-1.5 text-xs font-medium"
+                        >
+                          Mark Submitted
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        onClick={() => executeMutation.mutate({
+                          id: selectedQueueItem.id,
+                          headed: isHeadedBrowser,
+                          copilot: isCopilotMode
+                        })}
+                        disabled={executeMutation.isPending}
+                        variant="primary"
+                        size="sm"
+                        className="gap-2 text-xs font-semibold"
+                      >
+                        {executeMutation.isPending ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Play className="w-4 h-4" />
+                        )}
+                        Launch Copilot Automation
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Execution Feedback Notification Banner */}
+              {executionFeedback && (
+                <div className={cn(
+                  "p-4 rounded-xl border text-xs flex items-start gap-3 transition-all",
+                  executionFeedback.type === 'success' && "bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-300",
+                  executionFeedback.type === 'warning' && "bg-amber-500/10 border-amber-500/30 text-amber-800 dark:text-amber-300",
+                  executionFeedback.type === 'error' && "bg-rose-500/10 border-rose-500/30 text-rose-800 dark:text-rose-300",
+                  executionFeedback.type === 'info' && "bg-sky-500/10 border-sky-500/30 text-sky-800 dark:text-sky-300"
+                )}>
+                  <div className="shrink-0 mt-0.5">
+                    {executionFeedback.type === 'success' && <CheckCircle className="w-4 h-4 text-emerald-500" />}
+                    {executionFeedback.type === 'warning' && <AlertCircle className="w-4 h-4 text-amber-500" />}
+                    {executionFeedback.type === 'error' && <AlertCircle className="w-4 h-4 text-rose-500" />}
+                    {executionFeedback.type === 'info' && <ShieldCheck className="w-4 h-4 text-sky-500" />}
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <div className="font-bold text-slate-900 dark:text-white">
+                      {executionFeedback.type === 'success' && 'Application Status: Finalized'}
+                      {executionFeedback.type === 'warning' && 'Session Authentication Required'}
+                      {executionFeedback.type === 'error' && 'Execution Error'}
+                      {executionFeedback.type === 'info' && 'Automation Status'}
+                    </div>
+                    <div className="leading-relaxed text-slate-700 dark:text-zinc-200">{executionFeedback.message}</div>
+                    <div className="flex items-center gap-3 pt-1.5">
+                      {selectedQueueItem.jobUrl && (
+                        <a
+                          href={selectedQueueItem.jobUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 font-semibold text-xs text-sky-600 dark:text-sky-400 hover:underline"
+                        >
+                          Open Job Tab <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                      {selectedQueueItem.status !== PipelineExecutionStatus.Submitted && (
+                        <button
+                          onClick={() => updateStatusMutation.mutate({ id: selectedQueueItem.id, status: 'Submitted' })}
+                          className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-[11px] shadow-sm transition"
+                        >
+                          Mark as Submitted
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setExecutionFeedback(null)}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-bold"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+
+              {/* Review Gateway Informational Banner */}
+              {selectedQueueItem.status === PipelineExecutionStatus.PausedForUserReview && (
+                <div className="p-3.5 bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs flex items-start gap-2.5 text-amber-800 dark:text-amber-300">
+                  <ShieldCheck className="w-4 h-4 mt-0.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <div className="space-y-1">
+                    <div className="font-bold text-slate-900 dark:text-white">Review Gateway Active: Resume & Screening Answers Staged</div>
+                    <div className="text-slate-600 dark:text-zinc-300">
+                      {selectedQueueItem.jobUrl?.includes('linkedin.com') ? (
+                        <span>Because LinkedIn Easy Apply requires your authenticated user session, click <strong>&quot;Open & 1-Click Apply&quot;</strong> to let the <strong>Vedha Desktop Extension</strong> automatically fill all modal steps in your logged-in browser tab, or click <strong>Mark Submitted</strong> once submitted.</span>
+                      ) : (
+                        <span>Verify pre-filled answers and tailored resume below. Click <strong>&quot;Confirm & Finalize&quot;</strong> to dispatch Playwright browser submission.</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Review Gateway: Pre-filled Screening Answers */}
               <div className="space-y-4">

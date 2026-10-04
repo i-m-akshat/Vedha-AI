@@ -95,6 +95,7 @@ podman rm -f vedha-backend vedha-frontend 2>/dev/null || true
 echo "Starting vedha-backend..."
 podman run -d --name vedha-backend \
   --network infra_vedha-network \
+  --network-alias backend \
   -p 5000:8080 \
   -e ASPNETCORE_ENVIRONMENT=Development \
   -e ConnectionStrings__DefaultConnection="Host=vedha-postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};" \
@@ -116,6 +117,7 @@ podman run -d --name vedha-backend \
 echo "Starting vedha-frontend..."
 podman run -d --name vedha-frontend \
   --network infra_vedha-network \
+  --network-alias frontend \
   -p 3000:80 \
   localhost/infra-frontend:latest
 

@@ -218,4 +218,87 @@ document.addEventListener("DOMContentLoaded", async () => {
       },
     );
   });
+
+  const autoApplyLinkedInBtn = document.getElementById("autoApplyLinkedInBtn");
+  if (autoApplyLinkedInBtn) {
+    autoApplyLinkedInBtn.addEventListener("click", async () => {
+      if (!activeTabId) return;
+
+      fillStatusEl.style.display = "block";
+      fillStatusEl.innerText = "🚀 Initiating LinkedIn Easy Apply automation...";
+
+      chrome.storage.local.get(
+        ["candidateProfile", "jwtToken", "vedha_token", "token", todayKey],
+        async (stored) => {
+          let profile = stored.candidateProfile;
+          const token = stored.jwtToken || stored.vedha_token || stored.token;
+          let user = null;
+          let masterResume = null;
+          let queueItems = [];
+
+          if (token) {
+            try {
+              const [profileRes, userRes, resumeRes, queueRes] = await Promise.all([
+                !profile
+                  ? fetch("http://localhost:5000/api/candidateprofile", {
+                      headers: { Authorization: `Bearer ${token}` },
+                    })
+                  : Promise.resolve(null),
+                fetch("http://localhost:5000/api/auth/me", {
+                  headers: { Authorization: `Bearer ${token}` },
+                }),
+                fetch("http://localhost:5000/api/masterresume", {
+                  headers: { Authorization: `Bearer ${token}` },
+                }),
+                fetch("http://localhost:5000/api/orchestrator/queue", {
+                  headers: { Authorization: `Bearer ${token}` },
+                }),
+              ]);
+
+              if (profileRes && profileRes.ok) profile = await profileRes.json();
+              if (userRes && userRes.ok) user = await userRes.json();
+              if (resumeRes && resumeRes.ok) masterResume = await resumeRes.json();
+              if (queueRes && queueRes.ok) queueItems = await queueRes.json();
+            } catch (e) {}
+          }
+
+          // Find matching queue item if exists
+          const currentUrl = extractedData?.url || "";
+          const matchedItem = queueItems?.find(
+            (q) => q.jobUrl === currentUrl || currentUrl.includes(q.targetCompany?.toLowerCase() || "xyz")
+          );
+
+          const pInfo = masterResume?.schema?.personalInfo;
+          const payload = {
+            queueItemId: matchedItem?.id || null,
+            company: extractedData?.company || matchedItem?.targetCompany || "",
+            title: extractedData?.title || matchedItem?.targetRole || "",
+            fullName: pInfo?.fullName || user?.fullName || profile?.fullName || "",
+            email: pInfo?.email || user?.email || profile?.email || "",
+            phone: profile?.phoneNumber || pInfo?.phone || "",
+            currentCity: profile?.currentCity || pInfo?.location || "",
+            requiresVisaSponsorship: profile?.requiresVisaSponsorship || false,
+            answers: matchedItem?.prefilledAnswers || [],
+            copilotMode: true,
+          };
+
+          chrome.tabs.sendMessage(
+            activeTabId,
+            { action: "AUTO_APPLY_LINKEDIN", payload },
+            (res) => {
+              if (chrome.runtime.lastError || !res) {
+                fillStatusEl.innerText = "⚠️ Could not connect to LinkedIn Easy Apply dialog.";
+              } else if (!res.success) {
+                fillStatusEl.innerText = `⚠️ ${res.error || "Easy Apply could not be automated on this posting."}`;
+              } else if (res.pausedForReview) {
+                fillStatusEl.innerText = "✨ Review Gateway Active: All fields filled! Inspect and submit on LinkedIn.";
+              } else {
+                fillStatusEl.innerText = `✅ ${res.message || "Easy Apply complete!"}`;
+              }
+            }
+          );
+        }
+      );
+    });
+  }
 });

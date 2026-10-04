@@ -201,6 +201,7 @@ public class RagResumeGenerator : IRagResumeGenerator
 {achievementsListText}
 
 Please generate an ATS-optimized, elegant single-column Markdown resume emphasizing achievements relevant to {jobTitle}. Integrate the verified achievements naturally into the resume narrative. Do not simply copy the achievement list verbatim - select and highlight the most relevant ones for this specific role.
+
 ";
 
         var aiProvider = _aiFactory.GetProvider(user.PreferredAiProvider);
@@ -211,23 +212,29 @@ Please generate an ATS-optimized, elegant single-column Markdown resume emphasiz
             user.PreferredModel,
             cancellationToken);
 
-        if (aiResult.IsSuccess)
-        {
-            markdownResume = aiResult.Value;
-            _logger.LogInformation("AI-generated resume successful for application {ApplicationId}", applicationId);
-        }
-        else
-        {
-            var errorMsg = aiResult.Error ?? "Unknown AI error";
-            _logger.LogError("AI resume generation failed for application {ApplicationId}: {Error}", applicationId, errorMsg);
-            // Return failure result - no fallback to master resume
-            return new RagResumeResult
+if (aiResult.IsSuccess)
             {
-                Success = false,
-                ErrorMessage = $"Resume generation failed: {errorMsg}",
-                MarkdownResume = string.Empty
-            };
-        }
+                markdownResume = aiResult.Value;
+                _logger.LogInformation("AI-generated resume successful for application {ApplicationId}", applicationId);
+            }
+            else
+            {
+                var errorMsg = aiResult.Error ?? "Unknown AI error";
+                _logger.LogError("AI resume generation failed for application {ApplicationId}: {Error}", applicationId, errorMsg);
+                // Fallback: if we have selected achievements from the master resume fallback above,
+                // proceed with those instead of failing completely.
+                // This ensures users with no CareerAchievements still get a resume from their master resume.
+                if (selectedAchievements.Count == 0)
+                {
+                    return new RagResumeResult
+                    {
+                        Success = false,
+                        ErrorMessage = $"Resume generation failed: {errorMsg}",
+                        MarkdownResume = string.Empty
+                    };
+                }
+                _logger.LogWarning("AI resume generation failed but using {Count} fallback achievements from master resume for application {ApplicationId}", selectedAchievements.Count, applicationId);
+            }
 
         // 4. Render to ATS PDF
         // Build experience list: start with existing master resume experiences, add the application job, then sort reverse-chronological
@@ -284,6 +291,142 @@ Please generate an ATS-optimized, elegant single-column Markdown resume emphasiz
             .ThenByDescending(x => x.IsCurrent)
             .ToList();
 
+        // 4. Extract skills from EvidenceKnowledgeBaseJson and add to resume Skills for ATS scoring
+        var candidateProfile = user.CandidateProfile;
+        var resumeSkills = new List<SkillCategory>();
+        if (candidateProfile?.EvidenceKnowledgeBaseJson != null && candidateProfile.EvidenceKnowledgeBaseJson != "{}")
+        {
+            try
+            {
+                var evidenceKb = JsonSerializer.Deserialize<Dictionary<string, string>>(candidateProfile.EvidenceKnowledgeBaseJson);
+                if (evidenceKb != null)
+                {
+                    foreach (var kvp in evidenceKb)
+                    {
+                        // Use key as skill category name, value as skill instance
+                        var existingCat = resumeSkills.FirstOrDefault(c => c.CategoryName.Equals(kvp.Key, StringComparison.OrdinalIgnoreCase));
+                        if (existingCat != null)
+                        {
+                            if (!existingCat.Skills.Contains(kvp.Value, StringComparer.OrdinalIgnoreCase))
+                                existingCat.Skills.Add(kvp.Value);
+                        }
+                        else
+                        {
+                            resumeSkills.Add(new SkillCategory
+                            {
+                                CategoryName = kvp.Key,
+                                Skills = new List<string> { kvp.Value }
+                            });
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+
+        // Also extract keywords from CareerAchievements content for ATS scoring
+        // AND populate EvidenceKnowledgeBaseJson so future resumes have skill coverage
+        var newEvidenceKb = new Dictionary<string, string>();
+        if (user.CareerAchievements != null && user.CareerAchievements.Any())
+        {
+            var achievementKeywords = user.CareerAchievements
+                .Select(a => a.Content)
+                .SelectMany(c => c.Split(new[] { ' ', '\r', '\n', ',', '.', ';', ':', '-', '(', ')', '/', '"', '\'' }, StringSplitOptions.RemoveEmptyEntries))
+                .Where(w => w.Length > 3)
+                .Distinct()
+                .ToList();
+
+            foreach (var kw in achievementKeywords)
+            {
+                if (!newEvidenceKb.ContainsKey(kw))
+                    newEvidenceKb[kw] = kw; // store keyword as its own value; could store a representative achievement excerpt
+            }
+        }
+
+        // Also extract from MasterResume structured JSON highlights
+        if (user.MasterResumes.Any())
+        {
+            var activeMaster = user.MasterResumes.FirstOrDefault(m => m.IsActive) ?? user.MasterResumes.First();
+            if (!string.IsNullOrWhiteSpace(activeMaster.StructuredJson) && activeMaster.StructuredJson != "{}")
+            {
+                try
+                {
+                    var parsed = JsonSerializer.Deserialize<ResumeSchema>(activeMaster.StructuredJson);
+                    if (parsed?.Experience != null)
+                    {
+                        foreach (var exp in parsed.Experience)
+                        {
+                            foreach (var highlight in exp.Highlights)
+                            {
+                                // Add highlights as additional evidence for skills
+                                if (!string.IsNullOrWhiteSpace(highlight))
+                                {
+                                    var hlLower = highlight.ToLowerInvariant();
+                                    var keywordsInHighlight = hlLower.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                                        .Where(w => w.Length > 3)
+                                        .Distinct()
+                                        .ToList();
+                                    foreach (var kw in keywordsInHighlight)
+                                    {
+                                        if (!newEvidenceKb.ContainsKey(kw))
+                                            newEvidenceKb[kw] = highlight;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch { }
+            }
+        }
+
+        // Merge newly extracted evidence with existing EvidenceKnowledgeBaseJson
+        if (candidateProfile?.EvidenceKnowledgeBaseJson != null && candidateProfile.EvidenceKnowledgeBaseJson != "{}")
+        {
+            try
+            {
+                var existingKb = JsonSerializer.Deserialize<Dictionary<string, string>>(candidateProfile.EvidenceKnowledgeBaseJson);
+                if (existingKb != null)
+                {
+                    foreach (var kvp in existingKb)
+                    {
+                        if (!newEvidenceKb.ContainsKey(kvp.Key))
+                            newEvidenceKb[kvp.Key] = kvp.Value;
+                    }
+                }
+            }
+            catch { }
+        }
+
+        // Save updated EvidenceKnowledgeBaseJson back to candidate profile & DB
+        if (newEvidenceKb.Count > 0 || candidateProfile?.EvidenceKnowledgeBaseJson == "{}")
+        {
+            candidateProfile.EvidenceKnowledgeBaseJson = JsonSerializer.Serialize(newEvidenceKb);
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+
+        // Build the "Keywords" skill category for ATS scoring from the merged KB
+        if (newEvidenceKb.Count > 0)
+        {
+            var existingKeywordsCat = resumeSkills.FirstOrDefault(c => c.CategoryName.Equals("Keywords", StringComparison.OrdinalIgnoreCase));
+            if (existingKeywordsCat != null)
+            {
+                foreach (var kvp in newEvidenceKb)
+                {
+                    if (!existingKeywordsCat.Skills.Contains(kvp.Key, StringComparer.OrdinalIgnoreCase))
+                        existingKeywordsCat.Skills.Add(kvp.Key);
+                }
+            }
+            else
+            {
+                resumeSkills.Add(new SkillCategory
+                {
+                    CategoryName = "Keywords",
+                    Skills = newEvidenceKb.Keys.ToList()
+                });
+            }
+        }
+
         var resumeSchema = new ResumeSchema
         {
             PersonalInfo = new PersonalInfo
@@ -292,10 +435,11 @@ Please generate an ATS-optimized, elegant single-column Markdown resume emphasiz
                 Email = candidateEmail,
                 Phone = candidatePhone,
                 Location = candidateLocation,
-                LinkedInUrl = user.CandidateProfile?.LinkedInUrl ?? "",
-                GitHubUrl = user.CandidateProfile?.GithubUrl ?? ""
+                LinkedInUrl = candidateProfile?.LinkedInUrl ?? "",
+                GitHubUrl = candidateProfile?.GithubUrl ?? "",
             },
-            Experience = experienceItems
+            Experience = experienceItems,
+            Skills = resumeSkills
         };
 
         var pdfBytes = await _exportService.ExportPdfAsync(resumeSchema, TemplateStyle.ClassicAts, cancellationToken);
@@ -331,10 +475,10 @@ Please generate an ATS-optimized, elegant single-column Markdown resume emphasiz
                 last_name = candidateName.Split(' ').Skip(1).LastOrDefault() ?? "",
                 email = candidateEmail,
                 phone = candidatePhone,
-                city = user.CandidateProfile?.CurrentCity ?? "",
-                country = user.CandidateProfile?.CurrentCountry ?? "",
-                linkedin_url = user.CandidateProfile?.LinkedInUrl ?? "",
-                github_url = user.CandidateProfile?.GithubUrl ?? ""
+                city = candidateProfile?.CurrentCity ?? "",
+                country = candidateProfile?.CurrentCountry ?? "",
+                linkedin_url = candidateProfile?.LinkedInUrl ?? "",
+                github_url = candidateProfile?.GithubUrl ?? ""
             },
             screening_answers = new Dictionary<string, string>()
         };

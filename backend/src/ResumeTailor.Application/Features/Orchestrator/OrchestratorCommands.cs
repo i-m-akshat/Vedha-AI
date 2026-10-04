@@ -567,7 +567,45 @@ Generate tailored ResumeSchema in JSON.";
             item.ErrorMessage = request.ErrorMessage;
 
         if (request.Status == PipelineExecutionStatus.Submitted)
+        {
             item.AppliedAtUtc = DateTime.UtcNow;
+            item.RequiresManualReview = false;
+
+            try
+            {
+                var existingApp = await _context.Applications.FirstOrDefaultAsync(
+                    a => a.UserId == item.UserId &&
+                         ((item.GeneratedResumeId != null && a.GeneratedResumeId == item.GeneratedResumeId) ||
+                          (!string.IsNullOrEmpty(item.JobUrl) && a.JobUrl == item.JobUrl) ||
+                          (a.CompanyName == item.TargetCompany && a.JobTitle == item.TargetRole)),
+                    cancellationToken);
+
+                if (existingApp != null)
+                {
+                    existingApp.Status = ApplicationStatus.Applied;
+                    existingApp.AppliedDate = DateTime.UtcNow;
+                    existingApp.UpdatedAtUtc = DateTime.UtcNow;
+                }
+                else
+                {
+                    _context.Applications.Add(new ApplicationRecord
+                    {
+                        UserId = item.UserId,
+                        GeneratedResumeId = item.GeneratedResumeId,
+                        CompanyName = !string.IsNullOrWhiteSpace(item.TargetCompany) ? item.TargetCompany : "Target Company",
+                        JobTitle = !string.IsNullOrWhiteSpace(item.TargetRole) ? item.TargetRole : "Target Role",
+                        JobUrl = item.JobUrl,
+                        Status = ApplicationStatus.Applied,
+                        AppliedDate = DateTime.UtcNow,
+                        Notes = $"Marked as Submitted via Copilot Orchestrator on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC"
+                    });
+                }
+            }
+            catch
+            {
+                // Non-fatal if tracker upsert has a race condition
+            }
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
         return Result<bool>.Success(true);

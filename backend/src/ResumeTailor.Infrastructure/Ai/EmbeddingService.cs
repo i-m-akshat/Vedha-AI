@@ -150,12 +150,27 @@ public class EmbeddingService : IEmbeddingService
         return result;
     }
 
+    private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "the", "and", "with", "for", "are", "you", "from", "that", "this", "all", "was", "has", "have"
+    };
+
+    private static uint ComputeFnv1a(string str)
+    {
+        uint hash = 2166136261;
+        foreach (char c in str)
+        {
+            hash = (hash ^ c) * 16777619;
+        }
+        return hash;
+    }
+
     private static float[] GenerateDeterministicVector(string text, int dimension)
     {
         var vector = new float[dimension];
         var tokens = text.ToLowerInvariant()
             .Split(new[] { ' ', '\r', '\n', '\t', ',', '.', ';', ':', '-', '(', ')', '[', ']', '/', '"', '\'' }, StringSplitOptions.RemoveEmptyEntries)
-            .Where(t => t.Length > 2)
+            .Where(t => t.Length > 2 && !StopWords.Contains(t))
             .ToArray();
 
         if (tokens.Length == 0) return vector;
@@ -163,14 +178,14 @@ public class EmbeddingService : IEmbeddingService
         for (int i = 0; i < tokens.Length; i++)
         {
             var token = tokens[i];
-            uint hash = (uint)token.GetHashCode();
+            uint hash = ComputeFnv1a(token);
             int bucket = (int)(hash % (uint)dimension);
             vector[bucket] += 1.0f;
 
             if (i < tokens.Length - 1)
             {
                 var bigram = token + "_" + tokens[i + 1];
-                uint bHash = (uint)bigram.GetHashCode();
+                uint bHash = ComputeFnv1a(bigram);
                 int bBucket = (int)(bHash % (uint)dimension);
                 vector[bBucket] += 1.5f;
             }

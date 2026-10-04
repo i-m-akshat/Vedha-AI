@@ -1,0 +1,26 @@
+# Runtime stage using pre-published Release binaries
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+
+# Install dependencies for fonts (ATS PDF generation) and headless browser automation (Playwright/Chromium)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    fontconfig \
+    fonts-dejavu-core \
+    fonts-liberation \
+    libgdiplus \
+    libnss3 \
+    libatk-bridge2.0-0 \
+    libx11-xcb1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libdrm2 \
+    libgbm1 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY backend/publish/. .
+
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
+ENTRYPOINT ["dotnet", "ResumeTailor.WebApi.dll"]

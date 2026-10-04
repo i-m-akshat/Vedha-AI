@@ -116,6 +116,16 @@ public class JobApplicationOrchestrator : IJobApplicationOrchestrator
 
         await _progressNotifier.SendProgressAsync(queueItem.UserId, "Starting Pipeline", $"Launching {provider.SupportedSource} pipeline adapter...", 10, cancellationToken);
 
+        // Determine effective review mode:
+        // If the item is already paused at the review gateway OR copilotMode is explicitly false,
+        // this execution represents candidate authorization/finalization, so we bypass pause and finalize submission.
+        bool isFinalizingSubmission = queueItem.Status == PipelineExecutionStatus.PausedForUserReview || !copilotMode;
+        bool effectiveCopilotReviewMode = !isFinalizingSubmission && (copilotMode || queueItem.RequiresManualReview);
+
+        if (isFinalizingSubmission)
+        {
+            queueItem.RequiresManualReview = false;
+        }
 
         var result = await provider.ExecuteFlowAsync(
             targetUrl,
@@ -124,33 +134,84 @@ public class JobApplicationOrchestrator : IJobApplicationOrchestrator
             pdfBytes,
             queueItem.CoverLetterText,
             answersPayload,
-            copilotMode || queueItem.RequiresManualReview,
+            effectiveCopilotReviewMode,
             LogCallback,
             cancellationToken);
 
         // 5. Update Status and DB
         stepLogs.AddRange(result.ExecutionLogs);
-        queueItem.ExecutionLogsJson = JsonSerializer.Serialize(stepLogs.Distinct().ToList());
 
         if (result.PausedForUserReview)
         {
             queueItem.Status = PipelineExecutionStatus.PausedForUserReview;
+            queueItem.ExecutionLogsJson = JsonSerializer.Serialize(stepLogs.Distinct().ToList());
             await _progressNotifier.SendProgressAsync(queueItem.UserId, "Review Gateway", "Application prepared. Review and authorize final submission.", 95, cancellationToken);
         }
         else if (result.Success)
         {
             queueItem.Status = PipelineExecutionStatus.Submitted;
             queueItem.AppliedAtUtc = DateTime.UtcNow;
+            queueItem.RequiresManualReview = false;
+
+            stepLogs.Add($"[{DateTime.UtcNow:HH:mm:ss}] [System] Application package finalized and confirmed by candidate. Marked as Submitted.");
+            queueItem.ExecutionLogsJson = JsonSerializer.Serialize(stepLogs.Distinct().ToList());
+
+            // Synchronize with Job Tracker (Applications table)
+            await SyncWithJobTrackerAsync(queueItem, cancellationToken);
+
             await _progressNotifier.SendProgressAsync(queueItem.UserId, "Submitted", "Application successfully submitted!", 100, cancellationToken);
         }
         else
         {
             queueItem.Status = PipelineExecutionStatus.Failed;
             queueItem.ErrorMessage = result.ErrorDetails ?? result.Message;
+            queueItem.ExecutionLogsJson = JsonSerializer.Serialize(stepLogs.Distinct().ToList());
         }
 
         await _context.SaveChangesAsync(cancellationToken);
 
         return Result<ApplicationAutomationResult>.Success(result);
+    }
+
+    private async Task SyncWithJobTrackerAsync(ApplicationQueueItem queueItem, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var existingApp = await _context.Applications.FirstOrDefaultAsync(
+                a => a.UserId == queueItem.UserId &&
+                     ((queueItem.GeneratedResumeId != null && a.GeneratedResumeId == queueItem.GeneratedResumeId) ||
+                      (!string.IsNullOrEmpty(queueItem.JobUrl) && a.JobUrl == queueItem.JobUrl) ||
+                      (a.CompanyName == queueItem.TargetCompany && a.JobTitle == queueItem.TargetRole)),
+                cancellationToken);
+
+            if (existingApp != null)
+            {
+                existingApp.Status = ApplicationStatus.Applied;
+                existingApp.AppliedDate = DateTime.UtcNow;
+                existingApp.Notes = string.IsNullOrWhiteSpace(existingApp.Notes)
+                    ? $"Submitted via Copilot Orchestrator on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC"
+                    : $"{existingApp.Notes}\nSubmitted via Copilot Orchestrator on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC";
+                existingApp.UpdatedAtUtc = DateTime.UtcNow;
+            }
+            else
+            {
+                var newApp = new ApplicationRecord
+                {
+                    UserId = queueItem.UserId,
+                    GeneratedResumeId = queueItem.GeneratedResumeId,
+                    CompanyName = !string.IsNullOrWhiteSpace(queueItem.TargetCompany) ? queueItem.TargetCompany : "Target Company",
+                    JobTitle = !string.IsNullOrWhiteSpace(queueItem.TargetRole) ? queueItem.TargetRole : "Target Role",
+                    JobUrl = queueItem.JobUrl,
+                    Status = ApplicationStatus.Applied,
+                    AppliedDate = DateTime.UtcNow,
+                    Notes = $"Submitted via Copilot Orchestrator on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC"
+                };
+                _context.Applications.Add(newApp);
+            }
+        }
+        catch
+        {
+            // Do not fail the overall pipeline if tracker sync encounters a non-fatal race
+        }
     }
 }

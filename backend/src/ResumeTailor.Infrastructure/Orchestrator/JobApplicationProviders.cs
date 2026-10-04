@@ -1,5 +1,8 @@
+using System.Text;
+using System.Text.Json;
 using AngleSharp.Html.Parser;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ResumeTailor.Application.Common.Interfaces;
 using ResumeTailor.Domain.Entities;
@@ -8,8 +11,112 @@ using ResumeTailor.Domain.ValueObjects;
 
 namespace ResumeTailor.Infrastructure.Orchestrator;
 
+/// <summary>
+/// Client communicating with the Playwright Worker service (FastAPI HTTP endpoint).
+/// </summary>
+public class PlaywrightWorkerClient
+{
+    private readonly HttpClient _httpClient;
+    private readonly string _workerUrl;
+
+    public PlaywrightWorkerClient(IHttpClientFactory? httpClientFactory = null, IConfiguration? configuration = null)
+    {
+        _httpClient = httpClientFactory?.CreateClient() ?? new HttpClient { Timeout = TimeSpan.FromSeconds(45) };
+        _workerUrl = configuration?["WorkerSettings:PlaywrightUrl"]
+                     ?? configuration?["PLAYWRIGHT_WORKER_URL"]
+                     ?? "http://vedha-worker:8000";
+    }
+
+    public async Task<PlaywrightApplyResponseDto?> TryApplyAsync(
+        string targetUrl,
+        CandidateProfile profile,
+        ResumeSchema resumeData,
+        byte[] resumePdfBytes,
+        List<ScreeningAnswerPayload> prefilledAnswers,
+        bool copilotReviewMode,
+        bool headed = false,
+        CancellationToken cancellationToken = default)
+    {
+        var endpoints = new[] { _workerUrl, "http://localhost:8000" }.Distinct();
+
+        foreach (var endpoint in endpoints)
+        {
+            try
+            {
+                var reqObj = new
+                {
+                    applicationId = Guid.NewGuid().ToString(),
+                    userId = profile.UserId.ToString(),
+                    jobUrl = targetUrl,
+                    resumePdfBase64 = Convert.ToBase64String(resumePdfBytes),
+                    candidateProfile = new
+                    {
+                        fullName = resumeData.PersonalInfo.FullName,
+                        email = resumeData.PersonalInfo.Email,
+                        phoneNumber = profile.PhoneNumber,
+                        currentCity = profile.CurrentCity,
+                        currentCountry = profile.CurrentCountry,
+                        requiresVisaSponsorship = profile.RequiresVisaSponsorship,
+                        workAuthorizationStatus = profile.WorkAuthorizationStatus,
+                        noticePeriodDays = profile.NoticePeriodDays,
+                        currentSalary = profile.CurrentSalary,
+                        expectedSalary = profile.ExpectedSalary,
+                        linkedInUrl = profile.LinkedInUrl,
+                        githubUrl = profile.GithubUrl,
+                        portfolioUrl = profile.PortfolioUrl
+                    },
+                    screeningAnswers = prefilledAnswers.Select(a => new
+                    {
+                        questionText = a.QuestionText,
+                        answerText = a.AnswerText,
+                        fieldType = a.FieldType
+                    }).ToList(),
+                    copilotMode = copilotReviewMode,
+                    headed = headed
+                };
+
+                using var content = new StringContent(JsonSerializer.Serialize(reqObj), Encoding.UTF8, "application/json");
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                cts.CancelAfter(TimeSpan.FromSeconds(30));
+
+                var response = await _httpClient.PostAsync($"{endpoint}/api/playwright/apply", content, cts.Token);
+                if (response.IsSuccessStatusCode)
+                {
+                    var resJson = await response.Content.ReadAsStringAsync(cancellationToken);
+                    return JsonSerializer.Deserialize<PlaywrightApplyResponseDto>(resJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                }
+            }
+            catch
+            {
+                // Worker offline or connecting; try next endpoint
+            }
+        }
+
+        return null;
+    }
+}
+
+public class PlaywrightApplyResponseDto
+{
+    public bool Success { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public List<string> ExecutionLogs { get; set; } = new();
+    public string FinalPageUrl { get; set; } = string.Empty;
+    public string? ErrorDetails { get; set; }
+}
+
 public class GreenhouseProvider : IJobApplicationProvider
 {
+    private readonly PlaywrightWorkerClient _workerClient;
+
+    public GreenhouseProvider() : this(null, null) { }
+
+    public GreenhouseProvider(IHttpClientFactory? httpClientFactory = null, IConfiguration? configuration = null)
+    {
+        _workerClient = new PlaywrightWorkerClient(httpClientFactory, configuration);
+    }
+
     public JobSource SupportedSource => JobSource.Greenhouse;
 
     public bool CanHandle(string url)
@@ -49,7 +156,7 @@ public class GreenhouseProvider : IJobApplicationProvider
 
         if (copilotReviewMode)
         {
-            await Log("[Greenhouse Pipeline] Copilot Review Gateway: Application package staged and verified. Paused before final submission for user authorization.");
+            await Log("[Greenhouse Pipeline] Review Gateway Activated: Form fields pre-filled, resume attached. Automation paused at final Review Screen for candidate authorization.");
             return new ApplicationAutomationResult
             {
                 Success = true,
@@ -60,13 +167,48 @@ public class GreenhouseProvider : IJobApplicationProvider
             };
         }
 
-        await Log("[Greenhouse Pipeline] Final application submitted successfully.");
+        // Live submission via Playwright
+        await Log("[Greenhouse Pipeline] Dispatching browser execution to Playwright Agent...");
+        var workerRes = await _workerClient.TryApplyAsync(targetUrl, profile, resumeData, resumePdfBytes, prefilledAnswers, false, false, cancellationToken);
+
+        if (workerRes != null)
+        {
+            foreach (var wLog in workerRes.ExecutionLogs)
+            {
+                await Log(wLog);
+            }
+
+            if (workerRes.Status == "Submitted")
+            {
+                await Log("[Greenhouse Pipeline] Confirmed: Application successfully submitted to Greenhouse ATS.");
+                return new ApplicationAutomationResult
+                {
+                    Success = true,
+                    Message = "Application successfully submitted to Greenhouse ATS.",
+                    FinalPageUrl = workerRes.FinalPageUrl,
+                    PausedForUserReview = false,
+                    ExecutionLogs = logs
+                };
+            }
+
+            return new ApplicationAutomationResult
+            {
+                Success = workerRes.Success,
+                Message = workerRes.Message,
+                FinalPageUrl = workerRes.FinalPageUrl,
+                PausedForUserReview = workerRes.Status == "PausedForUserReview",
+                ExecutionLogs = logs,
+                ErrorDetails = workerRes.ErrorDetails
+            };
+        }
+
+        await Log("[Greenhouse Pipeline] Playwright worker offline. Staged package for candidate confirmation.");
         return new ApplicationAutomationResult
         {
             Success = true,
-            Message = "Application successfully submitted to Greenhouse ATS.",
+            Message = "Application package staged. Ready for 1-click submit in browser.",
             FinalPageUrl = targetUrl,
-            PausedForUserReview = false,
+            PausedForUserReview = true,
             ExecutionLogs = logs
         };
     }
@@ -74,6 +216,15 @@ public class GreenhouseProvider : IJobApplicationProvider
 
 public class LeverProvider : IJobApplicationProvider
 {
+    private readonly PlaywrightWorkerClient _workerClient;
+
+    public LeverProvider() : this(null, null) { }
+
+    public LeverProvider(IHttpClientFactory? httpClientFactory = null, IConfiguration? configuration = null)
+    {
+        _workerClient = new PlaywrightWorkerClient(httpClientFactory, configuration);
+    }
+
     public JobSource SupportedSource => JobSource.Lever;
 
     public bool CanHandle(string url)
@@ -105,19 +256,9 @@ public class LeverProvider : IJobApplicationProvider
         await Log($"[Lever Pipeline] Social links mapped: LinkedIn ({profile.LinkedInUrl}), GitHub ({profile.GithubUrl}), Portfolio ({profile.PortfolioUrl})");
         await Log($"[Lever Pipeline] Attaching ATS-tailored PDF ({resumePdfBytes.Length / 1024} KB)");
 
-        if (!string.IsNullOrWhiteSpace(coverLetter))
-        {
-            await Log("[Lever Pipeline] Attached custom cover letter text");
-        }
-
-        foreach (var ans in prefilledAnswers)
-        {
-            await Log($"[Lever Pipeline] Custom question '{ans.QuestionText}' populated with '{ans.AnswerText}'");
-        }
-
         if (copilotReviewMode)
         {
-            await Log("[Lever Pipeline] Paused at Lever review screen for candidate confirmation.");
+            await Log("[Lever Pipeline] Review Gateway Activated: Form fields pre-filled, resume attached. Automation paused at final Review Screen for candidate authorization.");
             return new ApplicationAutomationResult
             {
                 Success = true,
@@ -128,13 +269,33 @@ public class LeverProvider : IJobApplicationProvider
             };
         }
 
-        await Log("[Lever Pipeline] Submission completed.");
+        await Log("[Lever Pipeline] Dispatching browser execution to Playwright Agent...");
+        var workerRes = await _workerClient.TryApplyAsync(targetUrl, profile, resumeData, resumePdfBytes, prefilledAnswers, false, false, cancellationToken);
+
+        if (workerRes != null)
+        {
+            foreach (var wLog in workerRes.ExecutionLogs) await Log(wLog);
+            if (workerRes.Status == "Submitted")
+            {
+                await Log("[Lever Pipeline] Confirmed: Application successfully submitted to Lever ATS.");
+                return new ApplicationAutomationResult
+                {
+                    Success = true,
+                    Message = "Lever application submitted.",
+                    FinalPageUrl = workerRes.FinalPageUrl,
+                    PausedForUserReview = false,
+                    ExecutionLogs = logs
+                };
+            }
+        }
+
+        await Log("[Lever Pipeline] Application package ready. Paused for candidate confirmation.");
         return new ApplicationAutomationResult
         {
             Success = true,
-            Message = "Lever application submitted.",
+            Message = "Lever application staged.",
             FinalPageUrl = targetUrl,
-            PausedForUserReview = false,
+            PausedForUserReview = true,
             ExecutionLogs = logs
         };
     }
@@ -142,6 +303,15 @@ public class LeverProvider : IJobApplicationProvider
 
 public class AshbyProvider : IJobApplicationProvider
 {
+    private readonly PlaywrightWorkerClient _workerClient;
+
+    public AshbyProvider() : this(null, null) { }
+
+    public AshbyProvider(IHttpClientFactory? httpClientFactory = null, IConfiguration? configuration = null)
+    {
+        _workerClient = new PlaywrightWorkerClient(httpClientFactory, configuration);
+    }
+
     public JobSource SupportedSource => JobSource.Ashby;
 
     public bool CanHandle(string url)
@@ -174,7 +344,7 @@ public class AshbyProvider : IJobApplicationProvider
 
         if (copilotReviewMode)
         {
-            await Log("[Ashby Pipeline] Paused for candidate review before final submit.");
+            await Log("[Ashby Pipeline] Review Gateway Activated: Form fields pre-filled, resume attached. Automation paused at final Review Screen for candidate authorization.");
             return new ApplicationAutomationResult
             {
                 Success = true,
@@ -185,12 +355,30 @@ public class AshbyProvider : IJobApplicationProvider
             };
         }
 
+        await Log("[Ashby Pipeline] Dispatching browser execution to Playwright Agent...");
+        var workerRes = await _workerClient.TryApplyAsync(targetUrl, profile, resumeData, resumePdfBytes, prefilledAnswers, false, false, cancellationToken);
+        if (workerRes != null)
+        {
+            foreach (var wLog in workerRes.ExecutionLogs) await Log(wLog);
+            if (workerRes.Status == "Submitted")
+            {
+                return new ApplicationAutomationResult
+                {
+                    Success = true,
+                    Message = "Ashby application submitted.",
+                    FinalPageUrl = workerRes.FinalPageUrl,
+                    PausedForUserReview = false,
+                    ExecutionLogs = logs
+                };
+            }
+        }
+
         return new ApplicationAutomationResult
         {
             Success = true,
-            Message = "Ashby application submitted.",
+            Message = "Ashby application staged.",
             FinalPageUrl = targetUrl,
-            PausedForUserReview = false,
+            PausedForUserReview = true,
             ExecutionLogs = logs
         };
     }
@@ -198,6 +386,15 @@ public class AshbyProvider : IJobApplicationProvider
 
 public class LinkedInCopilotProvider : IJobApplicationProvider
 {
+    private readonly PlaywrightWorkerClient _workerClient;
+
+    public LinkedInCopilotProvider() : this(null, null) { }
+
+    public LinkedInCopilotProvider(IHttpClientFactory? httpClientFactory = null, IConfiguration? configuration = null)
+    {
+        _workerClient = new PlaywrightWorkerClient(httpClientFactory, configuration);
+    }
+
     public JobSource SupportedSource => JobSource.LinkedIn;
 
     public bool CanHandle(string url)
@@ -235,13 +432,78 @@ public class LinkedInCopilotProvider : IJobApplicationProvider
             await Log($"  - Question: '{ans.QuestionText}' -> Injected: '{ans.AnswerText}' (Evidence grounded)");
         }
 
-        // LinkedIn Copilot Mode ALWAYS activates the Review Gateway to protect the user's account
-        await Log("[LinkedIn Copilot] Review Gateway Activated: Form fields pre-filled, resume attached. Automation paused at final Review Screen for candidate submission.");
+        if (copilotReviewMode)
+        {
+            await Log("[LinkedIn Copilot] Review Gateway Activated: Form fields pre-filled, resume attached. Automation paused at final Review Screen for candidate authorization.");
+            await Log("[LinkedIn Copilot] Desktop Copilot Ready: Open posting in your authenticated browser to 1-click apply via the Vedha Chrome Extension.");
+            return new ApplicationAutomationResult
+            {
+                Success = true,
+                Message = "LinkedIn Easy Apply pre-filled. Paused at final Review step for candidate submit.",
+                FinalPageUrl = targetUrl,
+                PausedForUserReview = true,
+                ExecutionLogs = logs
+            };
+        }
+
+        // Live execution via Playwright Worker
+        await Log("[LinkedIn Copilot] Candidate authorization confirmed. Dispatching browser execution to Playwright Agent...");
+        var workerRes = await _workerClient.TryApplyAsync(targetUrl, profile, resumeData, resumePdfBytes, prefilledAnswers, false, false, cancellationToken);
+
+        if (workerRes != null)
+        {
+            foreach (var wLog in workerRes.ExecutionLogs)
+            {
+                await Log(wLog);
+            }
+
+            if (workerRes.Status == "Submitted")
+            {
+                await Log("[LinkedIn Copilot] Confirmed: Application successfully submitted to LinkedIn Easy Apply.");
+                return new ApplicationAutomationResult
+                {
+                    Success = true,
+                    Message = "LinkedIn Easy Apply application successfully submitted.",
+                    FinalPageUrl = workerRes.FinalPageUrl,
+                    PausedForUserReview = false,
+                    ExecutionLogs = logs
+                };
+            }
+
+            if (workerRes.Status == "AuthenticationRequired")
+            {
+                await Log("[LinkedIn Copilot] Authentication Required: LinkedIn Easy Apply requires personal credentials.");
+                await Log("[LinkedIn Copilot] Action Required: Open the posting in your browser and use the Vedha Desktop Extension, or provide your li_at cookie in Candidate Profile.");
+                return new ApplicationAutomationResult
+                {
+                    Success = false,
+                    Message = "LinkedIn Easy Apply requires authentication. Please submit via the Desktop Extension in your logged-in browser tab.",
+                    FinalPageUrl = targetUrl,
+                    PausedForUserReview = true,
+                    ExecutionLogs = logs,
+                    ErrorDetails = "LinkedIn authentication barrier detected in headless session."
+                };
+            }
+
+            return new ApplicationAutomationResult
+            {
+                Success = workerRes.Success,
+                Message = workerRes.Message,
+                FinalPageUrl = workerRes.FinalPageUrl,
+                PausedForUserReview = workerRes.Status == "PausedForUserReview",
+                ExecutionLogs = logs,
+                ErrorDetails = workerRes.ErrorDetails
+            };
+        }
+
+        // Worker offline or unreachable: Truthful state guidance
+        await Log("[LinkedIn Copilot] Headless automation paused: LinkedIn Easy Apply requires an active candidate session.");
+        await Log("[LinkedIn Copilot] Please open the posting in your browser to submit with the Vedha Chrome Extension, or click 'Mark Submitted' once complete.");
 
         return new ApplicationAutomationResult
         {
             Success = true,
-            Message = "LinkedIn Easy Apply pre-filled. Paused at final Review step for candidate submit.",
+            Message = "Application package staged. Please submit via the Vedha Chrome Extension in your active LinkedIn tab, or mark as submitted.",
             FinalPageUrl = targetUrl,
             PausedForUserReview = true,
             ExecutionLogs = logs
@@ -277,7 +539,6 @@ public class NaukriProvider : IJobApplicationProvider
             if (logCallback != null) await logCallback(msg);
         }
 
-        // Flatten SkillCategory[] into readable skill names for logging
         var topSkills = resumeData.Skills
             .SelectMany(cat => cat.Skills)
             .Take(8)
@@ -291,7 +552,7 @@ public class NaukriProvider : IJobApplicationProvider
 
         if (copilotReviewMode)
         {
-            await Log("[Naukri Pipeline] Paused at review step.");
+            await Log("[Naukri Pipeline] Review Gateway Activated: Form fields pre-filled, resume attached. Automation paused at final Review Screen for candidate authorization.");
             return new ApplicationAutomationResult
             {
                 Success = true,
@@ -302,12 +563,13 @@ public class NaukriProvider : IJobApplicationProvider
             };
         }
 
+        await Log("[Naukri Pipeline] Application prepared. Complete submission in Naukri browser session.");
         return new ApplicationAutomationResult
         {
             Success = true,
-            Message = "Naukri application submitted.",
+            Message = "Naukri application staged for candidate review.",
             FinalPageUrl = targetUrl,
-            PausedForUserReview = false,
+            PausedForUserReview = true,
             ExecutionLogs = logs
         };
     }
@@ -315,6 +577,15 @@ public class NaukriProvider : IJobApplicationProvider
 
 public class WorkdayProvider : IJobApplicationProvider
 {
+    private readonly PlaywrightWorkerClient _workerClient;
+
+    public WorkdayProvider() : this(null, null) { }
+
+    public WorkdayProvider(IHttpClientFactory? httpClientFactory = null, IConfiguration? configuration = null)
+    {
+        _workerClient = new PlaywrightWorkerClient(httpClientFactory, configuration);
+    }
+
     public JobSource SupportedSource => JobSource.Workday;
 
     public bool CanHandle(string url)
@@ -349,11 +620,43 @@ public class WorkdayProvider : IJobApplicationProvider
         await Log($"[Workday Pipeline] Step 4: Voluntary EEO & Demographics filled (Gender: {profile.EqualEmploymentGender ?? "Decline to Self Identify"})");
         await Log($"[Workday Pipeline] Step 5: {prefilledAnswers.Count} screening questions filled");
 
-        await Log("[Workday Pipeline] Paused at Workday Review & Submit summary screen.");
+        if (copilotReviewMode)
+        {
+            await Log("[Workday Pipeline] Review Gateway Activated: Form fields pre-filled, resume attached. Automation paused at final Review Screen for candidate authorization.");
+            return new ApplicationAutomationResult
+            {
+                Success = true,
+                Message = "Workday application steps filled and staged for review.",
+                FinalPageUrl = targetUrl,
+                PausedForUserReview = true,
+                ExecutionLogs = logs
+            };
+        }
+
+        await Log("[Workday Pipeline] Dispatching browser execution to Playwright Agent...");
+        var workerRes = await _workerClient.TryApplyAsync(targetUrl, profile, resumeData, resumePdfBytes, prefilledAnswers, false, false, cancellationToken);
+        if (workerRes != null)
+        {
+            foreach (var wLog in workerRes.ExecutionLogs) await Log(wLog);
+            if (workerRes.Status == "Submitted")
+            {
+                await Log("[Workday Pipeline] Confirmed: Application submitted successfully to Workday portal.");
+                return new ApplicationAutomationResult
+                {
+                    Success = true,
+                    Message = "Workday application submitted successfully.",
+                    FinalPageUrl = workerRes.FinalPageUrl,
+                    PausedForUserReview = false,
+                    ExecutionLogs = logs
+                };
+            }
+        }
+
+        await Log("[Workday Pipeline] Application package ready. Paused for candidate authorization.");
         return new ApplicationAutomationResult
         {
             Success = true,
-            Message = "Workday application steps filled and staged for review.",
+            Message = "Workday application steps staged.",
             FinalPageUrl = targetUrl,
             PausedForUserReview = true,
             ExecutionLogs = logs
@@ -361,37 +664,35 @@ public class WorkdayProvider : IJobApplicationProvider
     }
 }
 
-/// <summary>
-/// Fallback provider for any unknown/custom company career portal.
-/// Uses SemanticDomFormMapper to fetch and parse the job page HTML,
-/// extracting semantic form fields and grounding answers against candidate data.
-/// </summary>
 public class GenericBrowserProvider : IJobApplicationProvider
 {
     private readonly HttpClient _httpClient;
     private readonly SemanticDomFormMapper? _mapper;
     private readonly IApplicationDbContext? _context;
     private readonly ILogger<GenericBrowserProvider>? _logger;
+    private readonly PlaywrightWorkerClient _workerClient;
 
-    public GenericBrowserProvider() : this(null, null, null, null)
+    public GenericBrowserProvider() : this((HttpClient?)null, null, null, null, null)
     {
     }
 
     public GenericBrowserProvider(
-        HttpClient? httpClient = null,
+        HttpClient? httpClient,
         SemanticDomFormMapper? mapper = null,
         IApplicationDbContext? context = null,
-        ILogger<GenericBrowserProvider>? logger = null)
+        ILogger<GenericBrowserProvider>? logger = null,
+        IConfiguration? configuration = null)
     {
         _httpClient = httpClient ?? new HttpClient();
         _mapper = mapper;
         _context = context;
         _logger = logger;
+        _workerClient = new PlaywrightWorkerClient(null, configuration);
     }
 
     public JobSource SupportedSource => JobSource.CompanyCareers;
 
-    public bool CanHandle(string url) => true; // Fallback for any unknown portal
+    public bool CanHandle(string url) => true;
 
     public async Task<ApplicationAutomationResult> ExecuteFlowAsync(
         string targetUrl,
@@ -414,7 +715,6 @@ public class GenericBrowserProvider : IJobApplicationProvider
         await Log($"[Generic AI Browser Agent] Navigating to custom career portal: {targetUrl}");
         await Log("[Generic AI Browser Agent] Fetching page HTML for semantic DOM analysis...");
 
-        // 1. Fetch page HTML and parse DOM semantically if mapper and db context are available
         List<DomFieldDescriptor> mappedFields = new();
         if (_mapper != null && _context != null)
         {
@@ -434,15 +734,12 @@ public class GenericBrowserProvider : IJobApplicationProvider
                     var rawFields = _mapper.ExtractSemanticFields(document);
                     await Log($"[Generic AI Browser Agent] Discovered {rawFields.Count} semantic form fields in DOM.");
 
-                    // 2. Load screening memories for this domain
                     var host = new Uri(targetUrl).Host;
                     var memories = await _context.ScreeningQuestionMemories
                         .Where(m => m.UserId == profile.UserId && m.Company.ToLower().Contains(host.ToLower()))
                         .ToListAsync(cancellationToken);
 
-                    // 3. Map fields to candidate data + AI grounding for unknowns
                     mappedFields = await _mapper.MapFieldsToCandidateAsync(rawFields, profile, resumeData, memories, cancellationToken);
-
                     var aiGroundedCount = mappedFields.Count(f => f.MappingSource == "AIGrounding");
                     var profileMappedCount = mappedFields.Count(f => f.MappingSource == "CandidateProfile");
                     var memoryMappedCount = mappedFields.Count(f => f.MappingSource == "BrowserAgentMemory");
@@ -454,33 +751,53 @@ public class GenericBrowserProvider : IJobApplicationProvider
                         await Log($"  - [{field.Type}] '{field.Label}' -> '{TruncateForLog(field.InferredMappedValue!)}' (Source: {field.MappingSource})");
                     }
                 }
-                else
-                {
-                    await Log($"[Generic AI Browser Agent] Warning: Could not fetch page HTML (HTTP {response.StatusCode}). Proceeding with pre-filled screening answers only.");
-                }
             }
             catch (Exception ex)
             {
                 _logger?.LogWarning(ex, "GenericBrowserProvider: Failed to fetch or parse page DOM for {Url}", targetUrl);
-                await Log($"[Generic AI Browser Agent] Warning: DOM analysis skipped ({ex.Message}). Proceeding with pre-filled data.");
+                await Log($"[Generic AI Browser Agent] Note: Page DOM parsing skipped ({ex.Message}).");
             }
         }
 
-        // 4. Log pre-filled screening answers from orchestrator
         await Log($"[Generic AI Browser Agent] Mapped standard fields: Name: {resumeData.PersonalInfo.FullName}, Email: {resumeData.PersonalInfo.Email}, Phone: {profile.PhoneNumber}");
         await Log($"[Generic AI Browser Agent] Attached ATS PDF resume ({resumePdfBytes.Length / 1024} KB)");
 
-        if (prefilledAnswers.Any())
+        if (copilotReviewMode)
         {
-            await Log($"[Generic AI Browser Agent] Injected {prefilledAnswers.Count} AI-grounded screening answers into custom input elements.");
+            await Log("[Generic AI Browser Agent] Review Gateway Activated: Form fields pre-filled, resume attached. Automation paused at final Review Screen for candidate authorization.");
+            return new ApplicationAutomationResult
+            {
+                Success = true,
+                Message = $"Custom career portal form pre-filled ({mappedFields.Count} fields mapped). Review gateway activated.",
+                FinalPageUrl = targetUrl,
+                PausedForUserReview = true,
+                ExecutionLogs = logs
+            };
         }
 
-        await Log("[Generic AI Browser Agent] Review Gateway Activated: Form auto-filled and resume attached. Paused before submission.");
+        await Log("[Generic AI Browser Agent] Dispatching browser execution to Playwright Agent...");
+        var workerRes = await _workerClient.TryApplyAsync(targetUrl, profile, resumeData, resumePdfBytes, prefilledAnswers, false, false, cancellationToken);
+        if (workerRes != null)
+        {
+            foreach (var wLog in workerRes.ExecutionLogs) await Log(wLog);
+            if (workerRes.Status == "Submitted")
+            {
+                await Log("[Generic AI Browser Agent] Form submitted successfully to career portal.");
+                return new ApplicationAutomationResult
+                {
+                    Success = true,
+                    Message = "Application submitted successfully to career portal.",
+                    FinalPageUrl = workerRes.FinalPageUrl,
+                    PausedForUserReview = false,
+                    ExecutionLogs = logs
+                };
+            }
+        }
 
         return new ApplicationAutomationResult
         {
             Success = true,
-            Message = $"Custom career portal form pre-filled ({mappedFields.Count} fields mapped). Review gateway activated.",
+            Message = "Custom career portal package staged for review.",
             FinalPageUrl = targetUrl,
             PausedForUserReview = true,
             ExecutionLogs = logs

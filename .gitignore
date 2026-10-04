@@ -10,6 +10,8 @@ infra/.env.*
 # .NET / C#
 bin/
 obj/
+publish_out/
+backend/publish_out/
 *.user
 *.userosscache
 *.sln.docstates
