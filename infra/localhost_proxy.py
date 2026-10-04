@@ -47,9 +47,10 @@ def forward(src, dst, done_event):
 
 def handle_connection(client, port):
     target_ip = get_wsl_ip()
+    target_port = 5000 if port == 9000 else port
     remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        remote.connect((target_ip, port))
+        remote.connect((target_ip, target_port))
         c2r_done = threading.Event()
         r2c_done = threading.Event()
 
@@ -92,7 +93,7 @@ def main():
     initial_ip = get_wsl_ip()
     print(f"[Proxy] Initialized. Current WSL IP: {initial_ip}")
     threads = []
-    for port in [3000, 5000, 6379, 4222]:
+    for port in [3000, 5000, 6379, 4222, 9000]:
         t = threading.Thread(target=proxy_port, args=(port,), daemon=True)
         t.start()
         threads.append(t)

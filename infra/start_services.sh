@@ -97,6 +97,7 @@ podman run -d --name vedha-backend \
   --network infra_vedha-network \
   --network-alias backend \
   -p 5000:8080 \
+  -v vedha_storage_data:/app/s3_local_cache \
   -e ASPNETCORE_ENVIRONMENT=Development \
   -e ConnectionStrings__DefaultConnection="Host=vedha-postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};" \
   -e ConnectionStrings__Redis="vedha-redis:6379" \

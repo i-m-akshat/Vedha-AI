@@ -41,8 +41,13 @@ public class MinioS3StorageService : IS3StorageService
         var objectKey = $"resumes/{applicationId}/{fileName}";
         var localFilePath = Path.Combine(_localStorageDir, $"{applicationId}_{fileName}");
 
-        // 1. Cache to local storage directory for offline / local fallback
+        // 1. Cache to local storage directory for offline / local fallback (both flat and hierarchical)
         await File.WriteAllBytesAsync(localFilePath, pdfBytes, cancellationToken);
+        var hierarchicalPath = Path.Combine(_localStorageDir, "resumes", applicationId.ToString(), fileName);
+        var hierarchicalDir = Path.GetDirectoryName(hierarchicalPath);
+        if (!string.IsNullOrEmpty(hierarchicalDir))
+            Directory.CreateDirectory(hierarchicalDir);
+        await File.WriteAllBytesAsync(hierarchicalPath, pdfBytes, cancellationToken);
 
         // 2. Attempt S3 / MinIO REST upload
         var s3Url = $"{_publicEndpoint.TrimEnd('/')}/{_bucket}/{objectKey}";

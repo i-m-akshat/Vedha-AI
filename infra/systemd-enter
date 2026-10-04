@@ -1,0 +1,3 @@
+#!/bin/bash
+PID=$(pgrep -o systemd)
+exec nsenter -t "$PID" -m -p -n -- "$@"

@@ -206,62 +206,49 @@
     );
   }
 
+  // Set value through React/Ember native property descriptor so synthetic events fire
+  function setNativeValue(element, value) {
+    if (!element) return;
+    const isTextarea = element.tagName === "TEXTAREA";
+    const prototype = isTextarea ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+    const descriptor = Object.getOwnPropertyDescriptor(prototype, "value");
+    if (descriptor && descriptor.set) {
+      descriptor.set.call(element, value);
+    } else {
+      element.value = value;
+    }
+    element.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+    element.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+  }
+
   // 5. Humanized Biometric Keystroke Jitter & Typo Simulation
   async function typeLikeHuman(el, text) {
-    if (!el || !text) return false;
+    if (!el || text === undefined || text === null) return false;
+    const strText = String(text);
 
     el.scrollIntoView({ behavior: "smooth", block: "center" });
     await simulatePointerInteraction(el);
     el.focus();
-    await sleep(randomBetween(100, 220));
+    await sleep(randomBetween(50, 100));
 
-    el.value = "";
-    el.dispatchEvent(new Event("focus", { bubbles: true }));
+    // Clear existing
+    setNativeValue(el, "");
+    el.dispatchEvent(new Event("focus", { bubbles: true, composed: true }));
 
-    for (let i = 0; i < text.length; i++) {
-      const char = text[i];
-
-      // Occasional realistic typo simulation (1 in 50 characters)
-      if (
-        text.length > 8 &&
-        i > 2 &&
-        i < text.length - 2 &&
-        Math.random() < 0.02
-      ) {
-        const typoChar = String.fromCharCode(char.charCodeAt(0) + 1);
-        el.value += typoChar;
-        el.dispatchEvent(
-          new InputEvent("input", { data: typoChar, bubbles: true }),
-        );
-        await sleep(randomBetween(80, 160));
-        // Backspace
-        el.value = el.value.slice(0, -1);
-        el.dispatchEvent(
-          new InputEvent("input", {
-            data: "",
-            inputType: "deleteContentBackward",
-            bubbles: true,
-          }),
-        );
-        await sleep(randomBetween(90, 180));
-      }
-
+    for (let i = 0; i < strText.length; i++) {
+      const char = strText[i];
       el.value += char;
-      el.dispatchEvent(
-        new KeyboardEvent("keydown", { key: char, bubbles: true }),
-      );
+      el.dispatchEvent(new KeyboardEvent("keydown", { key: char, bubbles: true }));
       el.dispatchEvent(new InputEvent("input", { data: char, bubbles: true }));
-      el.dispatchEvent(
-        new KeyboardEvent("keyup", { key: char, bubbles: true }),
-      );
-
-      // Natural Gaussian keystroke delay (40ms to 90ms)
-      await sleep(randomBetween(40, 90));
+      el.dispatchEvent(new KeyboardEvent("keyup", { key: char, bubbles: true }));
+      await sleep(randomBetween(15, 35));
     }
 
-    el.dispatchEvent(new Event("change", { bubbles: true }));
-    el.dispatchEvent(new Event("blur", { bubbles: true }));
-    await sleep(randomBetween(120, 260));
+    // Ensure final value is registered through React/Ember synthetic setter
+    setNativeValue(el, strText);
+    el.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+    el.dispatchEvent(new Event("blur", { bubbles: true, composed: true }));
+    await sleep(randomBetween(50, 100));
     return true;
   }
 
@@ -632,117 +619,185 @@
     });
   }
 
+  function isFieldActionable(el) {
+    if (!el) return false;
+    if (el.type === "hidden") return false;
+    if (el.disabled || el.readOnly) return false;
+    const style = window.getComputedStyle(el);
+    if (style.display === "none" || style.visibility === "hidden") return false;
+    return true;
+  }
+
+  function getFieldQuestionText(el) {
+    if (!el) return "";
+    const container = el.closest(
+      ".fb-dash-form-element, [data-test-form-builder-single-line-text-form-component], [data-test-form-builder-radio-button-form-component], [data-test-text-entity-list-form-component], .jobs-easy-apply-form-section__grouping, div[class*='form-element'], fieldset"
+    );
+    if (container) {
+      const header = container.querySelector(
+        "label, legend, span.fb-dash-form-element__label, .t-14.t-bold, span[aria-hidden='true'], [data-test-form-builder-radio-button-form-component__title]"
+      );
+      if (header && header.innerText.trim()) return header.innerText.trim().toLowerCase();
+    }
+    if (el.id) {
+      const lbl = document.querySelector(`label[for="${el.id}"]`);
+      if (lbl && lbl.innerText.trim()) return lbl.innerText.trim().toLowerCase();
+    }
+    const parentLbl = el.closest("label");
+    if (parentLbl && parentLbl.innerText.trim()) return parentLbl.innerText.trim().toLowerCase();
+    return (el.getAttribute("aria-label") || el.getAttribute("placeholder") || el.getAttribute("name") || "").toLowerCase();
+  }
+
   async function fillModalInputs(modal, payload) {
     if (!modal) return;
-    const inputs = Array.from(modal.querySelectorAll("input, textarea, select")).filter(isElementVisible);
+    const safePayload = payload || {};
+    const answersList = Array.isArray(safePayload.answers) ? safePayload.answers : [];
 
-    for (const input of inputs) {
-      const name = (input.getAttribute("name") || "").toLowerCase();
-      const id = (input.getAttribute("id") || "").toLowerCase();
-      const labelEl = input.id ? modal.querySelector(`label[for="${input.id}"]`) : input.closest("label");
-      const labelText = (labelEl?.innerText || "").toLowerCase();
-      const descriptor = `${name} ${id} ${labelText}`.trim();
+    // 1. Text, Tel, Number, Email, Combobox inputs and Textareas
+    const allInputs = Array.from(modal.querySelectorAll("input, textarea, select")).filter(isFieldActionable);
+
+    for (const input of allInputs) {
+      if (input.type === "radio" || input.type === "checkbox" || input.type === "file") continue;
+      if (input.tagName === "SELECT") continue;
+
+      const q = getFieldQuestionText(input);
+      const currVal = (input.value || "").trim();
 
       // Phone
-      if (input.type === "tel" || descriptor.includes("phone") || descriptor.includes("mobile")) {
-        if (!input.value.trim() && payload.phone) {
-          await typeLikeHuman(input, payload.phone);
+      if (input.type === "tel" || q.includes("phone") || q.includes("mobile")) {
+        const phoneVal = safePayload.phone || safePayload.phoneNumber || "9876543210";
+        if (!currVal) {
+          await typeLikeHuman(input, phoneVal);
         }
       }
       // Email
-      else if (input.type === "email" || descriptor.includes("email")) {
-        if (!input.value.trim() && payload.email) {
-          await typeLikeHuman(input, payload.email);
+      else if (input.type === "email" || q.includes("email")) {
+        if (!currVal && safePayload.email) {
+          await typeLikeHuman(input, safePayload.email);
         }
       }
-      // City / Location
-      else if (descriptor.includes("city") || descriptor.includes("location")) {
-        if (!input.value.trim() && payload.currentCity) {
-          await typeLikeHuman(input, payload.currentCity);
-        }
-      }
-      // Numeric years of experience questions (e.g. "How many years of experience do you have with .NET?")
-      else if (input.type === "number" || input.getAttribute("type") === "numeric" || id.includes("numeric") || descriptor.includes("years") || descriptor.includes("experience")) {
-        if (!input.value.trim()) {
-          // Check if any screening answer matches
-          let matchedAns = null;
-          if (Array.isArray(payload.answers)) {
-            matchedAns = payload.answers.find(a => labelText.includes((a.questionText || "").toLowerCase().slice(0, 20)));
+      // City / Location typeahead
+      else if (input.getAttribute("role") === "combobox" || q.includes("city") || q.includes("location") || q.includes("address")) {
+        const cityVal = safePayload.currentCity || "Bangalore";
+        if (!currVal) {
+          await typeLikeHuman(input, cityVal);
+          await sleep(400);
+          const suggestion = document.querySelector(".basic-typeahead__selectable-list li, div[role='listbox'] div[role='option'], .artdeco-typeahead__results-list li");
+          if (suggestion) {
+            suggestion.click();
+            await sleep(200);
           }
-          const numValue = matchedAns ? (matchedAns.answerText.match(/\d+/) || ["5"])[0] : "4";
-          await typeLikeHuman(input, numValue);
         }
       }
-      // Standard Text input / Textarea
-      else if (input.type === "text" || input.tagName === "TEXTAREA") {
-        if (!input.value.trim() && Array.isArray(payload.answers)) {
-          const matched = payload.answers.find(a => labelText.includes((a.questionText || "").toLowerCase().slice(0, 20)));
+      // Numeric years of experience
+      else if (input.type === "number" || input.getAttribute("inputmode") === "numeric" || q.includes("year") || q.includes("experience")) {
+        if (!currVal) {
+          let numVal = "4";
+          const matched = answersList.find(a => q.includes((a.questionText || "").toLowerCase().slice(0, 15)));
           if (matched) {
-            await typeLikeHuman(input, matched.answerText);
+            const digits = (matched.answerText || "").match(/\d+/);
+            if (digits) numVal = digits[0];
+          }
+          await typeLikeHuman(input, numVal);
+        }
+      }
+      // Standard Text input or Textarea
+      else {
+        if (!currVal) {
+          let textVal = "";
+          const matched = answersList.find(a => q.includes((a.questionText || "").toLowerCase().slice(0, 15)));
+          if (matched && matched.answerText) {
+            textVal = matched.answerText;
+          } else if (q.includes("salary") || q.includes("ctc")) {
+            textVal = safePayload.expectedSalary || safePayload.currentSalary || "1800000";
+          } else if (q.includes("notice")) {
+            textVal = String(safePayload.noticePeriod || safePayload.noticePeriodDays || 30);
+          } else if (q.includes("gpa") || q.includes("percentage")) {
+            textVal = "8.5";
+          }
+          if (textVal) {
+            await typeLikeHuman(input, textVal);
           }
         }
       }
     }
 
-    // Radio buttons (Fieldsets / Yes-No questions)
-    const fieldsets = Array.from(modal.querySelectorAll("fieldset, div[data-test-form-builder-radio-button-form-component]"));
+    // 2. Radio buttons (Yes / No / Single-Choice)
+    const fieldsets = Array.from(modal.querySelectorAll("fieldset, [data-test-form-builder-radio-button-form-component]"));
     for (const fs of fieldsets) {
-      const legend = fs.querySelector("legend, label, span.fb-dash-form-element__label");
-      const qText = (legend?.innerText || "").toLowerCase();
+      const q = getFieldQuestionText(fs);
       const radios = Array.from(fs.querySelectorAll("input[type='radio']"));
       if (radios.length === 0) continue;
 
-      const alreadyChecked = radios.some(r => r.checked);
-      if (alreadyChecked) continue;
+      const isAnyChecked = radios.some(r => r.checked);
+      if (isAnyChecked) continue;
 
-      let preferredAnswer = "yes";
-      if (qText.includes("sponsorship") || qText.includes("require visa") || qText.includes("visa sponsorship")) {
-        preferredAnswer = payload.requiresVisaSponsorship ? "yes" : "no";
-      } else if (qText.includes("authorized") || qText.includes("authorization") || qText.includes("legal") || qText.includes("eligible")) {
-        preferredAnswer = "yes";
-      } else if (qText.includes("relocate") || qText.includes("commute") || qText.includes("background check") || qText.includes("drug test")) {
-        preferredAnswer = "yes";
-      } else if (Array.isArray(payload.answers)) {
-        const matched = payload.answers.find(a => qText.includes((a.questionText || "").toLowerCase().slice(0, 20)));
+      let wantYes = true;
+      if (q.includes("sponsorship") || q.includes("require visa") || q.includes("visa sponsorship")) {
+        wantYes = safePayload.requiresVisaSponsorship === true;
+      } else if (q.includes("authorized") || q.includes("legally") || q.includes("eligible")) {
+        wantYes = true;
+      } else if (q.includes("commute") || q.includes("relocate") || q.includes("background check") || q.includes("drug test")) {
+        wantYes = true;
+      } else if (q.includes("completed") || q.includes("degree") || q.includes("bachelor")) {
+        wantYes = true;
+      } else {
+        const matched = answersList.find(a => q.includes((a.questionText || "").toLowerCase().slice(0, 15)));
         if (matched) {
-          preferredAnswer = matched.answerText.toLowerCase().includes("yes") ? "yes" : "no";
+          wantYes = !matched.answerText.toLowerCase().includes("no");
         }
       }
 
-      const targetRadio = radios.find(r => {
+      const targetWord = wantYes ? "yes" : "no";
+      const matchedRadio = radios.find(r => {
         const lbl = fs.querySelector(`label[for="${r.id}"]`) || r.closest("label");
         const t = (lbl?.innerText || r.value || "").toLowerCase();
-        return t.includes(preferredAnswer);
-      }) || radios[0];
+        return t.includes(targetWord);
+      }) || (wantYes ? radios[0] : radios[radios.length - 1]);
 
-      if (targetRadio) {
-        targetRadio.click();
-        targetRadio.dispatchEvent(new Event("change", { bubbles: true }));
-        await sleep(randomBetween(150, 300));
+      if (matchedRadio) {
+        matchedRadio.click();
+        matchedRadio.dispatchEvent(new Event("change", { bubbles: true }));
+        await sleep(150);
       }
     }
 
-    // Select dropdowns
-    const selects = Array.from(modal.querySelectorAll("select")).filter(isElementVisible);
+    // 3. Dropdowns (<select>)
+    const selects = Array.from(modal.querySelectorAll("select")).filter(isFieldActionable);
     for (const sel of selects) {
-      if (sel.value && sel.value !== "Select an option" && sel.selectedIndex > 0) continue;
-      const lbl = sel.id ? modal.querySelector(`label[for="${sel.id}"]`) : sel.closest("label");
-      const qText = (lbl?.innerText || "").toLowerCase();
+      if (sel.selectedIndex > 0 && sel.value && sel.value !== "Select an option") continue;
 
-      let targetOption = null;
-      if (qText.includes("sponsorship") || qText.includes("require visa")) {
-        targetOption = Array.from(sel.options).find(o => o.text.toLowerCase().includes(payload.requiresVisaSponsorship ? "yes" : "no"));
-      } else if (qText.includes("authorized") || qText.includes("authorization")) {
-        targetOption = Array.from(sel.options).find(o => o.text.toLowerCase().includes("yes") || o.text.toLowerCase().includes("authorized"));
-      } else if (sel.options.length > 1) {
-        targetOption = sel.options[1]; // default to first valid answer
+      const q = getFieldQuestionText(sel);
+      let wantYes = true;
+      if (q.includes("sponsorship") || q.includes("require visa")) {
+        wantYes = safePayload.requiresVisaSponsorship === true;
       }
 
-      if (targetOption) {
-        sel.value = targetOption.value;
+      const targetWord = wantYes ? "yes" : "no";
+      let chosenOpt = Array.from(sel.options).find(o => o.text.toLowerCase().includes(targetWord));
+      if (!chosenOpt && sel.options.length > 1) {
+        chosenOpt = sel.options[1];
+      }
+
+      if (chosenOpt) {
+        sel.value = chosenOpt.value;
         sel.dispatchEvent(new Event("change", { bubbles: true }));
-        await sleep(randomBetween(150, 300));
+        await sleep(150);
       }
+    }
+
+    // 4. Resume Document Selection Card
+    const resumeCards = Array.from(modal.querySelectorAll(
+      ".jobs-document-upload-redesign-card__container, div[data-test-document-upload], input[type='radio'][id*='resume'], button[aria-label*='Choose resume']"
+    ));
+    if (resumeCards.length > 0) {
+      const firstResume = resumeCards[0];
+      if (firstResume.tagName === "INPUT" && !firstResume.checked) {
+        firstResume.click();
+      } else if (firstResume.tagName !== "INPUT") {
+        firstResume.click();
+      }
+      await sleep(200);
     }
   }
 
@@ -766,29 +821,35 @@
       if (anyApply) applyBtn = anyApply;
     }
 
-    if (!applyBtn) {
-      return {
-        success: false,
-        error: "Could not find 'Easy Apply' button on this LinkedIn job posting. It may require applying on the company's external career site."
-      };
+    // Check if modal is already open
+    let modal = document.querySelector(".jobs-easy-apply-modal, div[data-test-modal-id='easy-apply-modal'], .artdeco-modal, div[role='dialog']");
+
+    if (!modal && applyBtn) {
+      const actualButton = applyBtn.closest("button") || applyBtn;
+      actualButton.click();
+      await sleep(2000);
+      modal = document.querySelector(".jobs-easy-apply-modal, div[data-test-modal-id='easy-apply-modal'], .artdeco-modal, div[role='dialog']");
     }
 
-    const actualButton = applyBtn.closest("button") || applyBtn;
-    actualButton.click();
-    await sleep(2000);
+    if (!modal) {
+      return {
+        success: false,
+        error: "Could not find 'Easy Apply' button or open application modal."
+      };
+    }
 
     // Multi-step modal loop
     let stepCount = 0;
     while (stepCount < 12) {
       stepCount++;
-      const modal = document.querySelector(".jobs-easy-apply-modal, div[data-test-modal-id='easy-apply-modal'], .artdeco-modal");
+      modal = document.querySelector(".jobs-easy-apply-modal, div[data-test-modal-id='easy-apply-modal'], .artdeco-modal, div[role='dialog']");
       if (!modal) break;
 
       // Fill inputs in active step
       await fillModalInputs(modal, payload);
       await sleep(800);
 
-      // Check if Review screen reached (contains Submit button)
+      // Check if Submit button reached
       const submitBtn = Array.from(modal.querySelectorAll("button")).find(b => {
         const text = (b.innerText || "").toLowerCase();
         const aria = (b.getAttribute("aria-label") || "").toLowerCase();
@@ -796,9 +857,9 @@
       });
 
       if (submitBtn) {
-        if (payload.copilotMode !== false) {
+        if (payload?.copilotMode !== false) {
           // Copilot Review Gateway: Stop before submit and present on-screen review banner
-          showCopilotReviewHud(payload.queueItemId, payload.company, payload.title);
+          showCopilotReviewHud(payload?.queueItemId, payload?.company, payload?.title);
           return {
             success: true,
             pausedForReview: true,

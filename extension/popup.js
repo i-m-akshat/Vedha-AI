@@ -225,80 +225,101 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (!activeTabId) return;
 
       fillStatusEl.style.display = "block";
-      fillStatusEl.innerText = "🚀 Initiating LinkedIn Easy Apply automation...";
+      fillStatusEl.innerText = "🚀 Synchronizing credentials with Vedha AI...";
 
-      chrome.storage.local.get(
-        ["candidateProfile", "jwtToken", "vedha_token", "token", todayKey],
-        async (stored) => {
-          let profile = stored.candidateProfile;
-          const token = stored.jwtToken || stored.vedha_token || stored.token;
-          let user = null;
-          let masterResume = null;
-          let queueItems = [];
-
-          if (token) {
-            try {
-              const [profileRes, userRes, resumeRes, queueRes] = await Promise.all([
-                !profile
-                  ? fetch("http://localhost:5000/api/candidateprofile", {
-                      headers: { Authorization: `Bearer ${token}` },
-                    })
-                  : Promise.resolve(null),
-                fetch("http://localhost:5000/api/auth/me", {
-                  headers: { Authorization: `Bearer ${token}` },
-                }),
-                fetch("http://localhost:5000/api/masterresume", {
-                  headers: { Authorization: `Bearer ${token}` },
-                }),
-                fetch("http://localhost:5000/api/orchestrator/queue", {
-                  headers: { Authorization: `Bearer ${token}` },
-                }),
-              ]);
-
-              if (profileRes && profileRes.ok) profile = await profileRes.json();
-              if (userRes && userRes.ok) user = await userRes.json();
-              if (resumeRes && resumeRes.ok) masterResume = await resumeRes.json();
-              if (queueRes && queueRes.ok) queueItems = await queueRes.json();
-            } catch (e) {}
-          }
-
-          // Find matching queue item if exists
-          const currentUrl = extractedData?.url || "";
-          const matchedItem = queueItems?.find(
-            (q) => q.jobUrl === currentUrl || currentUrl.includes(q.targetCompany?.toLowerCase() || "xyz")
-          );
-
-          const pInfo = masterResume?.schema?.personalInfo;
-          const payload = {
-            queueItemId: matchedItem?.id || null,
-            company: extractedData?.company || matchedItem?.targetCompany || "",
-            title: extractedData?.title || matchedItem?.targetRole || "",
-            fullName: pInfo?.fullName || user?.fullName || profile?.fullName || "",
-            email: pInfo?.email || user?.email || profile?.email || "",
-            phone: profile?.phoneNumber || pInfo?.phone || "",
-            currentCity: profile?.currentCity || pInfo?.location || "",
-            requiresVisaSponsorship: profile?.requiresVisaSponsorship || false,
-            answers: matchedItem?.prefilledAnswers || [],
-            copilotMode: true,
-          };
-
-          chrome.tabs.sendMessage(
-            activeTabId,
-            { action: "AUTO_APPLY_LINKEDIN", payload },
-            (res) => {
-              if (chrome.runtime.lastError || !res) {
-                fillStatusEl.innerText = "⚠️ Could not connect to LinkedIn Easy Apply dialog.";
-              } else if (!res.success) {
-                fillStatusEl.innerText = `⚠️ ${res.error || "Easy Apply could not be automated on this posting."}`;
-              } else if (res.pausedForReview) {
-                fillStatusEl.innerText = "✨ Review Gateway Active: All fields filled! Inspect and submit on LinkedIn.";
-              } else {
-                fillStatusEl.innerText = `✅ ${res.message || "Easy Apply complete!"}`;
+      // Attempt reading token from storage or open localhost:3000 tab
+      let token = await new Promise((resolve) => {
+        chrome.storage.local.get(["vedha_token", "jwtToken", "token"], async (stored) => {
+          let t = stored.vedha_token || stored.jwtToken || stored.token;
+          if (t) return resolve(t);
+          try {
+            const tabs = await chrome.tabs.query({ url: "*://localhost:3000/*" });
+            if (tabs.length > 0 && tabs[0].id) {
+              const res = await chrome.scripting.executeScript({
+                target: { tabId: tabs[0].id },
+                func: () => localStorage.getItem("vedha_token") || localStorage.getItem("resumate_token"),
+              });
+              t = res?.[0]?.result;
+              if (t) {
+                chrome.storage.local.set({ vedha_token: t });
+                return resolve(t);
               }
             }
-          );
+          } catch (e) {}
+          resolve(null);
+        });
+      });
+
+      fillStatusEl.innerText = "🚀 Fetching candidate profile & screening answers...";
+
+      let profile = null;
+      let user = null;
+      let masterResume = null;
+      let queueItems = [];
+
+      if (token) {
+        try {
+          const [profileRes, userRes, resumeRes, queueRes] = await Promise.all([
+            fetch("http://localhost:5000/api/candidateprofile", {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+            fetch("http://localhost:5000/api/auth/me", {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+            fetch("http://localhost:5000/api/masterresume", {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+            fetch("http://localhost:5000/api/orchestrator/queue", {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+          ]);
+
+          if (profileRes && profileRes.ok) profile = await profileRes.json();
+          if (userRes && userRes.ok) user = await userRes.json();
+          if (resumeRes && resumeRes.ok) masterResume = await resumeRes.json();
+          if (queueRes && queueRes.ok) queueItems = await queueRes.json();
+        } catch (e) {}
+      }
+
+      // Find matching queue item if exists
+      const currentUrl = (extractedData?.url || "").toLowerCase();
+      const matchedItem = queueItems?.find(
+        (q) => (q.jobUrl && currentUrl.includes(q.jobUrl.toLowerCase().slice(0, 30))) ||
+               (q.targetCompany && currentUrl.includes(q.targetCompany.toLowerCase().slice(0, 10)))
+      );
+
+      const pInfo = masterResume?.schema?.personalInfo;
+      const payload = {
+        queueItemId: matchedItem?.id || null,
+        company: extractedData?.company || matchedItem?.targetCompany || "Target Company",
+        title: extractedData?.title || matchedItem?.targetRole || "Target Position",
+        fullName: pInfo?.fullName || user?.fullName || profile?.fullName || "Candidate",
+        email: pInfo?.email || user?.email || profile?.email || "",
+        phone: profile?.phoneNumber || pInfo?.phone || "9876543210",
+        currentCity: profile?.currentCity || pInfo?.location || "Bangalore",
+        requiresVisaSponsorship: profile?.requiresVisaSponsorship || false,
+        expectedSalary: profile?.expectedSalary || "1800000",
+        noticePeriod: profile?.noticePeriodDays || 30,
+        answers: matchedItem?.prefilledAnswers || [],
+        copilotMode: true,
+      };
+
+      fillStatusEl.innerText = "🚀 Automating LinkedIn Easy Apply modal...";
+
+      chrome.tabs.sendMessage(
+        activeTabId,
+        { action: "AUTO_APPLY_LINKEDIN", payload },
+        (res) => {
+          if (chrome.runtime.lastError || !res) {
+            fillStatusEl.innerText = "⚠️ Could not communicate with LinkedIn page. Please refresh the tab.";
+          } else if (res.success) {
+            fillStatusEl.innerText = res.pausedForReview
+              ? "✅ Fields filled! Paused at final Review screen for candidate confirmation."
+              : "✅ Application successfully submitted on LinkedIn!";
+          } else {
         }
       );
     });
   }
 });
+
