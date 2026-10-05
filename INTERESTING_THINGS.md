@@ -26,6 +26,12 @@
 16. [Weighted Multi-Factor ATS Match Scoring & Automated Learning Roadmaps](#16-weighted-multi-factor-ats-match-scoring--automated-learning-roadmaps)
 17. [Chrome Extension Manifest V3 Bi-Directional Bridge & Content Script Isolation](#17-chrome-extension-manifest-v3-bi-directional-bridge--content-script-isolation)
 18. [ASP.NET Core Health Probes & Rate Limiting Architecture](#18-aspnet-core-health-probes--rate-limiting-architecture)
+19. [Anti-Bot Scraping Microservice: Crawl4AI, Playwright Stealth & Dynamic JS Unrolling](#19-anti-bot-scraping-microservice-crawl4ai-playwright-stealth--dynamic-js-unrolling)
+20. [Asynchronous Distributed Decoupling via NATS JetStream Event Streams](#20-asynchronous-distributed-decoupling-via-nats-jetstream-event-streams)
+21. [Enterprise AWS SigV4 Object Storage (MinIO) with Local Cache Fallback](#21-enterprise-aws-sigv4-object-storage-minio-with-local-cache-fallback)
+22. [Draggable Anti-Occlusion Copilot Dock & Autonomous Modal Stacking Engine](#22-draggable-anti-occlusion-copilot-dock--autonomous-modal-stacking-engine)
+23. [Self-Healing Regex Taxonomy & Zero-Penalty AI Keyword Extraction Fallback](#23-self-healing-regex-taxonomy--zero-penalty-ai-keyword-extraction-fallback)
+24. [Futuristic 3D Spatial Neural Constellation Interface (Three.js)](#24-futuristic-3d-spatial-neural-constellation-interface-threejs)
 
 ---
 
@@ -459,6 +465,108 @@ Production microservices require instant diagnostic visibility for Kubernetes re
 In [`Program.cs`](file:///A:/AIProjects/Resumebuilder/backend/src/ResumeTailor.WebApi/Program.cs):
 - **`/healthz` Probe**: Checks database connectivity in real time, returning RFC-compliant health status payloads with microsecond response times.
 - **Sliding-Window Rate Limiter**: Configured on authentication and generative endpoints to prevent credential brute-forcing and quota abuse.
+
+---
+
+## 19. Anti-Bot Scraping Microservice: Crawl4AI, Playwright Stealth & Dynamic JS Unrolling
+
+### The Problem
+Major recruitment sites (LinkedIn, Naukri, Workday) protect their job postings with strict anti-bot mechanisms: Cloudflare challenges, Akamai Bot Manager, dynamic client-side SPA rendering (Next.js), and collapsed UI accordions (e.g. `"Show more"` or `"Read more"` buttons). Standard HTTP `HttpClient` GET requests either trigger 403 Forbidden blocks or capture truncated text with missing critical ATS requirements.
+
+### How We Solved It
+In [`Crawl4AiService.cs`](file:///A:/AIProjects/Resumebuilder/backend/src/ResumeTailor.Infrastructure/WebScraping/Crawl4AiService.cs), we integrated a dedicated **Crawl4AI Microservice** (`unclecode/crawl4ai:latest` on port 11235) implementing:
+1. **Playwright Stealth & TLS Masquerading**:
+   - Runs headless Chromium with randomized viewport bounds, masked navigator properties, and desktop User-Agents to bypass Akamai and Cloudflare fingerprinting.
+2. **Automated JavaScript Accordion Unrolling**:
+   - Automatically executes targeting JavaScript hooks:
+     - LinkedIn: clicks `.show-more-less-html__button--more` to expand the full description.
+     - Naukri: clicks `.styles_jhc__read-more-btn`.
+3. **Next.js SPA Hydration Synchronization**:
+   - Delays DOM snapshot capture (`delay_before_return_html = 4.0s`) to ensure client-side asynchronous hydration API calls (`jobDetailsResp`) finish rendering before extracting the DOM.
+4. **Dual-Engine Resilient Fallback**:
+   - If Crawl4AI times out, fails, or is disabled, the system automatically falls back to in-process AngleSharp DOM sanitization with zero candidate-facing downtime.
+
+---
+
+## 20. Asynchronous Distributed Decoupling via NATS JetStream Event Streams
+
+### The Problem
+Tailoring a resume via LLM, validating truth invariants, rendering ATS PDFs, and automating multi-step browser form submissions can take 15–45 seconds. Running these workloads synchronously in HTTP request threads leads to gateway timeouts (504s), thread pool exhaustion, and poor user responsiveness.
+
+### How We Solved It
+We engineered an event-driven architecture using **NATS JetStream**:
+1. **Topic Partitioning**:
+   - `app.job.ingested` ➔ Triggers the RAG Resume Generator.
+   - `app.resume.generated` ➔ Triggers the autonomous Playwright Worker (`workers/`).
+   - `app.worker.success` / `app.worker.hitl_required` / `app.worker.failed` ➔ Triggers credit deduction, billing, and candidate UI alerts.
+2. **At-Least-Once Delivery & Durable Consumer Groups**:
+   - Dedicated consumer groups (`core_rag_generator_group`, `core_billing_group`, `core_hitl_group`) persist acknowledgments with automatic redelivery on container crashes.
+3. **Background Listener**:
+   - Implemented `NatsWorkerEventConsumerHostedService` as an ASP.NET Core `IHostedService` to monitor worker events continuously without blocking WebAPI requests.
+
+---
+
+## 21. Enterprise AWS SigV4 Object Storage (MinIO) with Local Cache Fallback
+
+### The Problem
+Storing generated PDF/DOCX resumes directly on the application server filesystem violates 12-factor cloud principles, prevents horizontal autoscaling, and risks data loss across container deployments. Conversely, relying purely on third-party cloud S3 buckets introduces vendor lock-in and high cloud egress fees during local development.
+
+### How We Solved It
+In [`MinioS3StorageService.cs`](file:///A:/AIProjects/Resumebuilder/backend/src/ResumeTailor.Infrastructure/Storage/MinioS3StorageService.cs):
+1. **AWS SigV4 Authentication**:
+   - Integrates the official `AWSSDK.S3` client with AWS Signature Version 4 signing against MinIO (`cgr.dev/chainguard/minio`).
+2. **Dual-Tier Resilient Storage**:
+   - Primary: High-performance S3 object storage in bucket `vedha-resumes`.
+   - Secondary: Persistent local disk cache at `backend/s3_local_cache/` (mounted via volume `vedha_storage_data:/app/s3_local_cache`).
+3. **Authenticated Streaming Controller**:
+   - `StorageController.cs` exposes endpoints supporting HTTP 206 Partial Content range requests, allowing browser PDF viewers to stream multi-megabyte resumes smoothly.
+
+---
+
+## 22. Draggable Anti-Occlusion Copilot Dock & Autonomous Modal Stacking Engine
+
+### The Problem
+When applying on LinkedIn, secondary modals ("Discard application?", "Save application?", custom form overlays, and dropdown pickers) frequently render under chat widgets or behind extension HUDs. Furthermore, a statically placed extension widget often occludes the bottom-right action area of application dialogs ("Next", "Review", "Submit").
+
+### How We Solved It
+In [`extension/content.js`](file:///A:/AIProjects/Resumebuilder/extension/content.js):
+1. **Autonomous Modal Stacking Engine (`manageModalStacking`)**:
+   - Observes the DOM with a `MutationObserver` and automatically elevates application dialogs (`[role='dialog']`, `[aria-modal='true']`, `.artdeco-modal`) to `z-index: 2,147,483,100`.
+   - Constrains docked LinkedIn chat trays (`aside.msg-overlay-container`) to `z-index: 1000` so conversations never trap application forms in the background.
+2. **Draggable & Viewport-Adaptive Dock**:
+   - Enables dragging across the viewport with boundary clamping and mouse movement distance detection (`Math.hypot(dx, dy) > 5px` suppresses accidental clicks).
+   - Automatically lowers its own z-index and collapses to a sleek compact pill when any modal opens, guaranteeing 100% modal visibility.
+
+---
+
+## 23. Self-Healing Regex Taxonomy & Zero-Penalty AI Keyword Extraction Fallback
+
+### The Problem
+Certain unconventional job descriptions list requirements in narrative paragraphs rather than bulleted lists, causing basic LLM extraction prompts to return empty skill arrays (`mustHaveSkills: []`). When parsed with 0 keywords, standard ATS scoring algorithms apply an unfair default penalty (dropping match scores to ~33%), causing candidate panic.
+
+### How We Solved It
+In [`JobDescriptionSchema.cs`](file:///A:/AIProjects/Resumebuilder/backend/src/ResumeTailor.Domain/ValueObjects/JobDescriptionSchema.cs) and [`JobDescriptionCommands.cs`](file:///A:/AIProjects/Resumebuilder/backend/src/ResumeTailor.Application/Features/JobDescriptions/JobDescriptionCommands.cs):
+1. **Boundary-Safe Regex Taxonomy**:
+   - Scans job text against 60+ industry-standard tech stack patterns (`\bC#\b`, `\b\.NET\s*Core\b`, `\bASP\.NET\b`, `\bKubernetes\b`, `\bMicroservices\b`, `\bSOLID\b`, `\bPostgreSQL\b`).
+2. **Dedicated AI Keyword Fallback (`ExtractKeywordsFallbackWithAiAsync`)**:
+   - If the initial parse returns 0 keywords, the pipeline triggers a specialized fallback query to Google Gemini specifically trained for entity extraction from narrative prose, ensuring zero false penalties.
+
+---
+
+## 24. Futuristic 3D Spatial Neural Constellation Interface (Three.js)
+
+### The Problem
+Traditional resume builders and job tracking tools look like dry administrative data entry forms, causing candidate fatigue during stressful job hunts.
+
+### How We Solved It
+In [`FuturisticCanvas3D.tsx`](file:///A:/AIProjects/Resumebuilder/frontend/src/components/FuturisticCanvas3D.tsx):
+1. **Interactive Neural Constellation**:
+   - Implemented a lightweight, hardware-accelerated Three.js canvas featuring floating neural particles connected by dynamic geometric distance lines.
+   - Interactive mouse parallax gently shifts constellation nodes based on user cursor velocity.
+2. **Cyber Telemetry Diagnostics**:
+   - Header telemetry indicators (`SYNAPSE // 14ms`, `CORE // ACTIVE`) and a 3D spatial toggle allowing candidates to customize immersion levels.
+3. **Holographic Radial Visualizers**:
+   - SVG holographic radial gauges in `ResultStudioPage.tsx` and animated radar loaders with multi-stage progress tracking on the Master Resume upload screen.
 
 ---
 

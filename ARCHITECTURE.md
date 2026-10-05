@@ -1,29 +1,38 @@
 <div align="center">
   <img src="docs/assets/vedha-logo.png" alt="Vedha AI Logo" width="100" style="border-radius: 18px; margin-bottom: 6px;" />
   <h1>Vedha AI — System Architecture</h1>
-  <p><strong>Clean Architecture, CQRS, and Multi-Pipeline Engineering Blueprint</strong></p>
+  <p><strong>Clean Architecture, CQRS, Event-Driven NATS JetStream, and Multi-Pipeline Engineering Blueprint</strong></p>
 </div>
 
 ---
 
 ## 1. High-Level Architecture Overview
 
-Vedha AI is an enterprise-grade AI Career Operating System designed for AI-driven resume tailoring, ATS optimization, semantic job description parsing, multi-pipeline browser application automation, and career tracking. The system follows Clean Architecture principles with CQRS (Command Query Responsibility Segregation) and Domain-Driven Design (DDD).
+Vedha AI is an enterprise-grade AI Career Operating System designed for automated resume tailoring, ATS optimization, semantic job description parsing, multi-pipeline browser application automation, and career tracking. The system follows Clean Architecture principles with CQRS (Command Query Responsibility Segregation), Domain-Driven Design (DDD), and an asynchronous event-driven microservice topology.
 
 ```
                       +-------------------------------------------------------+
                       |                   Client Layer                        |
-                      |  - React 19 + TypeScript + Vite SPA                   |
-                      |  - Chrome Extension (Manifest V3)                     |
+                      |  - React 18/19 + TypeScript + Vite SPA                |
+                      |  - Three.js 3D Spatial Constellation Canvas           |
+                      |  - Chrome Extension Copilot (Manifest V3)             |
                       +---------------------------+---------------------------+
                                                   | REST API & SignalR WebSockets
                                                   v
                       +-------------------------------------------------------+
+                      |             Nginx Ingress / Reverse Proxy             |
+                      |  - Dynamic Multi-Gateway DNS Resolver                 |
+                      |  - Static SPA Bundles Delivery & Asset Caching        |
+                      |  - WebSocket Upgrade Tunnel for SignalR Hubs          |
+                      +---------------------------+---------------------------+
+                                                  | Port 8080 (Internal Bridge)
+                                                  v
+                      +-------------------------------------------------------+
                       |              ResumeTailor.WebApi Layer                |
-                      |  - Controllers & Endpoints                            |
+                      |  - Controllers (Tailor, Auth, Storage, Orchestrator)  |
                       |  - SignalR Hub (TailoringProgressHub)                 |
-                      |  - Auth Middleware (JWT & OAuth)                      |
-                      |  - Rate Limiting, CORS, Global Error Handler          |
+                      |  - JWT Claims Auth & RFC 7807 Exception Middleware   |
+                      |  - NatsWorkerEventConsumerHostedService Background    |
                       +---------------------------+---------------------------+
                                                   | MediatR Pipeline
                                                   v
@@ -32,7 +41,7 @@ Vedha AI is an enterprise-grade AI Career Operating System designed for AI-drive
                       |  - CQRS Commands & Queries                            |
                       |  - FluentValidation Pipeline Behaviors                |
                       |  - Domain Event Handlers                              |
-                      |  - AI & Document Interfaces                           |
+                      |  - Interfaces (IAiService, IS3Storage, ICrawl4Ai)     |
                       +---------------------------+---------------------------+
                                                   |
                      +----------------------------+----------------------------+
@@ -40,143 +49,181 @@ Vedha AI is an enterprise-grade AI Career Operating System designed for AI-drive
                      v                                                         v
 +------------------------------------------+             +------------------------------------------+
 |       ResumeTailor.Domain Layer          |             |    ResumeTailor.Infrastructure Layer     |
-|  - Domain Entities (User, MasterResume,  |             |  - EF Core & PostgreSQL DbContext        |
-|    GeneratedResume, JobDescription, etc.)|             |  - Document Parsers (PdfPig, OpenXML, MD)|
-|  - Value Objects (ResumeSchema, ATSScore)|             |  - Web Scraper (AngleSharp + Readability)|
-|  - Enums, Domain Events & Exceptions     |             |  - AI Multi-Provider (OpenAI/Claude/Gem) |
-|  - Repository Interfaces & Specs         |             |  - ATS & Diff Scoring Engines            |
-+------------------------------------------+             |  - Export Generators (QuestPDF, Docx, MD)|
-                                                         |  - Redis Cache & Hangfire Job Workers    |
+|  - Domain Entities (MasterResume, User,  |             |  - EF Core & PostgreSQL 16 + pgvector    |
+|    GeneratedResume, JobDescription, etc.)|             |  - S3 Storage Service (MinIO + SigV4)    |
+|  - Value Objects (ResumeSchema, ATSScore)|             |  - NATS JetStream Publisher & Consumer   |
+|  - Enums, Domain Events & Invariants     |             |  - Dual Scrapers (Crawl4AI + AngleSharp) |
+|  - Repository Interfaces & Specs         |             |  - QuestPDF Single-Column ATS Generator  |
++------------------------------------------+             |  - Redis 7 Cache & Distributed Locks     |
                                                          +------------------------------------------+
 ```
 
 ---
 
-## 2. Layer Responsibilities
+## 2. Infrastructure & Microservice Topology
 
-### 2.1 Domain Layer (`ResumeTailor.Domain`)
-- Contains enterprise business rules, core entities, and value objects.
-- **Zero dependencies** on database, web frameworks, or third-party SDKs.
-- Key Entities: `User`, `MasterResume`, `ResumeVersion`, `GeneratedResume`, `JobDescription`, `AtsAnalysis`, `ApplicationRecord`, `PromptTemplate`, `UsageLog`.
-- Key Value Objects: `PersonalInfo`, `WorkExperienceItem`, `ProjectItem`, `EducationItem`, `SkillCategory`, `CertificationItem`, `AchievementItem`, `AtsScoreBreakdown`.
+All services operate inside a unified bridge network (`infra_vedha-network`), accessible via standard host ports:
 
-### 2.2 Application Layer (`ResumeTailor.Application`)
+```
++---------------------------------------------------------------------------------------+
+|  Host Machine (Windows / Linux / macOS)                                               |
+|  - Localhost Ports: 3000 (UI/Proxy), 5000 (API), 9000/9001 (S3), 11235 (Crawl4AI)     |
++---------------------------------------------------------------------------------------+
+                                          |
+                                          v
++---------------------------------------------------------------------------------------+
+|  Container Network: infra_vedha-network (Subnet: 10.89.x.x)                           |
+|                                                                                       |
+|  +--------------------+   +--------------------+   +-------------------------------+  |
+|  |   vedha-frontend   |   |   vedha-backend    |   |         vedha-worker          |  |
+|  | (Alpine Nginx/SPA) |   | (ASP.NET Core 10)  |   | (Python 3.11 Playwright/NATS) |  |
+|  | Port: 3000 (80)    |   | Port: 5000 (8080)  |   | Port: 8000                    |  |
+|  +---------+----------+   +---------+----------+   +---------------+---------------+  |
+|            |                        |                              |                  |
+|            +------------------------+------------------------------+                  |
+|                                     |                                                 |
+|          +--------------------------+------------------------------+                  |
+|          |                          |                              |                  |
+|          v                          v                              v                  |
+|  +--------------------+   +--------------------+   +-------------------------------+  |
+|  |   vedha-postgres   |   |    vedha-redis     |   |          vedha-nats           |  |
+|  | (Postgres 16/vec)  |   | (Redis 7 Caching)  |   |    (NATS JetStream Broker)    |  |
+|  | Port: 5432         |   | Port: 6379         |   |    Ports: 4222, 8222          |  |
+|  +--------------------+   +--------------------+   +-------------------------------+  |
+|                                     |                                                 |
+|          +--------------------------+------------------------------+                  |
+|          |                                                         |                  |
+|          v                                                         v                  |
+|  +--------------------+                                 +--------------------------+  |
+|  |    vedha-minio     |                                 |      vedha-crawler       |  |
+|  | (MinIO S3 Storage) |                                 |  (Crawl4AI Anti-Bot API) |  |
+|  | Ports: 9000, 9001  |                                 |  Port: 11235             |  |
+|  +--------------------+                                 +--------------------------+  |
++---------------------------------------------------------------------------------------+
+```
+
+### Services Summary
+
+| Container Name | Internal Port | Host Port | Technology | Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| `vedha-frontend` | `80` | `3000` | Nginx Alpine, React 18/19 | Static SPA delivery, reverse proxy for `/api/`, `/health`, `/swagger` |
+| `vedha-backend` | `8080` | `5000` | ASP.NET Core 10, C# 13 | Core REST WebAPI, RAG engine, MediatR handlers, S3 controller |
+| `vedha-postgres` | `5432` | `5432` | PostgreSQL 16 + pgvector | Relational entities, schema versions, vector embeddings |
+| `vedha-redis` | `6379` | `6379` | Redis 7 Alpine | Screening memory cache, distributed locks, session store |
+| `vedha-nats` | `4222`, `8222` | `4222`, `8222` | NATS JetStream latest | Decoupled asynchronous event broker (`app.>`) |
+| `vedha-minio` | `9000`, `9001` | `9000`, `9001` | MinIO (Chainguard S3) | S3 Object storage (API: 9000, Web Console: 9001) |
+| `vedha-crawler` | `11235` | `11235` | Crawl4AI (Python 3.11) | Playwright stealth scraper with dynamic JS accordion unrolling |
+| `vedha-worker` | `8000` | `8000` | Python 3.11 + Playwright | Autonomous browser agent for ATS submissions |
+
+---
+
+## 3. End-to-End Event-Driven Application Pipeline
+
+The system uses **NATS JetStream** to decouple intensive AI generation and browser automation from synchronous HTTP request threads:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Candidate / UI
+    participant API as Backend (ASP.NET Core)
+    participant NATS as NATS JetStream
+    participant RAG as RagResumeGenerator
+    participant S3 as MinIO S3 (:9000)
+    participant Worker as Playwright Worker
+
+    User->>API: POST /api/autonomous/ingest-job
+    API->>NATS: Publish 'app.job.ingested'
+    Note over NATS,RAG: Stream: app.job.ingested
+    NATS->>RAG: Consume 'app.job.ingested'
+    RAG->>RAG: Query Gemini for Tailored Resume (RAG)
+    RAG->>RAG: Render ATS PDF (QuestPDF)
+    RAG->>S3: Upload PDF (AWSSDK.S3 with SigV4)
+    S3-->>RAG: S3 URL (http://localhost:9000/vedha-resumes/...)
+    RAG->>NATS: Publish 'app.resume.generated'
+    Note over NATS,Worker: Stream: app.resume.generated
+    NATS->>Worker: Consume 'app.resume.generated'
+    Worker->>S3: Stream Tailored Resume PDF
+    Worker->>Worker: Execute Playwright Browser Flow
+    alt Success
+        Worker->>NATS: Publish 'app.worker.success'
+        NATS->>API: Deduct credit atomically & mark 'success'
+    else Human-in-the-Loop Required
+        Worker->>NATS: Publish 'app.worker.hitl_required'
+        NATS->>API: Mark 'hitl_required' & alert UI
+    else Failure
+        Worker->>NATS: Publish 'app.worker.failed'
+        NATS->>API: Mark 'failed' with error telemetry
+    end
+```
+
+---
+
+## 4. Layer Responsibilities & Architecture Boundaries
+
+### 4.1 Domain Layer (`ResumeTailor.Domain`)
+- **Zero external dependencies**: Contains enterprise business rules, core entities, and value objects.
+- Key Entities: `User`, `MasterResume`, `ResumeVersion`, `GeneratedResume`, `JobDescription`, `AtsAnalysis`, `ApplicationRecord`, `ScreeningQuestionMemory`.
+- Value Objects: `PersonalInfo`, `WorkExperienceItem`, `ProjectItem`, `EducationItem`, `SkillCategory`, `CertificationItem`, `AchievementItem`, `AtsScoreBreakdown`.
+
+### 4.2 Application Layer (`ResumeTailor.Application`)
 - Implements CQRS handlers using MediatR.
-- Contains application interfaces (`IAiService`, `IDocumentParser`, `IJobScraperService`, `IAtsScoringEngine`, `IResumeExportService`, `IApplicationDbContext`).
-- Pipeline behaviors handle validation (FluentValidation), structured logging, and performance monitoring.
+- Contains application contracts:
+  - `IAiService` & `IAiServiceFactory`: Multi-provider abstraction for Google Gemini, OpenAI, and Anthropic.
+  - `ICrawl4AiService` & `IJobScraperService`: Dynamic scraping interfaces.
+  - `IS3StorageService`: Object storage contract for resume attachments and exports.
+  - `IAtsScoringEngine`: Algorithmic truth preservation and keyword gap analyzer.
+  - `INatsPublisher`: Event publication interface.
+- Pipeline behaviors handle FluentValidation, telemetry logging, and transaction boundaries.
 
-### 2.3 Infrastructure Layer (`ResumeTailor.Infrastructure`)
-- **Document Parsers**:
-  - `PdfPig`: Text stream extraction, column-unwrapping, font size heuristics for header detection.
-  - `DocumentFormat.OpenXml`: Paragraph, bullet, and table extraction for `.docx`.
-  - `Markdig`: CommonMark and GitHub Flavored Markdown parsing.
-- **Web Scraping Engine**:
-  - AngleSharp HTTP client with user-agent spoofing, header management, DOM sanitizer, script/style/nav remover, and job-board-specific schema extractors (LinkedIn, Greenhouse, Lever, Workday, Ashby, Indeed).
-- **AI Multi-Provider Engine**:
-  - Provider abstraction for OpenAI (`gpt-4o`, `gpt-4o-mini`), Anthropic Claude (`claude-3-5-sonnet`), and Google Gemini (`gemini-2.0-flash`, `gemini-1.5-pro`).
-  - Structured JSON schema output enforcement and fallback mechanisms.
-- **ATS & Diff Engine**:
-  - Strict subset truth verification ("Never Lie" rule).
-  - Keyword frequency analysis, TF-IDF / cosine keyword matching, gap classification (Must-Have vs Nice-To-Have), and recruiter feedback generation.
-- **Export Engine**:
-  - Single-column ATS typography PDF rendering via `QuestPDF`.
-  - Native `.docx` generation via `DocumentFormat.OpenXml`.
-  - Clean Markdown formatting.
-- **Persistence & Caching**:
-  - EF Core with PostgreSQL provider, connection pooling, and automatic migrations.
-  - Redis cache service with in-memory fallback.
+### 4.3 Infrastructure Layer (`ResumeTailor.Infrastructure`)
+- **Dual-Engine Web Scraping**:
+  - `Crawl4AiService`: Connects to `vedha-crawler` on port 11235. Uses Playwright stealth mode and automated JS unrolling (`.show-more-less-html__button--more` on LinkedIn, `.styles_jhc__read-more-btn` on Naukri).
+  - `JobScraperService`: Primary routing to Crawl4AI; automatic fallback to AngleSharp with custom Readability DOM sanitization if Crawl4AI is offline.
+- **S3 Object Storage (`MinioS3StorageService`)**:
+  - Official `AWSSDK.S3` AmazonS3Client configured with AWS SigV4 cryptographic signatures.
+  - Resilient local disk cache fallback mounted at `/app/s3_local_cache/`.
+- **ATS & Truth Invariance Engine (`AtsScoringEngine`)**:
+  - Quantitative metric invariance validator extracting and verifying numbers, percentages, and multipliers.
+  - Self-healing regex taxonomy covering 60+ industry standards with AI fallback keyword extraction.
+- **PDF & Document Rendering**:
+  - `QuestPDF`: Single-column ATS typography engine.
+  - `PdfPig`: Text stream extraction and column-unwrapping.
+  - `DocumentFormat.OpenXml`: Formatted DOCX generation.
 
-### 2.4 Web API Layer (`ResumeTailor.WebApi`)
+### 4.4 Web API Layer (`ResumeTailor.WebApi`)
 - ASP.NET Core 10 Web API.
-- SignalR `TailoringProgressHub` for broadcasting live progress steps to the frontend in real time (`Scraping`, `Analyzing`, `Tailoring`, `Scoring`, `Exporting`).
-- Global exception handling middleware returning RFC 7807 problem details.
-- Rate limiting and JWT authentication with ClaimsPrincipal resolution.
+- `TailoringProgressHub`: SignalR WebSocket hub streaming live step telemetry (`Scraping`, `Analyzing`, `Tailoring`, `Scoring`, `Exporting`).
+- `StorageController`: Provides authenticated HTTP range request streaming for resume PDFs (`/vedha-resumes/{**key}`).
+- `NatsWorkerEventConsumerHostedService`: Background hosted service consuming worker completion and HITL events.
 
 ---
 
-## 3. Data Flow: Tailoring Lifecycle
+## 5. Chrome Extension Architecture (Manifest V3)
 
-```
-[Job URL / Text] ----> [WebScraperService] ----> [Cleaned Text]
-                                                       |
-[Master Resume]  ----> [DocumentParser]    ----> [Resume JSON]
-                                                       |
-                                                       v
-                                            [AI Multi-Provider]
-                                                       |
-                     +---------------------------------+---------------------------------+
-                     |                                                                   |
-                     v                                                                   v
-        [Truth-Preserved Tailored Resume]                                      [ATS Gap Analysis & Score]
-                     |                                                                   |
-                     +---------------------------------+---------------------------------+
-                                                       |
-                                                       v
-                                          [SignalR Live Log Stream]
-                                                       |
-                                                       v
-                                       [Export: ATS PDF / DOCX / MD]
-```
+The Chrome extension operates as an intelligent browser copilot:
+
+1. **Draggable & Anti-Occlusion Floating Copilot Dock**:
+   - Injected into active pages via `#vedha-floating-copilot-root`.
+   - Features `manageModalStacking`: MutationObserver scanning for open application dialogs (`[role='dialog']`, `.artdeco-modal`) and elevating them above all overlays (`z-index: 2,147,483,100`).
+   - Dock automatically lowers its z-index and collapses to a compact pill whenever a modal opens, guaranteeing 100% clickability of application forms.
+2. **Dynamic DOM Question Extraction & AI Grounding**:
+   - Inspects active modal steps for unanswered form fields (text, number, textarea, radio group, select).
+   - Dispatches batch queries to `POST /api/orchestrator/generate-answers`.
+   - Checks `ScreeningQuestionMemory` in Redis/PostgreSQL; queries Google Gemini for novel questions grounded strictly on the candidate's Master Resume.
+   - Types answers with human-like Gaussian keystroke jitter (`typeLikeHuman`).
 
 ---
 
-## 4. Multi-Pipeline Job Application Orchestrator Architecture
+## 6. Security & Guardrails
 
-```text
-                  Paste Job URL
-                        │
-                        ▼
-             Identify Job Source
-                        │
-      ┌─────────────────┼─────────────────┐
-      │                 │                 │
-      ▼                 ▼                 ▼
-  Pipeline 1        Pipeline 2        Pipeline 3
-  LinkedIn           Naukri          External ATS
- (Easy Apply)     (Apply Flow)    (Greenhouse/Lever/
-                                   Ashby/Workday/Workable)
-      │                 │                 │
-      └─────────────────┼─────────────────┘
-                        ▼
-             Resume Tailoring Engine
-                        ▼
-         AI Question Answering Engine
-       (Grounding on Candidate Profile)
-                        ▼
-                Application Queue
-         [Resume + Cover Letter + Q&A]
-                        ▼
-        Playwright Automation Engine / Copilot
-       (Review Gateway: Staged Before Final Submit)
-```
-
-### 4.1 Provider Pipelines (`IJobApplicationProvider`)
-- **`GreenhouseProvider`**: Auto-populates personal information, handles multipart ATS resume attachment, and maps screening questions.
-- **`LeverProvider`**: Handles Lever application forms, custom URLs, and social profile links.
-- **`AshbyProvider`**: Maps Ashby single-page application forms.
-- **`LinkedInCopilotProvider`**: Safely steps through LinkedIn Easy Apply wizard, attaches tailored resume PDF, and halts at the final Review Screen for candidate submission.
-- **`NaukriProvider`**: Populates CTC, notice period, and key skills for Indian job market applications.
-- **`WorkdayProvider`**: Steps through enterprise multi-stage Workday application flows.
-- **`GenericBrowserProvider`**: Universal AI-driven DOM heuristic filler for custom company career portals.
-
-### 4.2 Candidate Master Profile & Screening Question Memory
-- **Candidate Profile**: Stores Work Authorization status, Visa sponsorship requirement, Notice Period (days), Salary expectations, Relocation/Remote preferences, and a verified **Evidence Base** (key-value achievement snippets).
-- **Browser Agent Memory**: Caches answered screening questions hashed by normalized question text per company. When applying to the same company again, past answers are reused instantly with 100% fidelity.
-- **AI Question Answering Engine**: Uses Google Gemini (`gemini-2.0-flash`) grounded strictly on Candidate Profile and Master Resume work history to compute exact years of experience, check visa status, and draft concise STAR-format responses.
-
-### 4.3 Review Gateway
-- For all external job portals and LinkedIn applications, automation stages the complete package (pre-filled fields + resume attachment) and pauses before the final "Submit" button, giving the candidate complete oversight and eliminating risk.
+- **Strict "Never Lie" Invariant**: Algorithmic validator prevents LLMs from inventing unverified employers, degrees, certifications, or inflated metric values.
+- **AWS SigV4 Authentication**: All S3 operations to MinIO are signed with AWS Signature Version 4.
+- **Stateless JWT with Claims Principal**: Authentication uses standard HS256 JWT tokens with RFC 7807 problem details error format.
+- **Encrypted Credentials**: External API keys and provider tokens are encrypted at rest using AES-256.
 
 ---
 
-## 5. Security & Guardrails
-- **Truth Preservation Guardrail**: Algorithmic validator checks that tailored experience entries do not introduce non-existent companies, universities, or unverified certifications.
-- **Encrypted Provider Keys**: User-provided API keys are encrypted at rest using AES-256 before storage.
-- **Zero Raw File Storage of Sensitive Data**: Only structured JSON representations are stored in database records; uploaded binary files are processed in-memory streams.
+## 7. Further Engineering Guides
 
----
-
-## 6. Engineering Innovations & Deep Dive
-- For an in-depth breakdown of SOLID principles, Clean Architecture, and GoF patterns applied across this codebase, see [SYSTEM_DESIGN_AND_PATTERNS.md](file:///A:/AIProjects/Resumebuilder/SYSTEM_DESIGN_AND_PATTERNS.md).
-- For a deep dive into the 10 hardest engineering challenges solved (mathematical truth preservation, zero-selector DOM mapping, SHA-256 screening memory, and the Copilot Review Gateway), see [INTERESTING_THINGS.md](file:///A:/AIProjects/Resumebuilder/INTERESTING_THINGS.md).
-
+- [SYSTEM_DESIGN_AND_PATTERNS.md](file:///A:/AIProjects/Resumebuilder/SYSTEM_DESIGN_AND_PATTERNS.md): Complete guide to SOLID principles, CQRS, and enterprise design patterns implemented in this codebase.
+- [INTERESTING_THINGS.md](file:///A:/AIProjects/Resumebuilder/INTERESTING_THINGS.md): 18 deep engineering highlights (truth invariants, Crawl4AI anti-bot evasion, biometric jitter, and NATS JetStream pipelines).
