@@ -567,98 +567,153 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
 
         {/* Right Column: ATS Scorecard, Recruiter Feedback & Tools (4 cols) */}
         <div className="lg:col-span-4 space-y-4">
-          {/* ATS Score Gauge Card */}
-          <Card className="p-5 space-y-4 border-indigo-200 dark:border-indigo-500/30 bg-gradient-to-br from-indigo-50/50 via-white to-indigo-100/30 dark:from-zinc-900 dark:via-zinc-900 dark:to-indigo-950/40 shadow-sm">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-zinc-800">
-              <span className="text-xs font-bold text-slate-900 dark:text-zinc-200 flex items-center gap-1.5">
-                <TrendingUp className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" /> ATS Optimization Score
+          {/* ATS Score Gauge Card with Holographic 3D Aesthetic */}
+          <Card 
+            interactive3d 
+            holographic 
+            className="p-5 space-y-4 border-indigo-500/30 dark:border-indigo-500/40 bg-gradient-to-br from-white/90 via-slate-50/80 to-indigo-50/40 dark:from-zinc-950/80 dark:via-zinc-950/60 dark:to-indigo-950/40 shadow-xl"
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200/80 dark:border-white/[0.08]">
+              <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-800 dark:text-zinc-200 flex items-center gap-2">
+                <TrendingUp className="w-3.5 h-3.5 text-indigo-500" />
+                <span>ATS // QUANTUM MATCH</span>
               </span>
-              <Badge variant={atsAnalysis.overallScore >= 80 ? 'success' : 'warning'}>
-                {atsAnalysis.overallScore >= 80 ? 'High Match' : 'Moderate Match'}
+              <Badge variant={atsAnalysis.overallScore >= 80 ? 'success' : 'cyber'}>
+                {atsAnalysis.overallScore >= 80 ? 'HIGH ALIGNMENT' : 'MODERATE MATCH'}
               </Badge>
             </div>
 
             <div className="flex items-center gap-4">
-              <div className="relative flex items-center justify-center h-20 w-20 rounded-full border-4 border-emerald-500 bg-white dark:bg-zinc-950 text-emerald-600 dark:text-emerald-400 font-black text-2xl shadow-md shadow-emerald-500/20 shrink-0">
-                {atsAnalysis.overallScore}%
+              {/* Holographic Radial SVG Gauge */}
+              <div className="relative flex items-center justify-center h-24 w-24 shrink-0">
+                {/* Outer Cyber Dashed Orbit */}
+                <svg className="absolute inset-0 w-full h-full animate-[spin_30s_linear_infinite]" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="4 6" className="text-indigo-500/30" />
+                </svg>
+                {/* Glowing Arc Gauge */}
+                <svg className="w-20 h-20 -rotate-90 transform" viewBox="0 0 80 80">
+                  <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="6" fill="transparent" className="text-slate-200/80 dark:text-zinc-800/80" />
+                  <circle
+                    cx="40"
+                    cy="40"
+                    r="34"
+                    stroke="url(#atsScoreGradient)"
+                    strokeWidth="6"
+                    fill="transparent"
+                    strokeDasharray={213.6}
+                    strokeDashoffset={213.6 - (213.6 * Math.min(100, Math.max(0, atsAnalysis.overallScore))) / 100}
+                    strokeLinecap="round"
+                    className="transition-all duration-1000 ease-out"
+                  />
+                  <defs>
+                    <linearGradient id="atsScoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#10b981" />
+                      <stop offset="50%" stopColor="#38bdf8" />
+                      <stop offset="100%" stopColor="#6366f1" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div className="absolute flex flex-col items-center justify-center">
+                  <span className="font-mono font-black text-2xl tracking-tighter text-slate-900 dark:text-white drop-shadow-[0_0_12px_rgba(99,102,241,0.4)]">
+                    {atsAnalysis.overallScore}%
+                  </span>
+                  <span className="text-[8px] font-mono tracking-widest uppercase text-slate-400 dark:text-zinc-400">
+                    MATCH
+                  </span>
+                </div>
               </div>
-              <div className="space-y-1 text-xs">
-                <div className="text-slate-800 dark:text-zinc-300 font-semibold">Semantic Match Summary</div>
-                <div className="text-[11px] text-slate-500 dark:text-zinc-400">
-                  {atsAnalysis.matchingKeywords.length} matching keywords • {atsAnalysis.missingKeywords.length} missing keywords
+
+              <div className="space-y-1.5 text-xs">
+                <div className="text-slate-900 dark:text-zinc-100 font-bold tracking-tight">Semantic Parser Scorecard</div>
+                <div className="text-[11px] font-mono text-slate-500 dark:text-zinc-400">
+                  <span className="text-emerald-500 font-bold">{atsAnalysis.matchingKeywords.length}</span> matching • <span className="text-amber-500 font-bold">{atsAnalysis.missingKeywords.length}</span> missing
+                </div>
+                <div className="text-[10px] font-mono text-slate-400 dark:text-zinc-500 uppercase">
+                  INDEXABILITY: 100% PARSED
                 </div>
               </div>
             </div>
 
-            {/* Score Breakdown Bars */}
-            <div className="space-y-2.5 pt-2 text-xs">
+            {/* Score Breakdown Bars with Liquid Cyber Glow */}
+            <div className="space-y-2.5 pt-2 text-xs border-t border-slate-200/80 dark:border-white/[0.06]">
               <div>
-                <div className="flex justify-between text-[11px] text-slate-600 dark:text-zinc-400 mb-1">
-                  <span>Keyword Density</span>
-                  <span className="font-semibold text-slate-900 dark:text-zinc-200">{atsAnalysis.keywordMatchScore}%</span>
+                <div className="flex justify-between text-[11px] font-mono text-slate-600 dark:text-zinc-400 mb-1">
+                  <span>KEYWORD DENSITY</span>
+                  <span className="font-bold text-indigo-600 dark:text-indigo-400">{atsAnalysis.keywordMatchScore}%</span>
                 </div>
-                <div className="w-full bg-slate-200 dark:bg-zinc-950 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-indigo-600 dark:bg-indigo-500 h-full rounded-full" style={{ width: `${atsAnalysis.keywordMatchScore}%` }} />
+                <div className="w-full bg-slate-200 dark:bg-zinc-900 h-1.5 rounded-full overflow-hidden">
+                  <div className="bg-gradient-to-r from-indigo-500 to-sky-400 h-full rounded-full shadow-[0_0_8px_rgba(99,102,241,0.5)] transition-all duration-500" style={{ width: `${atsAnalysis.keywordMatchScore}%` }} />
                 </div>
               </div>
 
               <div>
-                <div className="flex justify-between text-[11px] text-slate-600 dark:text-zinc-400 mb-1">
-                  <span>Skills Coverage</span>
-                  <span className="font-semibold text-slate-900 dark:text-zinc-200">{atsAnalysis.skillsMatchScore}%</span>
+                <div className="flex justify-between text-[11px] font-mono text-slate-600 dark:text-zinc-400 mb-1">
+                  <span>SKILLS COVERAGE</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">{atsAnalysis.skillsMatchScore}%</span>
                 </div>
-                <div className="w-full bg-slate-200 dark:bg-zinc-950 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-emerald-600 dark:bg-emerald-500 h-full rounded-full" style={{ width: `${atsAnalysis.skillsMatchScore}%` }} />
+                <div className="w-full bg-slate-200 dark:bg-zinc-900 h-1.5 rounded-full overflow-hidden">
+                  <div className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)] transition-all duration-500" style={{ width: `${atsAnalysis.skillsMatchScore}%` }} />
                 </div>
               </div>
 
               <div>
-                <div className="flex justify-between text-[11px] text-slate-600 dark:text-zinc-400 mb-1">
-                  <span>Quantified Impact</span>
-                  <span className="font-semibold text-slate-900 dark:text-zinc-200">{atsAnalysis.experienceRelevanceScore}%</span>
+                <div className="flex justify-between text-[11px] font-mono text-slate-600 dark:text-zinc-400 mb-1">
+                  <span>QUANTIFIED IMPACT</span>
+                  <span className="font-bold text-purple-600 dark:text-purple-400">{atsAnalysis.experienceRelevanceScore}%</span>
                 </div>
-                <div className="w-full bg-slate-200 dark:bg-zinc-950 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-purple-600 dark:bg-purple-500 h-full rounded-full" style={{ width: `${atsAnalysis.experienceRelevanceScore}%` }} />
+                <div className="w-full bg-slate-200 dark:bg-zinc-900 h-1.5 rounded-full overflow-hidden">
+                  <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-full rounded-full shadow-[0_0_8px_rgba(168,85,247,0.5)] transition-all duration-500" style={{ width: `${atsAnalysis.experienceRelevanceScore}%` }} />
                 </div>
               </div>
             </div>
           </Card>
 
-          {/* Keywords Match Cloud */}
-          <Card className="p-4 space-y-3">
-            <h4 className="text-xs font-bold text-slate-900 dark:text-zinc-200 flex items-center justify-between">
-              <span>Keywords Breakdown</span>
-              <span className="text-[10px] text-slate-500 dark:text-zinc-500 font-normal">{atsAnalysis.matchingKeywords.length} found</span>
+          {/* Keywords Match Cloud with Holographic Chips */}
+          <Card interactive3d className="p-4 space-y-3">
+            <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-900 dark:text-zinc-200 flex items-center justify-between">
+              <span>KEYWORDS TAXONOMY</span>
+              <span className="text-[10px] font-mono text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">{atsAnalysis.matchingKeywords.length} MATCHED</span>
             </h4>
 
             <div className="space-y-2">
-              <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> Matching Keywords
+              <div className="text-[11px] font-mono font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 uppercase">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Verified Matching Competencies</span>
               </div>
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1">
                 {atsAnalysis.matchingKeywords.map((kw, i) => (
-                  <Badge key={i} variant="success" className="text-[10px] py-0.5">
+                  <span 
+                    key={i} 
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-mono tracking-tight bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border border-emerald-500/25 shadow-[0_0_12px_rgba(16,185,129,0.12)] hover:scale-105 hover:border-emerald-500/50 transition-all select-none cursor-default"
+                  >
+                    <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
                     {kw}
-                  </Badge>
+                  </span>
                 ))}
               </div>
             </div>
 
             {atsAnalysis.missingKeywords.length > 0 && (
-              <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-zinc-800">
-                <div className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> Missing from Experience
+              <div className="space-y-2 pt-3 border-t border-slate-200/80 dark:border-white/[0.08]">
+                <div className="text-[11px] font-mono font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5 uppercase">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  <span>Missing from Profile ({atsAnalysis.missingKeywords.length})</span>
                 </div>
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
                   {atsAnalysis.missingKeywords.map((kw, i) => (
-                    <Badge key={i} variant="warning" className="text-[10px] py-0.5">
+                    <span 
+                      key={i} 
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-mono tracking-tight bg-amber-500/10 text-amber-600 dark:text-amber-300 border border-amber-500/25 shadow-[0_0_10px_rgba(245,158,11,0.1)] hover:scale-105 transition-all select-none cursor-default"
+                    >
+                      <span className="w-1 h-1 rounded-full bg-amber-400" />
                       {kw}
-                    </Badge>
+                    </span>
                   ))}
                 </div>
               </div>
             )}
           </Card>
+
 
           {/* Recruiter Feedback */}
           <Card className="p-4 space-y-2">

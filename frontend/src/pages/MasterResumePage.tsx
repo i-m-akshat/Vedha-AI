@@ -17,7 +17,8 @@ import {
   FolderGit2,
   GraduationCap,
   Award,
-  Trophy
+  Trophy,
+  Loader2
 } from 'lucide-react';
 import { Button, Card, Badge, Input, Textarea, Modal } from '../components/ui';
 import { useResumeStore } from '../stores/useTailorStore';
@@ -36,6 +37,7 @@ export const MasterResumePage: React.FC = () => {
     masterResume, 
     versions, 
     isLoading, 
+    isUploading,
     fetchMasterResume, 
     uploadMasterResume, 
     updateMasterResume, 
@@ -52,8 +54,17 @@ export const MasterResumePage: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
-  const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
   const [uploadMessage, setUploadMessage] = useState<string>('');
+  const [uploadingFileName, setUploadingFileName] = useState<string>('');
+  const [uploadStepIndex, setUploadStepIndex] = useState<number>(0);
+
+  const UPLOAD_STEPS = [
+    { title: 'Uploading Document', desc: 'Securely streaming file to document storage...' },
+    { title: 'Analyzing Layout & Text', desc: 'Running vision & font hierarchy analysis...' },
+    { title: 'Multimodal AI Extraction', desc: 'Extracting work experience, skills & achievements...' },
+    { title: 'Schema Standardization', desc: 'Building ATS-grade validated JSON schema...' }
+  ];
 
   useEffect(() => {
     fetchMasterResume();
@@ -79,24 +90,37 @@ export const MasterResumePage: React.FC = () => {
   }, [masterResume]);
 
   const onDrop = async (acceptedFiles: File[]) => {
-    if (acceptedFiles.length > 0) {
+    if (acceptedFiles.length > 0 && uploadStatus !== 'uploading') {
       const file = acceptedFiles[0];
-      setUploadStatus('idle');
+      setUploadStatus('uploading');
+      setUploadingFileName(file.name);
+      setUploadStepIndex(0);
+
+      const interval = setInterval(() => {
+        setUploadStepIndex((prev) => (prev < UPLOAD_STEPS.length - 1 ? prev + 1 : prev));
+      }, 2500);
+
       try {
         await uploadMasterResume(file);
         await fetchVersions();
+        clearInterval(interval);
         setUploadStatus('success');
         setUploadMessage(`"${file.name}" uploaded and parsed by AI successfully. Review your structured resume details below.`);
-        setTimeout(() => setUploadStatus('idle'), 6000);
+        setTimeout(() => {
+          setUploadStatus('idle');
+          setUploadingFileName('');
+        }, 7000);
       } catch (e: any) {
+        clearInterval(interval);
         setUploadStatus('error');
-        setUploadMessage(e?.response?.data?.error || 'Failed to upload and parse resume. Please check your file.');
+        setUploadMessage(e?.response?.data?.error || e?.message || 'Failed to upload and parse resume. Please check your file format.');
       }
     }
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    disabled: uploadStatus === 'uploading' || isUploading,
     accept: {
       'application/pdf': ['.pdf'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
@@ -453,38 +477,96 @@ export const MasterResumePage: React.FC = () => {
 
       {/* Upload Status Banner */}
       {uploadStatus !== 'idle' && (
-        <div className={`flex items-start gap-2.5 p-3.5 rounded-xl border text-xs ${
-          uploadStatus === 'success'
-            ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-300'
-            : 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/40 text-rose-700 dark:text-rose-300'
+        <div className={`flex items-start gap-2.5 p-3.5 rounded-xl border text-xs transition-all ${
+          uploadStatus === 'uploading'
+            ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 text-indigo-800 dark:text-indigo-200 shadow-sm'
+            : uploadStatus === 'success'
+              ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+              : 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/40 text-rose-700 dark:text-rose-300'
         }`}>
-          {uploadStatus === 'success'
-            ? <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500 mt-0.5" />
-            : <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500 mt-0.5" />}
-          <span>{uploadMessage}</span>
-          <button onClick={() => setUploadStatus('idle')} className="ml-auto shrink-0" aria-label="Dismiss">✕</button>
+          {uploadStatus === 'uploading' && (
+            <Loader2 className="w-4 h-4 shrink-0 text-indigo-600 dark:text-indigo-400 mt-0.5 animate-spin" />
+          )}
+          {uploadStatus === 'success' && (
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500 mt-0.5" />
+          )}
+          {uploadStatus === 'error' && (
+            <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500 mt-0.5" />
+          )}
+          <span className="font-medium">
+            {uploadStatus === 'uploading' ? `Uploading and parsing "${uploadingFileName}" with Multimodal AI...` : uploadMessage}
+          </span>
+          {uploadStatus !== 'uploading' && (
+            <button onClick={() => setUploadStatus('idle')} className="ml-auto shrink-0 opacity-70 hover:opacity-100" aria-label="Dismiss">✕</button>
+          )}
         </div>
       )}
 
       {/* Upload Dropzone */}
       <div
         {...getRootProps()}
-        className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
-          isDragActive
-            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10'
-            : 'border-slate-300 hover:border-indigo-400 bg-white/90 dark:border-zinc-800 dark:hover:border-zinc-700 dark:bg-zinc-900/30 shadow-sm'
+        className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all ${
+          uploadStatus === 'uploading'
+            ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20 dark:border-indigo-500/50 cursor-wait shadow-md'
+            : isDragActive
+            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 cursor-copy'
+            : 'border-slate-300 hover:border-indigo-400 bg-white/90 dark:border-zinc-800 dark:hover:border-zinc-700 dark:bg-zinc-900/30 shadow-sm cursor-pointer'
         }`}
       >
         <input {...getInputProps()} />
-        <div className="flex items-center justify-center w-12 h-12 mx-auto mb-3 text-indigo-600 border border-indigo-200 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 dark:border-indigo-500/20 dark:text-indigo-400">
-          <UploadCloud className="w-6 h-6" />
-        </div>
-        <div className="text-sm font-semibold text-slate-800 dark:text-zinc-200">
-          {masterResume ? 'Upload New Master Resume Document' : 'Drop your Master Resume here or click to browse'}
-        </div>
-        <div className="mt-1 text-xs text-slate-500 dark:text-zinc-500">
-          Supports <strong>PDF (including Scanned/Designer), DOCX, Markdown (.md)</strong> • Powered by Multimodal AI
-        </div>
+        {uploadStatus === 'uploading' ? (
+          <div className="py-4 px-2 space-y-4 max-w-lg mx-auto">
+            <div className="relative flex items-center justify-center w-14 h-14 mx-auto">
+              <div className="absolute inset-0 rounded-2xl bg-indigo-500/20 animate-ping opacity-60" />
+              <div className="relative flex items-center justify-center w-14 h-14 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 shadow-sm">
+                <Loader2 className="w-7 h-7 animate-spin text-indigo-600 dark:text-indigo-400" />
+              </div>
+            </div>
+
+            <div className="space-y-1.5 text-center">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-indigo-700 bg-indigo-100 rounded-full dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/50">
+                <Sparkles className="w-3.5 h-3.5 animate-pulse text-indigo-500" />
+                <span>Processing: {uploadingFileName || 'Master Resume Document'}</span>
+              </div>
+              <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                {UPLOAD_STEPS[uploadStepIndex]?.title || 'Processing Document'}
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-zinc-400">
+                {UPLOAD_STEPS[uploadStepIndex]?.desc || 'Extracting structured details...'}
+              </p>
+            </div>
+
+            {/* Visual Progress Track */}
+            <div className="space-y-1.5">
+              <div className="w-full bg-slate-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden border border-slate-200/80 dark:border-zinc-700/50">
+                <div 
+                  className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 transition-all duration-700 ease-out"
+                  style={{ width: `${Math.min(100, ((uploadStepIndex + 1) / UPLOAD_STEPS.length) * 100)}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-[10px] text-slate-400 dark:text-zinc-500 font-mono">
+                <span>STEP {uploadStepIndex + 1} OF {UPLOAD_STEPS.length}</span>
+                <span className="animate-pulse text-indigo-600 dark:text-indigo-400 font-semibold">AI INGESTION ACTIVE</span>
+              </div>
+            </div>
+            
+            <p className="text-[11px] text-slate-400 dark:text-zinc-500">
+              Please wait while multimodal AI extracts and structures work history, skills, and metrics.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-center w-12 h-12 mx-auto mb-3 text-indigo-600 border border-indigo-200 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 dark:border-indigo-500/20 dark:text-indigo-400">
+              <UploadCloud className="w-6 h-6" />
+            </div>
+            <div className="text-sm font-semibold text-slate-800 dark:text-zinc-200">
+              {masterResume ? 'Upload New Master Resume Document' : 'Drop your Master Resume here or click to browse'}
+            </div>
+            <div className="mt-1 text-xs text-slate-500 dark:text-zinc-500">
+              Supports <strong>PDF (including Scanned/Designer), DOCX, Markdown (.md)</strong> • Powered by Multimodal AI
+            </div>
+          </>
+        )}
       </div>
 
       {/* Schema Editor View */}

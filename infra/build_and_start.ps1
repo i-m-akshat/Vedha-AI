@@ -90,6 +90,18 @@ if ($existingContainers -notcontains "vedha-minio") {
     podman start vedha-minio 2>$null | Out-Null
 }
 
+$crawlerToken = if ($envMap["CRAWL4AI_API_TOKEN"]) { $envMap["CRAWL4AI_API_TOKEN"] } else { "vedha_crawler_token_2026" }
+if ($existingContainers -notcontains "vedha-crawler") {
+    Write-Host "Creating vedha-crawler container..." -ForegroundColor Cyan
+    podman run -d --name vedha-crawler --network infra_vedha-network --network-alias crawler --network-alias vedha-crawler `
+        -p 11235:11235 `
+        -e CRAWL4AI_API_TOKEN="$crawlerToken" `
+        -e CRAWL4AI_HOOKS_ENABLED="true" `
+        unclecode/crawl4ai:latest
+} else {
+    podman start vedha-crawler 2>$null | Out-Null
+}
+
 # 6. Start Application Containers (Backend, Frontend)
 Write-Host "Starting vedha-backend..." -ForegroundColor Cyan
 podman rm -f vedha-backend 2>$null | Out-Null
@@ -112,6 +124,9 @@ podman run -d --name vedha-backend --network infra_vedha-network --network-alias
     -e AiSettings__DefaultProvider="$aiProvider" `
     -e AiSettings__DefaultModel="$aiModel" `
     -e AiSettings__MaxTokens="$aiMaxTokens" `
+    -e Crawl4AiSettings__BaseUrl="http://crawler:11235" `
+    -e Crawl4AiSettings__Enabled="true" `
+    -e Crawl4AiSettings__ApiToken="$crawlerToken" `
     -e EnableSwagger="true" `
     localhost/infra-backend:latest
 if ($LASTEXITCODE -ne 0) { throw "Failed to start vedha-backend container." }

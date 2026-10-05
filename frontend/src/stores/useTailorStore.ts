@@ -13,6 +13,7 @@ interface ResumeState {
   masterResume: MasterResumeDto | null;
   versions: ResumeVersionDto[];
   isLoading: boolean;
+  isUploading: boolean;
   fetchMasterResume: () => Promise<void>;
   uploadMasterResume: (file: File) => Promise<void>;
   updateMasterResume: (
@@ -29,6 +30,7 @@ export const useResumeStore = create<ResumeState>((set) => ({
   masterResume: null,
   versions: [],
   isLoading: false,
+  isUploading: false,
 
   fetchMasterResume: async () => {
     set({ isLoading: true });
@@ -41,12 +43,12 @@ export const useResumeStore = create<ResumeState>((set) => ({
   },
 
   uploadMasterResume: async (file: File) => {
-    set({ isLoading: true });
+    set({ isUploading: true, isLoading: true });
     try {
       const data = await masterResumeApi.upload(file);
-      set({ masterResume: data, isLoading: false });
+      set({ masterResume: data, isUploading: false, isLoading: false });
     } catch (e) {
-      set({ isLoading: false });
+      set({ isUploading: false, isLoading: false });
       throw e;
     }
   },

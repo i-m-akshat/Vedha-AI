@@ -26,7 +26,7 @@ export const LoginPage: React.FC<{ onSwitchToRegister: () => void }> = ({ onSwit
           <img 
             src="/vedha-logo.png" 
             alt="Vedha AI" 
-            className="h-16 w-16 rounded-2xl object-contain mx-auto bg-white dark:bg-zinc-950 p-2 border border-indigo-500/30 shadow-lg shadow-indigo-500/20" 
+            className="h-16 w-16 rounded-2xl object-contain mx-auto bg-white dark:bg-white p-2 border border-indigo-500/30 shadow-lg shadow-indigo-500/20" 
           />
           <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Sign In to Vedha AI</h2>
           <p className="text-xs text-slate-500 dark:text-zinc-400">The AI Career Operating System & Orchestrator</p>
@@ -101,7 +101,7 @@ export const RegisterPage: React.FC<{ onSwitchToLogin: () => void }> = ({ onSwit
           <img 
             src="/vedha-logo.png" 
             alt="Vedha AI" 
-            className="h-16 w-16 rounded-2xl object-contain mx-auto bg-white dark:bg-zinc-950 p-2 border border-indigo-500/30 shadow-lg shadow-indigo-500/20" 
+            className="h-16 w-16 rounded-2xl object-contain mx-auto bg-white dark:bg-white p-2 border border-indigo-500/30 shadow-lg shadow-indigo-500/20" 
           />
           <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Create an Account</h2>
           <p className="text-xs text-slate-500 dark:text-zinc-400">Start tailoring your resume and automating job applications with Vedha AI</p>

@@ -104,6 +104,11 @@ public class AtsScoringEngine : IAtsScoringEngine
 
     public AtsScoreBreakdown CalculateScore(ResumeSchema resume, JobDescriptionSchema job)
     {
+        if (job.Keywords.Count == 0 && job.MustHaveSkills.Count == 0 && job.Responsibilities.Count > 0)
+        {
+            job.EnsureKeywordsPopulated(string.Join(" ", job.Responsibilities));
+        }
+
         var resumeFullText = ExtractAllResumeText(resume);
         var resumeWords = Tokenize(resumeFullText);
 

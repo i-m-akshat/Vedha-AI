@@ -243,4 +243,88 @@ public class AtsScoringEngineTests
         score.SkillsMatchScore.Should().Be(100);
         score.ExperienceRelevanceScore.Should().BeGreaterThanOrEqualTo(90);
     }
+
+    [Fact]
+    public void EnsureKeywordsPopulated_WhenGivenRawJobPostingText_ShouldExtractIndustryKeywords()
+    {
+        // Arrange
+        var rawJd = @"
+Role: Dot Net Developer
+Experience: 3-5 Years
+Job Description:
+We are looking for a Senior .NET Developer with strong hands-on experience in C#, .NET Core, ASP.NET MVC, Web API, and SQL Server.
+Must understand OOP, SOLID principles, Entity Framework, LINQ, and RESTful APIs.
+Experience with Docker, Kubernetes, CI/CD, Azure, Angular, and TypeScript is a plus.
+Responsible for microservices architecture, performance tuning, and database optimization.
+";
+        var schema = new JobDescriptionSchema
+        {
+            Title = "Dot Net Developer",
+            Company = "BoostTech",
+            MustHaveSkills = new List<string>(), // Empty, as if AI omitted them
+            Keywords = new List<string>()
+        };
+
+        // Act
+        schema.EnsureKeywordsPopulated(rawJd);
+
+        // Assert
+        schema.MustHaveSkills.Should().Contain("C#");
+        schema.MustHaveSkills.Should().Contain(".NET Core");
+        schema.MustHaveSkills.Should().Contain("ASP.NET MVC");
+        schema.MustHaveSkills.Should().Contain("Web API");
+        schema.MustHaveSkills.Should().Contain("SQL Server");
+        schema.MustHaveSkills.Should().Contain("SOLID");
+        schema.Keywords.Should().Contain(".NET Core");
+        schema.Keywords.Should().Contain("Docker");
+        schema.Keywords.Should().Contain("Microservices");
+        schema.Keywords.Count.Should().BeGreaterThanOrEqualTo(10);
+    }
+
+    [Fact]
+    public void CalculateScore_WhenJobKeywordsPopulatedViaTaxonomy_ShouldMatchProperly()
+    {
+        // Arrange
+        var rawJd = "Looking for a C# and .NET Core developer with SQL Server and Microservices experience.";
+        var job = new JobDescriptionSchema
+        {
+            Title = "Dot Net Developer",
+            Company = "Tech Corp"
+        };
+        job.EnsureKeywordsPopulated(rawJd);
+
+        var resume = new ResumeSchema
+        {
+            PersonalInfo = new PersonalInfo { FullName = "Alex Dev", Title = "Senior .NET Core Engineer" },
+            Summary = "Senior .NET Core Engineer with 5 years experience in C#, SQL Server, and Microservices.",
+            Skills = new List<SkillCategory>
+            {
+                new() { CategoryName = "Backend", Skills = new List<string> { "C#", ".NET Core", "SQL Server", "Microservices" } }
+            },
+            Experience = new List<WorkExperienceItem>
+            {
+                new()
+                {
+                    Company = "Enterprise Cloud",
+                    Role = "Backend Engineer",
+                    Highlights = new List<string>
+                    {
+                        "Architected microservices using C# and .NET Core with SQL Server databases achieving 99.9% uptime."
+                    }
+                }
+            }
+        };
+
+        // Act
+        var score = _engine.CalculateScore(resume, job);
+
+        // Assert
+        score.OverallScore.Should().BeGreaterThanOrEqualTo(75);
+        score.MatchingSkills.Should().Contain("C#");
+        score.MatchingSkills.Should().Contain(".NET Core");
+        score.MatchingSkills.Should().Contain("SQL Server");
+        score.MatchingSkills.Should().Contain("Microservices");
+        score.KeywordMatchScore.Should().BeGreaterThanOrEqualTo(70);
+    }
 }
+

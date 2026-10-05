@@ -98,6 +98,9 @@ services:
       - AiSettings__DefaultProvider=${DEFAULT_AI_PROVIDER:-Gemini}
       - AiSettings__DefaultModel=${DEFAULT_AI_MODEL:-gemini-flash-lite-latest}
       - AiSettings__MaxTokens=${AI_MAX_TOKENS:-16384}
+      - Crawl4AiSettings__BaseUrl=${CRAWLER_URL:-http://crawler:11235}
+      - Crawl4AiSettings__Enabled=${CRAWLER_ENABLED:-true}
+      - Crawl4AiSettings__ApiToken=${CRAWL4AI_API_TOKEN:-vedha_crawler_token_2026}
       - EnableSwagger=${ENABLE_SWAGGER:-true}
     ports:
       - "${APP_PORT:-5000}:8080"
@@ -121,6 +124,18 @@ services:
       - MINIO_BUCKET=${MINIO_BUCKET:-vedha-resumes}
       - AGENTQL_API_KEY=${AGENTQL_API_KEY}
       - RESIDENTIAL_PROXY_URL=${RESIDENTIAL_PROXY_URL}
+    networks:
+      - vedha-network
+
+  crawler:
+    image: unclecode/crawl4ai:latest
+    container_name: vedha-crawler
+    restart: unless-stopped
+    ports:
+      - "${CRAWLER_PORT:-11235}:11235"
+    environment:
+      - CRAWL4AI_API_TOKEN=${CRAWL4AI_API_TOKEN:-vedha_crawler_token_2026}
+      - CRAWL4AI_HOOKS_ENABLED=true
     networks:
       - vedha-network
 

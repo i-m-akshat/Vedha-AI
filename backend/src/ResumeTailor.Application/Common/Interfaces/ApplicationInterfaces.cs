@@ -32,6 +32,13 @@ public interface IJobScraperService
     Task<Result<(string CleanedText, string? Company, string? Title, JobSource Source)>> ScrapeAsync(string url, CancellationToken cancellationToken = default);
 }
 
+public record Crawl4AiResultDto(bool Success, string Markdown, string? Title, string? ErrorMessage);
+
+public interface ICrawl4AiService
+{
+    Task<Result<Crawl4AiResultDto>> CrawlAsync(string url, CancellationToken cancellationToken = default);
+}
+
 public interface IAiProvider
 {
     AiProviderType ProviderType { get; }

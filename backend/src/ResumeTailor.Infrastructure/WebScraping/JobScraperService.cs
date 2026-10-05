@@ -15,12 +15,17 @@ public class JobScraperService : IJobScraperService
 {
     private const int MaxResponseBytes = 2 * 1024 * 1024;
     private readonly HttpClient _httpClient;
+    private readonly ICrawl4AiService? _crawl4AiService;
     private readonly ILogger<JobScraperService> _logger;
 
-    public JobScraperService(HttpClient httpClient, ILogger<JobScraperService> logger)
+    public JobScraperService(
+        HttpClient httpClient,
+        ILogger<JobScraperService> logger,
+        ICrawl4AiService? crawl4AiService = null)
     {
         _httpClient = httpClient;
         _logger = logger;
+        _crawl4AiService = crawl4AiService;
     }
 
     public async Task<Result<(string CleanedText, string? Company, string? Title, JobSource Source)>> ScrapeAsync(string url, CancellationToken cancellationToken = default)
@@ -47,6 +52,61 @@ public class JobScraperService : IJobScraperService
                 {
                     url = $"https://www.linkedin.com/jobs/view/{match.Groups[1].Value}/";
                     _logger.LogInformation("Normalized LinkedIn URL to canonical job view: {Url}", url);
+                }
+            }
+
+            // Primary Engine: Crawl4AI Headless Chromium with Playwright Stealth & JS accordion unrolling
+            if (_crawl4AiService != null)
+            {
+                try
+                {
+                    var crawlResult = await _crawl4AiService.CrawlAsync(url, cancellationToken);
+                    if (crawlResult.IsSuccess && !string.IsNullOrWhiteSpace(crawlResult.Value.Markdown) && crawlResult.Value.Markdown.Length >= 50)
+                    {
+                        var cleanedMarkdown = crawlResult.Value.Markdown;
+                        var title = crawlResult.Value.Title;
+                        string? company = null;
+
+                        if (!string.IsNullOrWhiteSpace(title))
+                        {
+                            var atIdx = title.IndexOf(" at ", StringComparison.OrdinalIgnoreCase);
+                            var dashIdx = title.IndexOf(" — ", StringComparison.OrdinalIgnoreCase);
+                            if (dashIdx == -1) dashIdx = title.IndexOf(" - ", StringComparison.OrdinalIgnoreCase);
+
+                            if (atIdx > 0)
+                            {
+                                var parsedTitle = title.Substring(0, atIdx).Trim();
+                                var rest = title.Substring(atIdx + 4).Trim();
+                                var restDash = rest.IndexOf(" — ", StringComparison.OrdinalIgnoreCase);
+                                if (restDash == -1) restDash = rest.IndexOf(" - ", StringComparison.OrdinalIgnoreCase);
+                                company = restDash > 0 ? rest.Substring(0, restDash).Trim() : rest;
+                                title = parsedTitle;
+                            }
+                            else if (dashIdx > 0)
+                            {
+                                var part1 = title.Substring(0, dashIdx).Trim();
+                                var part2 = title.Substring(dashIdx + 3).Trim();
+                                title = part1;
+                                company = part2;
+                            }
+                        }
+
+                        if (string.IsNullOrWhiteSpace(company))
+                        {
+                            var postedByMatch = Regex.Match(cleanedMarkdown, @"(?:Posted by|Company:)\s*\[?([^\]\r\n\(\)]+)", RegexOptions.IgnoreCase);
+                            if (postedByMatch.Success)
+                            {
+                                company = postedByMatch.Groups[1].Value.Trim();
+                            }
+                        }
+
+                        _logger.LogInformation("Successfully ingested {Length} chars via Crawl4AI for {Url}", cleanedMarkdown.Length, url);
+                        return Result<(string, string?, string?, JobSource)>.Success((cleanedMarkdown, company, title, source));
+                    }
+                }
+                catch (Exception crawlEx)
+                {
+                    _logger.LogWarning(crawlEx, "Crawl4AI failed for {Url}. Falling back to native AngleSharp/HttpClient scraper.", url);
                 }
             }
 
