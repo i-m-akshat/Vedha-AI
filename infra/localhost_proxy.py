@@ -93,7 +93,7 @@ def main():
     initial_ip = get_wsl_ip()
     print(f"[Proxy] Initialized. Current WSL IP: {initial_ip}")
     threads = []
-    for port in [3000, 5000, 6379, 4222, 8000, 9000, 9001]:
+    for port in [3000, 5000, 6379, 4222, 8000, 9000, 9001, 11235]:
         t = threading.Thread(target=proxy_port, args=(port,), daemon=True)
         t.start()
         threads.append(t)

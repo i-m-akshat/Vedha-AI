@@ -52,6 +52,12 @@ public static class DependencyInjection
         services.AddScoped<IDocumentParser, MarkdownDocumentParser>();
 
         // 4. Web Scraping & HttpClient
+        services.Configure<Crawl4AiSettings>(configuration.GetSection("Crawl4AiSettings"));
+        services.AddHttpClient<ICrawl4AiService, Crawl4AiService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(25);
+        });
+
         services.AddHttpClient<IJobScraperService, JobScraperService>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);

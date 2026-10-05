@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using ResumeTailor.Domain.Enums;
 using ResumeTailor.Infrastructure.WebScraping;
 using System.Net;
@@ -115,6 +116,122 @@ public class JobScraperTests
         result.Value.Company.Should().Be("Eurofins");
         result.Value.Title.Should().Be("Software Engineer");
         result.Value.CleanedText.Should().Contain("Microsoft stack of technologies (.NET, C#, WebAPI, SQL)");
+    }
+
+    [Fact]
+    public async Task ScrapeAsync_WithCrawl4AiSuccess_ShouldReturnCrawl4AiMarkdownAndExtractedMetadata()
+    {
+        // Arrange
+        const string mockMarkdown = """
+            # Staff AI Infrastructure Engineer
+            **Company:** Anthropic
+            **Location:** San Francisco, CA
+
+            ## About the Role
+            We are looking for a Staff AI Infrastructure Engineer to build scalable GPU orchestration platforms.
+            Requirements:
+            - 8+ years distributed systems experience
+            - Deep expertise in Kubernetes, PyTorch, C#, and Go.
+            """;
+        var mockCrawlResult = ResumeTailor.Domain.Common.Result<ResumeTailor.Application.Common.Interfaces.Crawl4AiResultDto>.Success(
+            new ResumeTailor.Application.Common.Interfaces.Crawl4AiResultDto(true, mockMarkdown, "Staff AI Infrastructure Engineer at Anthropic — San Francisco", null));
+
+        var mockCrawl4Ai = new Moq.Mock<ResumeTailor.Application.Common.Interfaces.ICrawl4AiService>();
+        mockCrawl4Ai
+            .Setup(c => c.CrawlAsync(Moq.It.IsAny<string>(), Moq.It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockCrawlResult);
+
+        var scraper = new JobScraperService(new HttpClient(), NullLogger<JobScraperService>.Instance, mockCrawl4Ai.Object);
+
+        // Act
+        var result = await scraper.ScrapeAsync("https://www.linkedin.com/jobs/view/9876543210/");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Source.Should().Be(JobSource.LinkedIn);
+        result.Value.Title.Should().Be("Staff AI Infrastructure Engineer");
+        result.Value.Company.Should().Be("Anthropic");
+        result.Value.CleanedText.Should().Contain("GPU orchestration platforms");
+    }
+
+    [Fact]
+    public async Task ScrapeAsync_WithCrawl4AiFailure_ShouldGracefullyFallbackToNativeScraper()
+    {
+        // Arrange
+        const string fallbackHtml = """
+            <html>
+              <body>
+                <header>Nav</header>
+                <div class="logo-container">Acme Corp</div>
+                <h1 class="app-title">Senior Platform Engineer</h1>
+                <main id="content">
+                  <p>Full stack platform engineering with C# and PostgreSQL.</p>
+                </main>
+              </body>
+            </html>
+            """;
+        using var httpClient = new HttpClient(new StaticResponseHandler(fallbackHtml));
+
+        var mockCrawl4Ai = new Moq.Mock<ResumeTailor.Application.Common.Interfaces.ICrawl4AiService>();
+        mockCrawl4Ai
+            .Setup(c => c.CrawlAsync(Moq.It.IsAny<string>(), Moq.It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ResumeTailor.Domain.Common.Result<ResumeTailor.Application.Common.Interfaces.Crawl4AiResultDto>.Failure("Crawl4AI connection refused."));
+
+        var scraper = new JobScraperService(httpClient, NullLogger<JobScraperService>.Instance, mockCrawl4Ai.Object);
+
+        // Act
+        var result = await scraper.ScrapeAsync("https://boards.greenhouse.io/acme/jobs/456");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Source.Should().Be(JobSource.Greenhouse);
+        result.Value.Title.Should().Be("Senior Platform Engineer");
+        result.Value.Company.Should().Be("Acme Corp");
+        result.Value.CleanedText.Should().Contain("platform engineering with C# and PostgreSQL");
+    }
+
+    [Fact]
+    public async Task Crawl4AiService_HandlesV094Response_ShouldExtractMarkdownAndTitle()
+    {
+        // Arrange
+        const string responseJson = """
+            {
+              "success": true,
+              "results": [
+                {
+                  "url": "https://www.linkedin.com/jobs/view/123",
+                  "success": true,
+                  "markdown": {
+                    "raw_markdown": "# Senior Cloud Architect\nAmazon Web Services\n\nBuild world-class serverless solutions.",
+                    "markdown_with_citations": "# Senior Cloud Architect\nAmazon Web Services\n\nBuild world-class serverless solutions."
+                  },
+                  "metadata": {
+                    "title": "Senior Cloud Architect at AWS — Seattle, WA"
+                  }
+                }
+              ]
+            }
+            """;
+
+        using var httpClient = new HttpClient(new StaticResponseHandler(responseJson));
+        var options = Microsoft.Extensions.Options.Options.Create(new Crawl4AiSettings
+        {
+            BaseUrl = "http://localhost:11235",
+            Enabled = true,
+            ApiToken = "test_token",
+            TimeoutSeconds = 5
+        });
+
+        var service = new Crawl4AiService(httpClient, options, NullLogger<Crawl4AiService>.Instance);
+
+        // Act
+        var result = await service.CrawlAsync("https://www.linkedin.com/jobs/view/123");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Title.Should().Be("Senior Cloud Architect at AWS — Seattle, WA");
+        result.Value.Markdown.Should().Contain("Senior Cloud Architect");
+        result.Value.Markdown.Should().Contain("world-class serverless solutions");
     }
 
     private sealed class StaticResponseHandler : HttpMessageHandler

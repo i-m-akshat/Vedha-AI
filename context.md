@@ -432,3 +432,24 @@ A:\AIProjects\Resumebuilder\
 - **Verification Results**:
   - `node --check extension/content.js`: 0 syntax errors.
   - `dotnet test backend/ResumeTailor.sln`: 35/35 passed.
+
+### 2026-10-06T03:15:00+05:30 — POC: Crawl4AI Anti-Bot Scraping Microservice Integration
+- **Problem Statement**:
+  - Direct HTTP scraping via `HttpClient` repeatedly encountered authwalls, Cloudflare/Akamai bot challenges, or unexpanded accordions ("Show more" on LinkedIn, "Read more" on Naukri), causing missing ATS keywords and degraded tailoring ([BUG-4082]).
+- **Architectural Enhancements**:
+  1. **Crawl4AI Microservice (`vedha-crawler`)**:
+     - Deployed open-source `unclecode/crawl4ai:latest` on port `11235` within `infra_vedha-network`.
+     - Forwarded port `11235` in `infra/localhost_proxy.py` and synchronized `infra/.env.example`.
+     - Health check verified: `http://crawler:11235/health` -> HTTP 200 OK (`version: 0.9.4`).
+  2. **C# Gateway Integration (`ICrawl4AiService` & `Crawl4AiService`)**:
+     - Implemented `Crawl4AiService` with typed `HttpClient`, bearer authentication, and Playwright stealth mode (`enable_stealth=true`).
+     - Added automatic JavaScript hook (`js_code`) unrolling LinkedIn's `.show-more-less-html__button--more` and Naukri's `.styles_jhc__read-more-btn`.
+     - Supports v0.9.4 nested markdown objects (`raw_markdown`, `markdown_with_citations`, `fit_markdown`).
+  3. **Dual-Engine Scraping Strategy (`JobScraperService`)**:
+     - Priority: Dispatches dynamic job URLs to Crawl4AI first for high-fidelity noise-free Markdown.
+     - Redundancy: If Crawl4AI is disabled, times out, or fails, automatically falls back to native AngleSharp/HttpClient parsing with zero service interruption.
+- **Verification Results**:
+  - `dotnet build backend/ResumeTailor.sln`: 0 errors.
+  - `dotnet test backend/ResumeTailor.sln`: 38/38 passed (35 existing + 3 new Crawl4AI unit tests).
+  - Inter-container connectivity: `vedha-backend` and `vedha-worker` connect to `http://crawler:11235` with HTTP 200 OK.
+  - Release binaries published and hot-deployed to `vedha-backend:/app/`.
