@@ -180,13 +180,24 @@ public class TailorCommandHandler :
             return Result<TailoredResumeResultDto>.Failure("A valid Job Description or URL is required.");
 
         var jobSchema = JsonSerializer.Deserialize<JobDescriptionSchema>(jobDescription.ExtractedSchemaJson, JsonOptions) ?? new JobDescriptionSchema();
-
-        // 3. AI Tailoring with Strict Never-Lie Guardrails
-        await _progressNotifier.SendProgressAsync(userId, "Tailoring", "Crafting ATS-optimized bullet points & reordering experience (Zero-Lie Enforcement)...", 50, cancellationToken);
+        jobSchema.EnsureKeywordsPopulated(jobDescription.CleanedText);
 
         var providerType = request.ProviderOverride ?? user.PreferredAiProvider;
         var aiProvider = _aiServiceFactory.GetProvider(providerType);
         var modelName = request.ModelOverride ?? user.PreferredModel;
+
+        // Dedicated AI fallback extraction strictly when none are coming
+        if (jobSchema.Keywords.Count == 0 && jobSchema.MustHaveSkills.Count == 0 && !string.IsNullOrWhiteSpace(jobDescription.CleanedText))
+        {
+            await ExtractKeywordsFallbackWithAiAsync(aiProvider, user, jobSchema, jobDescription.CleanedText, cancellationToken);
+            jobSchema.EnsureKeywordsPopulated(jobDescription.CleanedText);
+            jobDescription.ExtractedSchemaJson = JsonSerializer.Serialize(jobSchema, JsonOptions);
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+
+        // 3. AI Tailoring with Strict Never-Lie Guardrails
+        await _progressNotifier.SendProgressAsync(userId, "Tailoring", "Crafting ATS-optimized bullet points & reordering experience (Zero-Lie Enforcement)...", 50, cancellationToken);
+
 
         var systemPrompt = @"You are a Principal Executive Resume Strategist & ATS Optimization Specialist.
 Your task is to produce a HEAVILY TAILORED resume that is visibly and structurally different for each unique Job Description and achieves an ATS match score of 90%+ across modern enterprise parsers (Greenhouse, Lever, Workday, Taleo).
@@ -582,8 +593,28 @@ INSTRUCTIONS:
         string rawText,
         CancellationToken cancellationToken)
     {
-        var systemPrompt = "Extract key job details into structured JSON matching JobDescriptionSchema.";
-        var userPrompt = $"Analyze job description:\n\n{rawText}";
+        var systemPrompt = @"You are an expert Job Description Analyzer. Parse the raw job posting text and extract a structured JSON representation matching this exact schema:
+{
+  ""title"": ""Exact Job Title"",
+  ""company"": ""Company Name"",
+  ""location"": ""Location"",
+  ""seniority"": ""Junior, Mid, Senior, Lead, Principal, etc."",
+  ""experienceRequired"": ""e.g. 4-6 years"",
+  ""salary"": ""Compensation if mentioned, else null"",
+  ""mustHaveSkills"": [""Required core technical skills, programming languages, and critical competencies""],
+  ""niceToHaveSkills"": [""Preferred skills, pluses, secondary competencies""],
+  ""tools"": [""Developer tools, IDEs, version control, ticketing, e.g. Git, Postman, Docker""],
+  ""frameworks"": [""Frameworks and libraries, e.g. .NET Core, ASP.NET Web API, React, Angular, Spring Boot""],
+  ""databases"": [""Databases, e.g. SQL Server, PostgreSQL, MongoDB, Redis""],
+  ""cloud"": [""Cloud platforms, e.g. AWS, Azure, GCP""],
+  ""certifications"": [""Certifications if required""],
+  ""softSkills"": [""Soft skills, e.g. Agile, Code Reviews, Communication, Problem Solving""],
+  ""keywords"": [""Comprehensive list of technical keywords, role keywords, and domain search terms""],
+  ""responsibilities"": [""Core duties and responsibilities""]
+}
+CRITICAL REQUIREMENT: You MUST extract all technical skills, programming languages, and competencies into mustHaveSkills, frameworks, tools, databases, and keywords. DO NOT leave mustHaveSkills or keywords empty if any technical requirements exist in the posting.";
+
+        var userPrompt = $"Analyze job description and output full JSON matching JobDescriptionSchema:\n\n{rawText}";
         var result = await aiProvider.GenerateStructuredJsonAsync<JobDescriptionSchema>(
             systemPrompt,
             userPrompt,
@@ -598,20 +629,101 @@ INSTRUCTIONS:
             cancellationToken
         );
 
+        JobDescriptionSchema schema;
         if (result.IsSuccess)
         {
-            return result.Value;
+            schema = result.Value;
+        }
+        else
+        {
+            var lines = rawText.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var inferredTitle = lines.FirstOrDefault(l => l.Length > 3 && l.Length < 60 && !l.StartsWith("http", StringComparison.OrdinalIgnoreCase)) ?? "Target Role";
+            var inferredCompany = lines.Skip(1).FirstOrDefault(l => l.Length > 2 && l.Length < 50 && !l.StartsWith("http", StringComparison.OrdinalIgnoreCase)) ?? "Target Company";
+
+            schema = new JobDescriptionSchema
+            {
+                Title = inferredTitle,
+                Company = inferredCompany,
+                Responsibilities = lines.Take(5).ToList()
+            };
         }
 
-        var lines = rawText.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        var inferredTitle = lines.FirstOrDefault(l => l.Length > 3 && l.Length < 60 && !l.StartsWith("http", StringComparison.OrdinalIgnoreCase)) ?? "Target Role";
-        var inferredCompany = lines.Skip(1).FirstOrDefault(l => l.Length > 2 && l.Length < 50 && !l.StartsWith("http", StringComparison.OrdinalIgnoreCase)) ?? "Target Company";
+        schema.EnsureKeywordsPopulated(rawText);
 
-        return new JobDescriptionSchema
+        // Dedicated AI fallback extraction strictly when none are coming
+        if (schema.Keywords.Count == 0 && schema.MustHaveSkills.Count == 0 && !string.IsNullOrWhiteSpace(rawText))
         {
-            Title = inferredTitle,
-            Company = inferredCompany,
-            Responsibilities = lines.Take(5).ToList()
+            await ExtractKeywordsFallbackWithAiAsync(aiProvider, user, schema, rawText, cancellationToken);
+            schema.EnsureKeywordsPopulated(rawText);
+        }
+
+        return schema;
+    }
+
+    private static async Task ExtractKeywordsFallbackWithAiAsync(
+        IAiProvider aiProvider,
+        User user,
+        JobDescriptionSchema schema,
+        string rawText,
+        CancellationToken cancellationToken)
+    {
+        var fallbackSystemPrompt = @"You are a Principal Technical Recruiter and ATS Keyword Extraction Engine.
+Your SOLE TASK is to analyze the provided job description text and extract a comprehensive, granular list of technical skills, programming languages, libraries, frameworks, cloud services, databases, DevOps tools, architectural concepts, and engineering keywords.
+Return valid JSON matching this exact structure:
+{
+  ""mustHaveSkills"": [""Mandatory technical skills and languages""],
+  ""niceToHaveSkills"": [""Secondary or preferred skills""],
+  ""tools"": [""Tools and platforms""],
+  ""frameworks"": [""Frameworks and SDKs""],
+  ""databases"": [""Databases and storage engines""],
+  ""cloud"": [""Cloud and infrastructure services""],
+  ""keywords"": [""Every distinct technical and role keyword found in the posting""]
+}
+CRITICAL REQUIREMENT: Extract at least 15-30 granular technical keywords. Do NOT return empty arrays.";
+
+        var fallbackUserPrompt = $"Extract all technical skills and keywords from this job posting:\n\n{rawText}";
+        var apiKey = user.PreferredAiProvider switch
+        {
+            AiProviderType.OpenAi => user.CustomOpenAiKey,
+            AiProviderType.Claude => user.CustomClaudeKey,
+            AiProviderType.Gemini => user.CustomGeminiKey,
+            _ => null
         };
+
+        var fallbackResult = await aiProvider.GenerateStructuredJsonAsync<JobDescriptionSchema>(
+            fallbackSystemPrompt,
+            fallbackUserPrompt,
+            apiKey,
+            user.PreferredModel,
+            cancellationToken
+        );
+
+        if (fallbackResult.IsSuccess && fallbackResult.Value != null)
+        {
+            var fb = fallbackResult.Value;
+            if (fb.MustHaveSkills != null && fb.MustHaveSkills.Any())
+            {
+                foreach (var s in fb.MustHaveSkills)
+                {
+                    if (!schema.MustHaveSkills.Contains(s, StringComparer.OrdinalIgnoreCase))
+                        schema.MustHaveSkills.Add(s);
+                }
+            }
+            if (fb.Keywords != null && fb.Keywords.Any())
+            {
+                var set = new HashSet<string>(schema.Keywords, StringComparer.OrdinalIgnoreCase);
+                foreach (var k in fb.Keywords) set.Add(k);
+                schema.Keywords = set.ToList();
+            }
+            if (fb.Tools != null && fb.Tools.Any() && !schema.Tools.Any())
+                schema.Tools = fb.Tools;
+            if (fb.Frameworks != null && fb.Frameworks.Any() && !schema.Frameworks.Any())
+                schema.Frameworks = fb.Frameworks;
+            if (fb.Databases != null && fb.Databases.Any() && !schema.Databases.Any())
+                schema.Databases = fb.Databases;
+            if (fb.Cloud != null && fb.Cloud.Any() && !schema.Cloud.Any())
+                schema.Cloud = fb.Cloud;
+        }
     }
 }
+

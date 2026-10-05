@@ -13,7 +13,7 @@ public class Crawl4AiSettings
     public string BaseUrl { get; set; } = "http://crawler:11235";
     public bool Enabled { get; set; } = true;
     public string ApiToken { get; set; } = "vedha_crawler_token_2026";
-    public int TimeoutSeconds { get; set; } = 15;
+    public int TimeoutSeconds { get; set; } = 35;
 }
 
 public class Crawl4AiService : ICrawl4AiService
@@ -49,30 +49,28 @@ public class Crawl4AiService : ICrawl4AiService
             var baseEndpoint = _settings.BaseUrl.TrimEnd('/');
             var targetEndpoint = $"{baseEndpoint}/crawl";
 
-            // Construct payload with Playwright stealth and automatic "Show more" JS unrolling
+            // Construct payload with Crawl4AI v0.9.4 standard schema: @params for BrowserConfig and CrawlerRunConfig
             var payload = new
             {
                 urls = new[] { url },
-                url = url,
                 browser_config = new
                 {
                     type = "BrowserConfig",
-                    params_dict = new
+                    @params = new
                     {
                         headless = true,
                         enable_stealth = true,
-                        extra_args = new[] { "--disable-blink-features=AutomationControlled", "--no-sandbox" },
                         user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
                     }
                 },
                 crawler_config = new
                 {
                     type = "CrawlerRunConfig",
-                    params_dict = new
+                    @params = new
                     {
-                        js_code = "(function(){ try { const b = document.querySelector('.show-more-less-html__button--more, button[aria-label*=\"Show more\" i], .styles_jhc__read-more-btn, .read-more'); if(b) b.click(); } catch(e){} })();",
+                        delay_before_return_html = 4.0,
                         remove_overlay_elements = true,
-                        word_count_threshold = 20
+                        remove_consent_popups = true
                     }
                 }
             };
@@ -140,6 +138,15 @@ public class Crawl4AiService : ICrawl4AiService
             {
                 _logger.LogWarning("Crawl4AI returned empty markdown or reported failure for {Url}", url);
                 return Result<Crawl4AiResultDto>.Failure("Crawl4AI returned empty or unsuccessful content.");
+            }
+
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                var h1Match = System.Text.RegularExpressions.Regex.Match(markdown, @"^#\s+(.+)$", System.Text.RegularExpressions.RegexOptions.Multiline);
+                if (h1Match.Success)
+                {
+                    title = h1Match.Groups[1].Value.Trim();
+                }
             }
 
             _logger.LogInformation("Successfully scraped {Length} chars of clean Markdown via Crawl4AI for {Url}", markdown.Length, url);

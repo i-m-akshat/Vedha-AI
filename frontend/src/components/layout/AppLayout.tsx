@@ -14,10 +14,11 @@ import {
   Layers,
   ChevronRight,
   UserCheck,
-  Bot
+  Bot,
+  Activity
 } from 'lucide-react';
 import { useAuthStore, useThemeStore } from '../../stores/useAuthStore';
-import { Button, LivePulse, CornerBrackets } from '../ui';
+import { Button, LivePulse, CornerBrackets, FuturisticCanvas3D } from '../ui';
 
 export type ActivePage = 
   | 'dashboard' 
@@ -41,6 +42,7 @@ interface AppShellProps {
 export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, children }) => {
   const { user, logout } = useAuthStore();
   const { isDark, toggleTheme } = useThemeStore();
+  const [spatial3dEnabled, setSpatial3dEnabled] = React.useState(true);
 
   const navItems: { id: ActivePage; index: string; label: string; icon: React.ReactNode; badge?: string }[] = [
     { id: 'dashboard', index: '01', label: 'Dashboard', icon: <Layers className="w-3.5 h-3.5" /> },
@@ -161,20 +163,43 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-slate-50 dark:bg-[#050508]">
-        <header className="h-14 border-b border-slate-200/90 dark:border-white/[0.08] px-6 flex items-center justify-between shrink-0 bg-white/70 dark:bg-[#050508]/80 backdrop-blur-2xl sticky top-0 z-20">
+      {/* Main Content Area with Futuristic 3D Immersion */}
+      <main className="relative flex-1 flex flex-col min-w-0 overflow-y-auto bg-slate-50/90 dark:bg-[#050508]/90">
+        {spatial3dEnabled && <FuturisticCanvas3D />}
+
+        <header className="h-14 border-b border-slate-200/90 dark:border-white/[0.08] px-6 flex items-center justify-between shrink-0 bg-white/75 dark:bg-[#050508]/80 backdrop-blur-2xl sticky top-0 z-20 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="text-[10px] font-mono tracking-widest uppercase text-slate-400 dark:text-zinc-500 flex items-center gap-2">
               <span>WORKSPACE</span>
               <span className="opacity-40">/</span>
-              <span className="text-indigo-600 dark:text-indigo-400 font-semibold">{currentNav?.label || 'DASHBOARD'}</span>
+              <span className="text-indigo-600 dark:text-indigo-400 font-bold">{currentNav?.label || 'DASHBOARD'}</span>
               <span className="text-slate-400 dark:text-zinc-600">[{currentNav?.index || '01'}]</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <LivePulse active={true} label="ENGINE // LIVE" />
+          <div className="flex items-center gap-2.5">
+            {/* 3D Spatial Visualizer Toggle */}
+            <button
+              onClick={() => setSpatial3dEnabled(!spatial3dEnabled)}
+              className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-mono tracking-wider uppercase transition-all duration-300 ${
+                spatial3dEnabled
+                  ? 'border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shadow-[0_0_12px_rgba(99,102,241,0.2)]'
+                  : 'border-slate-300 dark:border-zinc-800 bg-slate-100 dark:bg-zinc-900 text-slate-500 dark:text-zinc-500'
+              }`}
+              title="Toggle 3D Neural Spatial Atmosphere"
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${spatial3dEnabled ? 'bg-indigo-500 animate-ping' : 'bg-zinc-500'}`} />
+              <span>{spatial3dEnabled ? '3D SPATIAL // ON' : '3D SPATIAL // OFF'}</span>
+            </button>
+
+            {/* Cyber Telemetry */}
+            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-200 dark:border-white/[0.06] bg-slate-100/60 dark:bg-zinc-950/60 text-[10px] font-mono text-slate-500 dark:text-zinc-400 backdrop-blur-md">
+              <Activity className="w-3 h-3 text-emerald-500" />
+              <span>SYNAPSE // 14ms</span>
+            </div>
+
+            <LivePulse active={true} label="CORE // ACTIVE" />
+
             <div className="text-xs text-slate-600 dark:text-zinc-400 bg-slate-100/90 dark:bg-zinc-950/80 border border-slate-200 dark:border-white/[0.08] px-3 py-1 rounded-full flex items-center gap-2 backdrop-blur-sm">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
               <span className="font-mono text-[11px]">
@@ -184,10 +209,11 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
           </div>
         </header>
 
-        <div className="flex-1 p-6 max-w-7xl w-full mx-auto">
+        <div className="relative z-10 flex-1 p-6 max-w-7xl w-full mx-auto">
           {children}
         </div>
       </main>
     </div>
   );
 };
+

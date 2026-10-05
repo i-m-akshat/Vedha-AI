@@ -147,26 +147,38 @@ Textarea.displayName = 'Textarea';
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   bracketed?: boolean;
   glowing?: boolean;
+  interactive3d?: boolean;
+  holographic?: boolean;
 }
 
-export const Card: React.FC<CardProps> = ({ className, bracketed = false, glowing = false, children, ...props }) => (
+export const Card: React.FC<CardProps> = ({ 
+  className, 
+  bracketed = false, 
+  glowing = false, 
+  interactive3d = false,
+  holographic = false,
+  children, 
+  ...props 
+}) => (
   <div
     className={cn(
-      'relative rounded-2xl border border-slate-200/90 bg-white/80 text-slate-900 shadow-sm backdrop-blur-xl p-5 transition-all duration-200 dark:border-white/[0.08] dark:bg-zinc-950/70 dark:text-zinc-100',
+      'relative rounded-2xl border border-slate-200/90 bg-white/80 text-slate-900 shadow-sm backdrop-blur-xl p-5 transition-all duration-300 dark:border-white/[0.08] dark:bg-zinc-950/70 dark:text-zinc-100',
       glowing && 'studio-glow',
+      interactive3d && 'hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-500/10 dark:hover:shadow-indigo-500/20 hover:border-indigo-400/40 dark:hover:border-indigo-500/40 transition-transform duration-300 transform-gpu',
+      holographic && 'border-indigo-500/30 dark:border-indigo-500/40 bg-gradient-to-br from-white/90 via-slate-50/80 to-indigo-50/40 dark:from-zinc-950/80 dark:via-zinc-950/60 dark:to-indigo-950/30 shadow-[0_0_30px_rgba(99,102,241,0.08)]',
       className
     )}
     {...props}
   >
     {/* Subtle specular top highlight line */}
-    <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/[0.12] to-transparent pointer-events-none rounded-t-2xl" />
+    <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/[0.2] dark:via-indigo-400/30 to-transparent pointer-events-none rounded-t-2xl" />
     {bracketed && <CornerBrackets />}
     {children}
   </div>
 );
 
 export const Badge: React.FC<React.HTMLAttributes<HTMLSpanElement> & { 
-  variant?: 'default' | 'success' | 'warning' | 'danger' | 'purple' | 'outline' | 'tech';
+  variant?: 'default' | 'success' | 'warning' | 'danger' | 'purple' | 'outline' | 'tech' | 'cyber';
   crossIcon?: boolean;
 }> = ({
   className,
@@ -177,18 +189,19 @@ export const Badge: React.FC<React.HTMLAttributes<HTMLSpanElement> & {
 }) => {
   const variants = {
     default: 'bg-slate-100 text-slate-800 border-slate-300 dark:bg-zinc-900/90 dark:text-zinc-300 dark:border-white/[0.08]',
-    success: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-    warning: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-    danger: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
-    purple: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
+    success: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]',
+    warning: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.15)]',
+    danger: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 shadow-[0_0_10px_rgba(244,63,94,0.15)]',
+    purple: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20 shadow-[0_0_10px_rgba(99,102,241,0.15)]',
     outline: 'border border-slate-300 text-slate-700 dark:border-white/[0.12] dark:text-zinc-300',
     tech: 'font-mono text-[10px] tracking-wider uppercase bg-slate-100/90 text-slate-700 border-slate-300 dark:bg-zinc-950/80 dark:text-zinc-300 dark:border-white/[0.1]',
+    cyber: 'font-mono text-[10px] tracking-wider uppercase bg-indigo-500/10 text-indigo-500 border border-indigo-500/40 shadow-[0_0_15px_rgba(99,102,241,0.25)] animate-pulse',
   };
 
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium tracking-tight transition-colors',
+        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium tracking-tight transition-all',
         variants[variant],
         className
       )}
@@ -237,5 +250,7 @@ export const Modal: React.FC<{
 
 // Re-export 3D & GSAP motion elements
 export * from './StudioCanvas3D';
+export * from './FuturisticCanvas3D';
 export * from './gsap-motions';
+
 

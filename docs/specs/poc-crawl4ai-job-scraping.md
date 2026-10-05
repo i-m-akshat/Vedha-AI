@@ -78,13 +78,18 @@ No public breaking API changes. Internal contracts added:
     "urls": ["https://www.linkedin.com/jobs/view/..."],
     "browser_config": {
       "type": "BrowserConfig",
-      "params_dict": { "headless": true, "enable_stealth": true }
+      "params": { 
+        "headless": true, 
+        "enable_stealth": true,
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+      }
     },
     "crawler_config": {
       "type": "CrawlerRunConfig",
-      "params_dict": {
-        "js_code": "(function(){ const b = document.querySelector('.show-more-less-html__button--more, .styles_jhc__read-more-btn'); if(b) b.click(); })();",
-        "remove_overlay_elements": true
+      "params": {
+        "delay_before_return_html": 4.0,
+        "remove_overlay_elements": true,
+        "remove_consent_popups": true
       }
     }
   }
@@ -94,12 +99,14 @@ No public breaking API changes. Internal contracts added:
 None. The resulting Markdown is saved directly to the existing `JobDescription.RawDescription` and `JobDescription.SanitizedText` columns in PostgreSQL.
 
 ## UI Changes
-None. The existing Orchestrator and Studio input fields (`Target Job URL`) function identically, but benefit from 100% complete text population and zero truncated text.
+1. **Target Job URL Scrape**: The existing Orchestrator and Studio input fields (`Target Job URL`) function identically, but benefit from 100% complete text population and zero truncated text.
+2. **Master Resume Upload UX**: Added real-time animated loading state in `MasterResumePage.tsx` during resume upload and multimodal AI extraction, with progressive step feedback and a disabled dropzone to prevent duplicate submissions.
 
 ## Edge Cases
 1. **Hard Authwall (Private/Closed Postings)**: If a job posting requires a logged-in user account, Crawl4AI detects an auth wall or minimal text; system falls back to notifying candidate to use the Chrome Extension or paste raw text.
 2. **Container Cold Start / Crash**: If `vedha-crawler` is starting up or temporarily offline, `JobScraperService` catches the connection exception and falls back to AngleSharp in `< 50ms`.
 3. **Huge Webpages (> 2MB)**: Crawl4AI strips non-content elements and returns trimmed markdown, preventing out-of-memory errors on large pages.
+4. **Client-Side SPA Hydration Delays (Naukri/Next.js)**: Configured 4.0s delay (`delay_before_return_html: 4.0`) so asynchronous client-side API fetches and Next.js DOM hydration complete before taking snapshot.
 
 ## Risks
 1. **Resource Consumption**: Headless Chromium instances consume memory.
@@ -115,3 +122,9 @@ None. The existing Orchestrator and Studio input fields (`Target Job URL`) funct
 
 ## Changelog
 - **2026-10-06 03:08:00 IST**: Full Feature Specification updated to adhere strictly to all mandatory sections of `AGENTS.md` and `GEMINI.md`.
+- **2026-10-06 03:32:00 IST**: Updated payload contract to Crawl4AI v0.9.4 `@params` deserializer standard with `delay_before_return_html: 4.0` for SPA hydration (Naukri/Next.js). Added Resume Upload visual loading requirements.
+- **2026-10-06 03:55:00 IST**: Fixed ATS scoring and keyword extraction gap where under-specified Gemini prompts omitted technical arrays (`mustHaveSkills`, `keywords`), causing an artificial 33% ATS score cap. Added explicit schema prompt constraints, deterministic boundary-safe regex taxonomy fallback (`EnsureKeywordsPopulated`), and database backfill for existing parsed jobs and scorecards.
+- **2026-10-06 04:02:00 IST**: Added targeted AI keyword extraction fallback strictly when initial extraction and taxonomy return zero keywords (`ExtractKeywordsFallbackWithAiAsync`). Implemented futuristic minimalistic aesthetic UI/UX overhaul featuring Three.js neural constellation background canvas (`FuturisticCanvas3D`), 3D holographic cards, cybernetic telemetry headers, and glowing radial SVG ATS score gauge.
+
+
+

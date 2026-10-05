@@ -60,10 +60,13 @@
 - **Integration & Fallback Verification**:
   - Verify container status and health check: `curl http://localhost:11235/health`.
   - Verify fallback behavior when crawler service is disabled or unreachable.
+  - End-to-end live test on Naukri URL: `https://www.naukri.com/job-listings-senior-full-stack-developer-net-net-core-asp-net-rest-apis-the-new-delhi-4-to-6-years-150926017897?src=drecomm_dashboard_profile`.
+  - Frontend visual test: verify animated step loader appears during Master Resume upload.
 
 ### 7. Deployment Considerations
 - Pull open-source image `unclecode/crawl4ai:latest` in rootless Podman machine.
 - Container memory bounded to 2GB to prevent memory spikes during high-throughput crawling.
+- Frontend build and hot reload for `MasterResumePage.tsx`.
 
 ### 8. Rollback Strategy
 - If Crawl4AI has compatibility issues, toggle `Crawl4AiSettings:Enabled = false` in `appsettings.json` or environment variables. The system immediately reverts to 100% native AngleSharp / `HttpClient` scraping with zero code changes or downtime.
@@ -72,3 +75,9 @@
 
 ## Changelog
 - **2026-10-06 03:08:30 IST**: Detailed step-by-step implementation plan updated to strictly follow all required sections of `AGENTS.md` and `GEMINI.md`.
+- **2026-10-06 03:32:30 IST**: Added Crawl4AI `@params` schema fix with 4.0s delay for SPA hydration (Naukri/Next.js) and Master Resume upload animated visual loader.
+- **2026-10-06 03:55:30 IST**: Hardened JD schema extraction with explicit JSON schema prompts for Gemini, added boundary-safe regex taxonomy fallback (`EnsureKeywordsPopulated`) in `JobDescriptionSchema.cs`, added unit test coverage in `AtsScoringEngineTests.cs`, recompiled and deployed backend, and ran backfill on existing records in `resumate_db`.
+- **2026-10-06 04:02:30 IST**: Implemented AI keyword fallback `ExtractKeywordsFallbackWithAiAsync` called strictly when keywords/skills are empty. Built `FuturisticCanvas3D.tsx` WebGL spatial canvas, updated `AppLayout.tsx` with telemetry and spatial toggle, enhanced `Card` and `Badge` with cyber holographic variants, and redesigned Result Studio ATS scorecard into a futuristic holographic radial gauge with neon keyword chips.
+
+
+

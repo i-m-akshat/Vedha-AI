@@ -91,6 +91,15 @@ public class JobScraperService : IJobScraperService
                             }
                         }
 
+                        if (string.IsNullOrWhiteSpace(company))
+                        {
+                            var postedByMatch = Regex.Match(cleanedMarkdown, @"(?:Posted by|Company:)\s*\[?([^\]\r\n\(\)]+)", RegexOptions.IgnoreCase);
+                            if (postedByMatch.Success)
+                            {
+                                company = postedByMatch.Groups[1].Value.Trim();
+                            }
+                        }
+
                         _logger.LogInformation("Successfully ingested {Length} chars via Crawl4AI for {Url}", cleanedMarkdown.Length, url);
                         return Result<(string, string?, string?, JobSource)>.Success((cleanedMarkdown, company, title, source));
                     }

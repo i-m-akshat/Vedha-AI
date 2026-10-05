@@ -453,3 +453,52 @@ A:\AIProjects\Resumebuilder\
   - `dotnet test backend/ResumeTailor.sln`: 38/38 passed (35 existing + 3 new Crawl4AI unit tests).
   - Inter-container connectivity: `vedha-backend` and `vedha-worker` connect to `http://crawler:11235` with HTTP 200 OK.
   - Release binaries published and hot-deployed to `vedha-backend:/app/`.
+
+### 2026-10-06T03:38:00+05:30 — Crawl4AI SPA Hydration & Frontend Resume Upload Visual Feedback
+- **Problem Statement**:
+  - Testing real Naukri.com URLs showed that Next.js client-side DOM rendering requires an asynchronous hydration window. The default snapshot was captured prior to client-side hydration, and Akamai Bot Protection flagged raw headless Chromium requests without stealth parameters.
+  - In `MasterResumePage.tsx`, file uploads lacked visual progress feedback during multipart transmission and Multimodal AI extraction, leaving candidates uncertain if parsing was active.
+- **Architectural Enhancements**:
+  1. **Crawl4AI v0.9.4 Schema & SPA Hydration Tuning (`Crawl4AiService.cs`)**:
+     - Upgraded serialization payload to Crawl4AI's strict schema standard: `@params` (matching `from_serializable_dict`).
+     - Passed `delay_before_return_html = 4.0`, allowing Next.js client-side API requests (`jobDetailsResp`) to finish rendering the DOM.
+     - Set `enable_stealth = true` and `user_agent` to evade Akamai Bot Manager detection.
+     - Enabled `remove_overlay_elements` and `remove_consent_popups` to eliminate cookie banners and modals.
+     - Extended `TimeoutSeconds` default to 35s.
+     - Added fallback to Markdown H1 (`# ...`) and `Posted by ...` in `JobScraperService.cs` when HTTP metadata fields are omitted.
+  2. **Frontend Resume Upload Progress & Visual Loader (`MasterResumePage.tsx` & `useTailorStore.ts`)**:
+     - Added `isUploading` boolean to `ResumeState` in `useResumeStore`.
+     - Added `uploadStatus: 'idle' | 'uploading' | 'success' | 'error'` and dynamic step-by-step progress tracker:
+       - Step 1: Uploading Document
+       - Step 2: Analyzing Layout & Text
+       - Step 3: Multimodal AI Extraction
+       - Step 4: Schema Standardization
+     - Dropzone displays an active animated radar loader with `Loader2`, gradient progress track, file badge, and disabled click/drop handlers to prevent double submissions.
+     - Added real-time informational status banner with active spinner and success/error notifications.
+- **Verification Results**:
+  - `dotnet test backend/ResumeTailor.sln`: **38/38 passed** (100% pass rate).
+  - Frontend production build (`npm run build`): **0 TypeScript errors**, Vite bundle succeeded in 38s.
+  - Live Naukri URL ingestion verified via `POST /api/job/scrape`: successfully ingested **14,209 characters** of clean Markdown (.NET Core, ASP.NET REST APIs, C#, SQL Server, Angular) and resolved Company and Role.
+  - Backend binaries published and hot-copied to `vedha-backend:/app/`; container restarted and healthy.
+
+### 2026-10-06T04:10:00+05:30 — ATS Keyword Extraction Hardening & Futuristic 3D UI/UX Overhaul
+- **Problem Statement**:
+  - Parsed job descriptions occasionally omitted technical keyword arrays (`mustHaveSkills: []`, `keywords: []`) due to under-specified LLM schema prompts, artificially triggering the default 33% ATS scoring penalty.
+  - The UI/UX required enhanced spatial immersion, futuristic minimalistic aesthetics, and responsive 3D micro-animations.
+- **Architectural Enhancements**:
+  1. **Schema Self-Healing & Regex Taxonomy Extractor (`JobDescriptionSchema.cs`)**:
+     - Added boundary-safe regex matching covering 60+ industry standards (`C#`, `.NET Core`, `ASP.NET MVC`, `Web API`, `SQL Server`, `Docker`, `Kubernetes`, `Microservices`, `SOLID`, etc.).
+  2. **Dedicated AI Keyword Fallback (`ExtractKeywordsFallbackWithAiAsync`)**:
+     - Added specialized AI extraction in `JobDescriptionCommands.cs` and `TailorCommands.cs` triggered strictly when no technical keywords are extracted.
+  3. **Futuristic 3D Spatial Experience (Three.js & Tailwind)**:
+     - Implemented `FuturisticCanvas3D.tsx`: ambient Three.js neural constellation background with interactive mouse parallax and gentle drift.
+     - Upgraded `AppLayout.tsx` with cyber telemetry indicators (`SYNAPSE // 14ms`, `CORE // ACTIVE`) and a `3D SPATIAL // ON` toggle.
+     - Enhanced `Card` and `Badge` with `interactive3d`, `holographic`, and `cyber` neon variants.
+     - Overhauled `ResultStudioPage.tsx` with an SVG holographic radial progress gauge and neon glowing keyword chips.
+- **Verification Results**:
+  - `dotnet test backend/ResumeTailor.sln`: **40/40 passed** (100% pass rate).
+  - Frontend production build (`npm run build`): **0 errors**, compiled in 10.27s.
+  - Live database backfill updated existing records: match score updated from 33% (0 keywords) to 76% (23 matching keywords).
+  - Release binaries deployed to `vedha-backend` and `vedha-frontend` containers.
+
+
