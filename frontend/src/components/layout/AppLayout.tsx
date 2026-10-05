@@ -66,26 +66,13 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
       <aside className="w-64 border-r border-slate-200/90 bg-white/70 dark:border-white/[0.08] dark:bg-zinc-950/60 flex flex-col justify-between p-4 shrink-0 backdrop-blur-2xl">
         <div className="space-y-6">
           {/* Logo & Studio Header */}
-          <div className="relative px-2 py-3 rounded-xl border border-slate-200/80 dark:border-white/[0.06] bg-slate-50/50 dark:bg-zinc-900/30">
+          <div className="relative p-2 rounded-xl border border-slate-200/80 dark:border-white/[0.06] bg-slate-50/50 dark:bg-zinc-900/30 flex items-center justify-center overflow-hidden">
             <CornerBrackets size="w-1.5 h-1.5" />
-            <div className="flex items-center gap-3">
-              <img 
-                src="/vedha-logo.png" 
-                alt="Vedha AI" 
-                className="h-9 w-9 rounded-xl object-contain bg-white dark:bg-zinc-950 p-1 border border-indigo-500/30 shadow-md shadow-indigo-500/10" 
-              />
-              <div className="overflow-hidden">
-                <div className="font-bold text-xs tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5 uppercase font-mono">
-                  <span>Vedha</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-bold border border-indigo-500/30">
-                    OS
-                  </span>
-                </div>
-                <div className="text-[9px] font-mono tracking-wider uppercase text-slate-400 dark:text-zinc-500 mt-0.5 truncate">
-                  EDITION 2026 // PRO
-                </div>
-              </div>
-            </div>
+            <img 
+              src="/vedha-logo.png" 
+              alt="Vedha AI" 
+              className="w-full h-14 sm:h-16 object-contain rounded-lg shadow-sm drop-shadow-md transition-transform duration-300 hover:scale-[1.02]" 
+            />
           </div>
 
           {/* Navigation Links */}
