@@ -66,12 +66,12 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
       <aside className="w-64 border-r border-slate-200/90 bg-white/70 dark:border-white/[0.08] dark:bg-zinc-950/60 flex flex-col justify-between p-4 shrink-0 backdrop-blur-2xl">
         <div className="space-y-6">
           {/* Logo & Studio Header */}
-          <div className="relative p-2 rounded-xl border border-slate-200/80 dark:border-white/[0.06] bg-slate-50/50 dark:bg-zinc-900/30 flex items-center justify-center overflow-hidden">
+          <div className="relative p-2.5 rounded-xl border border-slate-200/80 dark:border-white/20 bg-white dark:bg-white shadow-sm flex items-center justify-center overflow-hidden">
             <CornerBrackets size="w-1.5 h-1.5" />
             <img 
               src="/vedha-logo.png" 
               alt="Vedha AI" 
-              className="w-full h-14 sm:h-16 object-contain rounded-lg shadow-sm drop-shadow-md transition-transform duration-300 hover:scale-[1.02]" 
+              className="w-full h-14 sm:h-16 object-contain rounded-lg bg-white transition-transform duration-300 hover:scale-[1.02]" 
             />
           </div>
 
