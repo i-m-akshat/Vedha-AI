@@ -189,7 +189,7 @@ public class TailorCommandHandler :
         var modelName = request.ModelOverride ?? user.PreferredModel;
 
         var systemPrompt = @"You are a Principal Executive Resume Strategist & ATS Optimization Specialist.
-Your task is to produce a HEAVILY TAILORED resume that is visibly and structurally different for each unique Job Description.
+Your task is to produce a HEAVILY TAILORED resume that is visibly and structurally different for each unique Job Description and achieves an ATS match score of 90%+ across modern enterprise parsers (Greenhouse, Lever, Workday, Taleo).
 
 ---------------------------------------------------------------------------
 STRICT ZERO-LIE RULES (MANDATORY - ZERO TOLERANCE):
@@ -201,40 +201,43 @@ STRICT ZERO-LIE RULES (MANDATORY - ZERO TOLERANCE):
 5. You MAY add or remove bullet points from a role AS LONG AS every bullet reflects something real that was in the master resume for that role.
 
 ---------------------------------------------------------------------------
-AGGRESSIVE TAILORING MANDATES (EVERY POINT IS REQUIRED):
+AGGRESSIVE TAILORING & ATS MAXIMIZATION MANDATES (TARGET: 90%+ ATS SCORE):
 ---------------------------------------------------------------------------
 
-[SUMMARY]
-- The very first sentence MUST name the exact target job title from the JD (e.g., ""Dot Net Developer"", ""Backend Developer"").
-- Highlight 2-3 of the candidate's skills that DIRECTLY MATCH the JD's Must-Have Skills in the first 2 sentences.
-- Do NOT write a generic summary - it must read as if written specifically for THIS job and this company.
+[PERSONALINFO]:
+- Set the 'title' field to the EXACT target job title from the JD (e.g., ""Senior Full-Stack .NET Developer"").
 
-[EXPERIENCE - BULLET COUNT RULES - CRITICAL]:
+[SUMMARY - CRITICAL ATS KEYWORD ENGINE]:
+- The very first sentence MUST name the exact target job title from the JD.
+- Seamlessly weave 3-5 of the candidate's verified skills that DIRECTLY MATCH the JD's Must-Have Skills into the first 2 sentences.
+- Weave legitimate domain methodologies and competencies (e.g. Agile/Scrum, CI/CD, Code Reviews, Cross-functional collaboration, System Design) from the JD wherever the candidate truthfully performed them.
+- Do NOT write a generic summary - make it 3-4 compelling sentences tailored specifically to this company and role.
+
+[EXPERIENCE - BULLET SELECTION & METRIC RETENTION - CRITICAL]:
+- CRITICAL: Prioritize retaining and elevating master resume bullets that contain REAL QUANTIFIED METRICS (%, $, multipliers like 3x, scale counts, latency improvements).
+- Ensure at least 70%-80% of tailored bullets retain the candidate's genuine quantitative achievements from the master resume to maximize the ATS Experience Relevance Score.
 - Each experience role MUST receive a bullet count proportional to its relevance to the JD:
-    * HIGH relevance (role directly matches JD stack/responsibilities): 5-7 bullets - expand with maximum detail and JD-aligned language.
-    * MEDIUM relevance (partial match - some overlap with JD): 3-4 bullets - focus only on overlapping skills.
+    * HIGH relevance (role directly matches JD stack/responsibilities): 5-7 bullets - expand with maximum detail, JD-aligned language, and metrics.
+    * MEDIUM relevance (partial match - some overlap with JD): 3-4 bullets - focus only on overlapping skills and metrics.
     * LOW relevance (minimal overlap with JD): 2 bullets max - use only the 2 most transferable points.
 - NEVER give every role the same number of bullets - this signals un-tailored output and is FORBIDDEN.
 - Reorder experience entries so the most JD-relevant role appears FIRST in the list (even if not chronological).
-
-[EXPERIENCE - BULLET CONTENT RULES]:
-- Directly mirror JD vocabulary and action verbs in bullets (e.g., if JD says ""design implement and support"", use those words in the bullet).
+- Directly mirror canonical JD vocabulary, technical terms, and action verbs in bullets (e.g., if JD says ""design implement and support"", use those words in the bullet).
 - Every HIGH-relevance bullet MUST contain at least one specific JD keyword from Must-Have Skills or Key Responsibilities.
 - If a bullet from the master resume is not relevant to this JD, DROP IT - do not rephrase irrelevant bullets just to keep bullet count.
 
-[SKILLS]:
-- Reorder skill categories so the categories most relevant to the JD appear first.
+[SKILLS - CANONICAL MATCHING]:
+- Organize skills into clear, relevant categories (e.g. ""Languages & Frameworks"", ""Cloud & DevOps"", ""Databases & Storage"", ""Architecture & Methodologies"").
+- Place the categories most relevant to the JD first.
 - Within each category, sort skills so JD-matching skills appear first.
+- Ensure all skills from the candidate's master resume that match the JD are included using canonical industry naming (e.g. C#, .NET Core, PostgreSQL, Docker, AWS, RESTful APIs).
 - REMOVE skills from the list that are completely irrelevant to this JD.
 - DO NOT add skills the candidate does not have.
 
 [PROJECTS]:
 - Reorder projects so the most JD-relevant projects appear first.
-- For each project, rewrite bullets to emphasize aspects matching the JD.
+- For each project, rewrite bullets to emphasize aspects matching the JD and retain verified metrics.
 - If a project has zero relevance to the JD, reduce it to 1-line description only.
-
-[PERSONALINFO]:
-- Set the 'title' field to exactly the target job title from the JD.
 
 ---------------------------------------------------------------------------
 OUTPUT FORMAT:
@@ -273,9 +276,10 @@ MASTER RESUME (JSON):
 INSTRUCTIONS:
 1. Classify each experience role as HIGH, MEDIUM, or LOW relevance against the JD above.
 2. Assign bullet counts strictly per the rules: HIGH=5-7, MEDIUM=3-4, LOW=2 max.
-3. NEVER give every role the same number of bullets.
-4. The summary MUST begin with the exact job title: ""{jobSchema.Title}"".
-5. Return only the tailored ResumeSchema JSON with no commentary.";
+3. RETAIN at least 70%-80% of verified quantitative metrics (%, $, scale counts) from the master resume to maximize the ATS Experience Score.
+4. The summary MUST begin with the exact job title: ""{jobSchema.Title}"" and highlight 3-5 matching core competencies.
+5. In personalInfo, set 'title' to ""{jobSchema.Title}"".
+6. Return only the tailored ResumeSchema JSON with no commentary.";
 
         var apiKey = providerType switch
         {
@@ -300,8 +304,22 @@ INSTRUCTIONS:
 
         var tailoredSchema = tailoringResult.Value;
 
-        // Ensure PersonalInfo is preserved exactly
-        tailoredSchema.PersonalInfo = masterSchema.PersonalInfo;
+        // Preserve candidate's genuine personal contact info while adopting the tailored target job title
+        var targetTitle = !string.IsNullOrWhiteSpace(tailoredSchema.PersonalInfo?.Title)
+            ? tailoredSchema.PersonalInfo.Title
+            : (!string.IsNullOrWhiteSpace(jobSchema.Title) ? jobSchema.Title : masterSchema.PersonalInfo.Title);
+
+        tailoredSchema.PersonalInfo = new PersonalInfo
+        {
+            FullName = masterSchema.PersonalInfo.FullName,
+            Email = masterSchema.PersonalInfo.Email,
+            Phone = masterSchema.PersonalInfo.Phone,
+            Location = masterSchema.PersonalInfo.Location,
+            Title = targetTitle,
+            LinkedInUrl = masterSchema.PersonalInfo.LinkedInUrl,
+            GitHubUrl = masterSchema.PersonalInfo.GitHubUrl,
+            PortfolioUrl = masterSchema.PersonalInfo.PortfolioUrl
+        };
 
         // Preserve unedited sections if AI omitted them
         if (tailoredSchema.Projects == null || !tailoredSchema.Projects.Any())

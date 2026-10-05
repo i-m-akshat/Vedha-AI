@@ -1030,7 +1030,7 @@ public class ResilientAiProviderDecorator : IAiProvider
     {
         // 1. Try Primary Provider
         var result = await _primaryProvider.ParseDocumentBytesAsync<TResponse>(fileBytes, mimeType, systemPrompt, userPrompt, customApiKey, modelName, cancellationToken);
-        if (result.IsSuccess)
+        if (result.IsSuccess || !IsTransientOrQuotaError(result.Error))
             return result;
 
         _logger.LogWarning("Primary AI provider {Provider} failed multimodal document parsing: {Error}. Initiating fallback...", _primaryProvider.ProviderType, result.Error);
@@ -1059,7 +1059,9 @@ public class ResilientAiProviderDecorator : IAiProvider
                lower.Contains("resource exhausted") || lower.Contains("503") || lower.Contains("500") ||
                lower.Contains("502") || lower.Contains("504") || lower.Contains("overloaded") ||
                lower.Contains("not configured") || lower.Contains("401") || lower.Contains("404") ||
-               lower.Contains("unauthorized") || lower.Contains("forbidden") || lower.Contains("timeout");
+               lower.Contains("403") || lower.Contains("400") ||
+               lower.Contains("unauthorized") || lower.Contains("forbidden") || lower.Contains("not found") ||
+               lower.Contains("bad request") || lower.Contains("timeout") || lower.Contains("service unavailable");
     }
 }
 

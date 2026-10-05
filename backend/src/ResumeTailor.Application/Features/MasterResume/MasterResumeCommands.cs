@@ -196,51 +196,81 @@ CRITICAL ACCURACY & INTEGRITY RULES:
                 _ => "application/octet-stream"
             };
 
-        var structuredResult = await aiProvider.ParseDocumentBytesAsync<ResumeSchema>(
-            fileBytes,
-            mimeType,
-            systemPrompt,
-            "Extract all resume content from this uploaded document and output strictly structured JSON matching the required schema.",
-            customKey,
-            user.PreferredModel,
-            cancellationToken
-        );
+        // Tier 1: Extract text locally using registered document parsers (PdfPig, OpenXml, Markdig)
+        // This works even without AI API keys configured and is more cost-effective
+        string extractedText = string.Empty;
+        var localParser = _documentParsers.FirstOrDefault(p => p.CanParse(request.FileName, mimeType));
+        if (localParser != null)
+        {
+            using var readStream = new MemoryStream(fileBytes);
+            var parseResult = await localParser.ExtractTextAsync(readStream, request.FileName, cancellationToken);
+            if (parseResult.IsSuccess && !string.IsNullOrWhiteSpace(parseResult.Value))
+            {
+                extractedText = parseResult.Value;
+            }
+        }
 
         ResumeSchema schema;
-        if (structuredResult.IsSuccess)
+        if (!string.IsNullOrWhiteSpace(extractedText))
         {
-            schema = structuredResult.Value;
+            // Tier 2: Send extracted text to AI for structured JSON parsing
+            var textResult = await aiProvider.GenerateStructuredJsonAsync<ResumeSchema>(
+                systemPrompt,
+                "Extract all resume content from this document text and output strictly structured JSON matching the required schema:\n\n" + extractedText,
+                customKey,
+                user.PreferredModel,
+                cancellationToken
+            );
+
+            if (textResult.IsSuccess)
+            {
+                schema = textResult.Value;
+            }
+            else
+            {
+                // Tier 3 Fallback: If text-based parsing fails (e.g., scanned/image-based PDF), try multimodal AI parsing
+                var multimodalResult = await aiProvider.ParseDocumentBytesAsync<ResumeSchema>(
+                    fileBytes,
+                    mimeType,
+                    systemPrompt,
+                    "Extract all resume content from this uploaded document and output strictly structured JSON matching the required schema.",
+                    customKey,
+                    user.PreferredModel,
+                    cancellationToken
+                );
+
+                if (multimodalResult.IsSuccess)
+                {
+                    schema = multimodalResult.Value;
+                }
+                else
+                {
+                    return Result<MasterResumeDto>.Failure($"Failed to parse resume: {textResult.Error}. Multimodal fallback also failed: {multimodalResult.Error}");
+                }
+            }
         }
         else
         {
-            // Tier 2 Fallback: Extract text locally using registered document parsers (PdfPig, OpenXml, Markdig)
-            var localParser = _documentParsers.FirstOrDefault(p => p.CanParse(request.FileName, mimeType));
-            if (localParser != null)
+            // Local text extraction failed (e.g., scanned PDF), try multimodal AI parsing directly
+            var multimodalResult = await aiProvider.ParseDocumentBytesAsync<ResumeSchema>(
+                fileBytes,
+                mimeType,
+                systemPrompt,
+                "Extract all resume content from this uploaded document and output strictly structured JSON matching the required schema.",
+                customKey,
+                user.PreferredModel,
+                cancellationToken
+            );
+
+            if (multimodalResult.IsSuccess)
             {
-                using var readStream = new MemoryStream(fileBytes);
-                var parseResult = await localParser.ExtractTextAsync(readStream, request.FileName, cancellationToken);
-                if (parseResult.IsSuccess && !string.IsNullOrWhiteSpace(parseResult.Value))
-                {
-                    var fallbackResult = await aiProvider.GenerateStructuredJsonAsync<ResumeSchema>(
-                        systemPrompt,
-                        "Extract all resume content from this document text and output strictly structured JSON matching the required schema:\n\n" + parseResult.Value,
-                        customKey,
-                        user.PreferredModel,
-                        cancellationToken
-                    );
-
-                    if (fallbackResult.IsSuccess)
-                    {
-                        schema = fallbackResult.Value;
-                        goto SchemaAcquired;
-                    }
-                }
+                schema = multimodalResult.Value;
             }
-
-            return Result<MasterResumeDto>.Failure($"Failed to parse resume: {structuredResult.Error}");
+            else
+            {
+                return Result<MasterResumeDto>.Failure($"Failed to extract text locally and multimodal AI parsing failed: {multimodalResult.Error}");
+            }
         }
-
-    SchemaAcquired:
 
         var format = Path.GetExtension(request.FileName).ToLowerInvariant() switch
         {

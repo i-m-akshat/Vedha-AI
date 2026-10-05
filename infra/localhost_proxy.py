@@ -14,7 +14,7 @@ def get_wsl_ip():
         return _cached_ip
     try:
         out = subprocess.check_output(
-            ["wsl", "-d", "podman-machine-default", "ip", "-4", "addr", "show", "eth0"],
+            ["wsl", "-d", "podman-machine-default", "--cd", "~", "ip", "-4", "addr", "show", "eth0"],
             text=True,
             timeout=3
         )
@@ -47,7 +47,7 @@ def forward(src, dst, done_event):
 
 def handle_connection(client, port):
     target_ip = get_wsl_ip()
-    target_port = 5000 if port == 9000 else port
+    target_port = port
     remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         remote.connect((target_ip, target_port))
@@ -93,7 +93,7 @@ def main():
     initial_ip = get_wsl_ip()
     print(f"[Proxy] Initialized. Current WSL IP: {initial_ip}")
     threads = []
-    for port in [3000, 5000, 6379, 4222, 9000]:
+    for port in [3000, 5000, 6379, 4222, 8000, 9000, 9001]:
         t = threading.Thread(target=proxy_port, args=(port,), daemon=True)
         t.start()
         threads.append(t)

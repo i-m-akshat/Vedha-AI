@@ -66,8 +66,25 @@ else
   echo "Creating and starting vedha-nats container..."
   podman run -d --name vedha-nats \
     --network infra_vedha-network \
+    --network-alias nats \
+    --network-alias vedha-nats \
     -p 4222:4222 -p 8222:8222 \
     nats:latest -js -m 8222 2>/dev/null || true
+fi
+
+if podman container exists vedha-minio; then
+  podman start vedha-minio 2>/dev/null || true
+else
+  echo "Creating and starting vedha-minio container..."
+  podman run -d --name vedha-minio \
+    --network infra_vedha-network \
+    --network-alias minio \
+    --network-alias vedha-minio \
+    -p 9000:9000 -p 9001:9001 \
+    -e MINIO_ROOT_USER="${MINIO_ACCESS_KEY}" \
+    -e MINIO_ROOT_PASSWORD="${MINIO_SECRET_KEY}" \
+    -v minio_data:/data \
+    cgr.dev/chainguard/minio:latest server /data --console-address :9001
 fi
 
 echo "Waiting for postgres & redis readiness..."
@@ -88,22 +105,26 @@ for attempt in $(seq 1 30); do
   sleep 2
 done
 
-# 4. Remove existing backend/frontend containers if present
-podman rm -f vedha-backend vedha-frontend 2>/dev/null || true
+# 4. Remove existing backend/frontend/worker containers if present
+podman rm -f vedha-backend vedha-frontend vedha-worker 2>/dev/null || true
 
 # 5. Start Backend
 echo "Starting vedha-backend..."
 podman run -d --name vedha-backend \
   --network infra_vedha-network \
   --network-alias backend \
+  --network-alias vedha-backend \
   -p 5000:8080 \
   -v vedha_storage_data:/app/s3_local_cache \
   -e ASPNETCORE_ENVIRONMENT=Development \
   -e ConnectionStrings__DefaultConnection="Host=vedha-postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};" \
   -e ConnectionStrings__Redis="vedha-redis:6379" \
   -e NatsSettings__Url="nats://vedha-nats:4222" \
-  -e S3Settings__Endpoint="localhost:9000" \
+  -e S3Settings__Endpoint="minio:9000" \
   -e S3Settings__PublicEndpoint="http://localhost:9000" \
+  -e S3Settings__AccessKey="${MINIO_ACCESS_KEY}" \
+  -e S3Settings__SecretKey="${MINIO_SECRET_KEY}" \
+  -e S3Settings__BucketName="vedha-resumes" \
   -e JwtSettings__Secret="${JWT_SECRET}" \
   -e JwtSettings__Issuer="${JWT_ISSUER}" \
   -e JwtSettings__Audience="${JWT_AUDIENCE}" \
@@ -121,6 +142,20 @@ podman run -d --name vedha-frontend \
   --network-alias frontend \
   -p 3000:80 \
   localhost/infra-frontend:latest
+
+# 7. Start Playwright Worker
+echo "Starting vedha-worker..."
+podman run -d --name vedha-worker \
+  --network infra_vedha-network \
+  --network-alias worker \
+  --network-alias vedha-worker \
+  -p 8000:8000 \
+  -e NATS_URL="nats://vedha-nats:4222" \
+  -e MINIO_ENDPOINT="minio:9000" \
+  -e MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY}" \
+  -e MINIO_SECRET_KEY="${MINIO_SECRET_KEY}" \
+  -e MINIO_BUCKET="vedha-resumes" \
+  localhost/infra-worker:latest
 
 echo "=== All containers started successfully ==="
 podman ps -a

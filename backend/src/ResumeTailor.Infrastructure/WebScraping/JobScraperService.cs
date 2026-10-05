@@ -39,6 +39,17 @@ public class JobScraperService : IJobScraperService
         {
             var source = DetectJobSource(uri);
 
+            // Normalize LinkedIn Search URLs: extract currentJobId to canonical guest view URL
+            if (source == JobSource.LinkedIn)
+            {
+                var match = Regex.Match(url, @"(?:currentJobId=|/jobs/view/)(\d+)", RegexOptions.IgnoreCase);
+                if (match.Success)
+                {
+                    url = $"https://www.linkedin.com/jobs/view/{match.Groups[1].Value}/";
+                    _logger.LogInformation("Normalized LinkedIn URL to canonical job view: {Url}", url);
+                }
+            }
+
             // Fast-path: Workday public CXS REST API avoids client-side SPA empty rendering
             if (source == JobSource.Workday && uri.Host.Contains("myworkdayjobs.com", StringComparison.OrdinalIgnoreCase))
             {
@@ -131,8 +142,25 @@ public class JobScraperService : IJobScraperService
                 case JobSource.LinkedIn:
                     detectedTitle = document.QuerySelector(".top-card-layout__title, h1.topcard__title, .job-details-jobs-unified-top-card__job-title")?.TextContent?.Trim();
                     detectedCompany = document.QuerySelector(".topcard__flavor, .topcard__flavor--black-link, .job-details-jobs-unified-top-card__company-name")?.TextContent?.Trim();
+                    
+                    // Fallback to <title> parsing if standard classes are obfuscated (e.g. "Software Engineer at Eurofins — Bengaluru...")
+                    if (string.IsNullOrWhiteSpace(detectedTitle) && !string.IsNullOrWhiteSpace(document.Title))
+                    {
+                        var pageTitle = document.Title.Trim();
+                        var atIdx = pageTitle.IndexOf(" at ", StringComparison.OrdinalIgnoreCase);
+                        var dashIdx = pageTitle.IndexOf(" — ", StringComparison.OrdinalIgnoreCase);
+                        if (atIdx > 0)
+                        {
+                            detectedTitle = pageTitle.Substring(0, atIdx).Trim();
+                            if (string.IsNullOrWhiteSpace(detectedCompany) && dashIdx > atIdx)
+                            {
+                                detectedCompany = pageTitle.Substring(atIdx + 4, dashIdx - atIdx - 4).Trim();
+                            }
+                        }
+                    }
+
                     var liContent = document.QuerySelector(".show-more-less-html__markup, .description__text, .jobs-description__content");
-                    extractedText = liContent != null ? CleanElementText(liContent) : CleanElementText(document.Body);
+                    extractedText = liContent != null ? CleanElementText(liContent) : string.Empty;
                     break;
 
                 case JobSource.Indeed:
@@ -169,6 +197,18 @@ public class JobScraperService : IJobScraperService
                     var mainContent = document.QuerySelector("main, article, #job-description, .job-description, #job-details, .job-details, #content") ?? document.Body;
                     extractedText = CleanElementText(mainContent);
                     break;
+            }
+
+            // Authwall / Login Page Detection (prevents scraping login pages into job descriptions)
+            var isAuthWall = (document.Title?.Contains("LinkedIn Login", StringComparison.OrdinalIgnoreCase) == true)
+                || (document.Title?.Contains("Sign In", StringComparison.OrdinalIgnoreCase) == true)
+                || extractedText.Contains("Sign in with Apple", StringComparison.OrdinalIgnoreCase)
+                || extractedText.Contains("Sign in with a passkey", StringComparison.OrdinalIgnoreCase);
+
+            if (isAuthWall || (source == JobSource.LinkedIn && string.IsNullOrWhiteSpace(extractedText)))
+            {
+                return Result<(string, string?, string?, JobSource)>.Failure(
+                    "LinkedIn authentication barrier detected for this URL. LinkedIn requires an active session to view this job posting. Please switch to the 'Paste Job Text' tab in Tailor Studio to paste the job description text directly, or use the Vedha Chrome Extension on your active LinkedIn tab.");
             }
 
             if (string.IsNullOrWhiteSpace(extractedText) || extractedText.Length < 50)

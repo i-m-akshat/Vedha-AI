@@ -119,9 +119,11 @@ public class AtsScoringEngine : IAtsScoringEngine
         var matchingKeywords = new List<string>();
         var missingKeywords = new List<string>();
 
+        var allCandidateSkills = resume.Skills.SelectMany(s => s.Skills).ToList();
+
         foreach (var kw in jdKeywords)
         {
-            if (ContainsKeyword(resumeFullText, kw))
+            if (MatchesKeyword(resumeFullText, allCandidateSkills, kw))
             {
                 matchingKeywords.Add(kw);
             }
@@ -131,19 +133,20 @@ public class AtsScoringEngine : IAtsScoringEngine
             }
         }
 
+        var totalTargetSkills = job.MustHaveSkills.Count + job.NiceToHaveSkills.Count;
+        var hasSkillsOrKeywords = jdKeywords.Count > 0 || totalTargetSkills > 0;
+
         var keywordScore = jdKeywords.Count > 0
             ? (int)Math.Round((double)matchingKeywords.Count / jdKeywords.Count * 100)
-            : 85;
+            : (hasSkillsOrKeywords ? 70 : 25);
 
         // 2. Skills Match Analysis
         var matchingSkills = new List<string>();
         var missingSkills = new List<string>();
 
-        var allCandidateSkills = resume.Skills.SelectMany(s => s.Skills).ToList();
-
         foreach (var skill in job.MustHaveSkills)
         {
-            if (ContainsKeyword(resumeFullText, skill) || allCandidateSkills.Any(s => Normalize(s) == Normalize(skill)))
+            if (MatchesSkill(resumeFullText, allCandidateSkills, skill))
             {
                 matchingSkills.Add(skill);
             }
@@ -155,7 +158,7 @@ public class AtsScoringEngine : IAtsScoringEngine
 
         foreach (var skill in job.NiceToHaveSkills)
         {
-            if (ContainsKeyword(resumeFullText, skill) || allCandidateSkills.Any(s => Normalize(s) == Normalize(skill)))
+            if (MatchesSkill(resumeFullText, allCandidateSkills, skill))
             {
                 if (!matchingSkills.Contains(skill, StringComparer.OrdinalIgnoreCase))
                     matchingSkills.Add(skill);
@@ -167,17 +170,17 @@ public class AtsScoringEngine : IAtsScoringEngine
             }
         }
 
-        var totalTargetSkills = job.MustHaveSkills.Count + job.NiceToHaveSkills.Count;
         var skillsScore = totalTargetSkills > 0
             ? (int)Math.Round((double)matchingSkills.Count / totalTargetSkills * 100)
-            : 80;
+            : (hasSkillsOrKeywords ? 70 : 25);
 
         // 3. Experience Relevance & Metrics Score
         var allHighlights = resume.Experience.SelectMany(e => e.Highlights).Concat(resume.Projects.SelectMany(p => p.Highlights)).ToList();
-        var metricBullets = allHighlights.Count(h => Regex.IsMatch(h, @"\d+%|\$\d+|\d+x|\b\d{2,}\b"));
+        var metricBullets = allHighlights.Count(h => Regex.IsMatch(h, @"\d+(?:\.\d+)?%|[\$\€\£\₹]\s*\d+|\b\d+(?:\.\d+)?(?:x|\+|k\+|m\+|ms|s|gb|tb)\b|\b\d{2,}\b", RegexOptions.IgnoreCase));
+        var metricRatio = allHighlights.Count > 0 ? (double)metricBullets / allHighlights.Count : 0.0;
         var experienceScore = allHighlights.Count > 0
-            ? Math.Min(100, 60 + (int)((double)metricBullets / allHighlights.Count * 40))
-            : 75;
+            ? Math.Min(100, (int)Math.Round(60 + (metricRatio * 40)))
+            : (hasSkillsOrKeywords ? 75 : 30);
 
         // 4. ATS Formatting Score
         var formattingScore = 95; // Since we generate ATS-safe single column templates without unparseable tables/graphics
@@ -208,16 +211,21 @@ public class AtsScoringEngine : IAtsScoringEngine
         if (missingSkills.Any())
             weaknesses.Add($"Lacks explicit coverage for: {string.Join(", ", missingSkills.Take(3))}.");
 
-        if (keywordScore < 70)
+        if (!hasSkillsOrKeywords)
+            weaknesses.Add("Could not extract technical competencies or target keywords from this job posting. Please ensure full job requirements are provided.");
+
+        if (keywordScore < 70 && hasSkillsOrKeywords)
             weaknesses.Add("Keyword density can be improved for domain-specific terminology.");
 
         // Recruiter Feedback
-        var recruiterFeedback = overallScore switch
-        {
-            >= 85 => $"Candidate demonstrates exceptional alignment for the {job.Title} role at {job.Company}. Work experience is quantified with measurable achievements, and key requirements like {string.Join(", ", matchingSkills.Take(3))} are clearly highlighted.",
-            >= 70 => $"Strong profile for {job.Title}. Good match on foundational technical competencies. To maximize interview conversion, focus discussions on practical experience bridging {missingSkills.FirstOrDefault() ?? "secondary stack items"}.",
-            _ => $"Moderate profile match. While the candidate brings transferable experience, explicit alignment with {string.Join(", ", missingSkills.Take(3))} is limited in the current profile."
-        };
+        var recruiterFeedback = !hasSkillsOrKeywords
+            ? "Target requirements could not be fully parsed from this job description. The candidate's resume format is ATS-compliant, but skill alignment cannot be verified without technical requirements."
+            : overallScore switch
+            {
+                >= 85 => $"Candidate demonstrates exceptional alignment for the {job.Title} role at {job.Company}. Work experience is quantified with measurable achievements, and key requirements like {string.Join(", ", matchingSkills.Take(3))} are clearly highlighted.",
+                >= 70 => $"Strong profile for {job.Title}. Good match on foundational technical competencies. To maximize interview conversion, focus discussions on practical experience bridging {missingSkills.FirstOrDefault() ?? "secondary stack items"}.",
+                _ => $"Moderate profile match. While the candidate brings transferable experience, explicit alignment with {string.Join(", ", missingSkills.Take(3))} is limited in the current profile."
+            };
 
         // Improvement Suggestions
         var suggestions = new List<string>
@@ -311,11 +319,118 @@ public class AtsScoringEngine : IAtsScoringEngine
         return tokens;
     }
 
+    private static readonly Dictionary<string, HashSet<string>> SkillSynonyms = BuildSynonymDictionary();
+
+    private static bool MatchesKeyword(string resumeFullText, List<string> candidateSkills, string kw)
+    {
+        if (string.IsNullOrWhiteSpace(kw)) return false;
+
+        // 1. Direct or Synonym Match in Resume Full Text
+        if (ContainsKeyword(resumeFullText, kw)) return true;
+
+        // 2. Direct normalized match against candidate skills
+        var normTarget = Normalize(kw);
+        if (candidateSkills.Any(s => Normalize(s) == normTarget)) return true;
+
+        // 3. Synonym check against candidate skills
+        if (SkillSynonyms.TryGetValue(kw, out var synonyms))
+        {
+            foreach (var syn in synonyms)
+            {
+                var normSyn = Normalize(syn);
+                if (candidateSkills.Any(s => Normalize(s) == normSyn)) return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool MatchesSkill(string resumeFullText, List<string> candidateSkills, string targetSkill)
+    {
+        return MatchesKeyword(resumeFullText, candidateSkills, targetSkill);
+    }
+
     private static bool ContainsKeyword(string fullText, string keyword)
     {
-        if (string.IsNullOrWhiteSpace(keyword)) return false;
-        var pattern = $@"\b{Regex.Escape(keyword)}\b";
-        return Regex.IsMatch(fullText, pattern, RegexOptions.IgnoreCase);
+        if (string.IsNullOrWhiteSpace(keyword) || string.IsNullOrWhiteSpace(fullText)) return false;
+
+        // Bounded match avoiding false substrings while safely handling C#, C++, .NET, CI/CD
+        var pattern = $@"(?<![a-zA-Z0-9]){Regex.Escape(keyword)}(?![a-zA-Z0-9])";
+        if (Regex.IsMatch(fullText, pattern, RegexOptions.IgnoreCase))
+            return true;
+
+        // Check canonical skill synonyms in full text
+        if (SkillSynonyms.TryGetValue(keyword, out var synonyms))
+        {
+            foreach (var syn in synonyms)
+            {
+                var synPattern = $@"(?<![a-zA-Z0-9]){Regex.Escape(syn)}(?![a-zA-Z0-9])";
+                if (Regex.IsMatch(fullText, synPattern, RegexOptions.IgnoreCase))
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static Dictionary<string, HashSet<string>> BuildSynonymDictionary()
+    {
+        var clusters = new List<string[]>
+        {
+            new[] { "C#", "CSharp", "C Sharp" },
+            new[] { ".NET", "DotNet", "Dot Net", ".NET Core", "ASP.NET", "ASP.NET Core", ".NET 8", ".NET 9" },
+            new[] { "C++", "CPP", "C Plus Plus" },
+            new[] { "Python", "Python3", "Py" },
+            new[] { "Java", "Java 17", "Java 21", "Core Java" },
+            new[] { "JavaScript", "JS", "ES6", "ECMAScript" },
+            new[] { "TypeScript", "TS" },
+            new[] { "Node.js", "NodeJS", "Node" },
+            new[] { "React", "React.js", "ReactJS", "React Native" },
+            new[] { "Angular", "AngularJS", "Angular 2+" },
+            new[] { "Vue", "Vue.js", "VueJS" },
+            new[] { "Next.js", "NextJS" },
+            new[] { "PostgreSQL", "Postgres", "PSQL" },
+            new[] { "MongoDB", "Mongo", "NoSQL" },
+            new[] { "Microsoft SQL Server", "SQL Server", "MSSQL", "T-SQL" },
+            new[] { "SQL", "Relational Databases", "RDBMS" },
+            new[] { "Redis", "Redis Cache", "In-Memory Cache", "In-Memory Caching" },
+            new[] { "Elasticsearch", "Elastic Search", "ELK" },
+            new[] { "Amazon Web Services", "AWS" },
+            new[] { "Microsoft Azure", "Azure" },
+            new[] { "Google Cloud Platform", "GCP", "Google Cloud" },
+            new[] { "Kubernetes", "K8s" },
+            new[] { "Docker", "Containerization", "Containers" },
+            new[] { "CI/CD", "Continuous Integration", "Continuous Deployment", "CI / CD", "GitHub Actions", "GitLab CI" },
+            new[] { "Terraform", "IaC", "Infrastructure as Code" },
+            new[] { "REST", "RESTful", "REST API", "REST APIs", "RESTful APIs", "Web APIs", "RESTful Web Services" },
+            new[] { "Microservices", "Microservice Architecture", "Distributed Systems" },
+            new[] { "GraphQL", "Apollo GraphQL" },
+            new[] { "Clean Architecture", "Domain-Driven Design", "DDD", "SOLID", "Clean Code" },
+            new[] { "Agile", "Scrum", "Kanban", "Sprint Planning" },
+            new[] { "Unit Testing", "TDD", "Test-Driven Development", "Automated Testing", "xUnit", "NUnit", "Jest" },
+            new[] { "Kafka", "Apache Kafka", "Event-Driven Architecture", "Message Queue", "RabbitMQ", "NATS" },
+            new[] { "DevOps", "Site Reliability", "SRE" },
+            new[] { "Object-Oriented Programming", "OOP" }
+        };
+
+        var dict = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var cluster in clusters)
+        {
+            foreach (var item in cluster)
+            {
+                if (!dict.TryGetValue(item, out var set))
+                {
+                    set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    dict[item] = set;
+                }
+                foreach (var peer in cluster)
+                {
+                    if (!peer.Equals(item, StringComparison.OrdinalIgnoreCase))
+                        set.Add(peer);
+                }
+            }
+        }
+        return dict;
     }
 
     public static HashSet<string> ExtractQuantitativeMetrics(ResumeSchema resume)

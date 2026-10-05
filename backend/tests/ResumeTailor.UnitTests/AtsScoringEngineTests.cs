@@ -109,4 +109,138 @@ public class AtsScoringEngineTests
         score.RecruiterFeedback.Should().NotBeNullOrEmpty();
         score.SkillRoadmap.Should().NotBeEmpty();
     }
+
+    [Fact]
+    public void CalculateScore_WhenJobLacksSkillsAndKeywords_ShouldNotDefaultToEightyPercentAndReportWeakness()
+    {
+        // Arrange
+        var resume = new ResumeSchema
+        {
+            PersonalInfo = new PersonalInfo { FullName = "John Smith" },
+            Summary = "Senior .NET Engineer.",
+            Skills = new List<SkillCategory>
+            {
+                new() { CategoryName = "Languages", Skills = new List<string> { "C#", "SQL" } }
+            },
+            Experience = new List<WorkExperienceItem>
+            {
+                new() { Company = "Tech Corp", Role = "Senior Engineer", Highlights = new List<string> { "Built services with 99.99% uptime." } }
+            }
+        };
+
+        var emptyJob = new JobDescriptionSchema
+        {
+            Title = "",
+            Company = "",
+            MustHaveSkills = new List<string>(),
+            NiceToHaveSkills = new List<string>(),
+            Keywords = new List<string>()
+        };
+
+        // Act
+        var score = _engine.CalculateScore(resume, emptyJob);
+
+        // Assert - Should NOT artificially report a high match (80%) when requirements are completely absent
+        score.OverallScore.Should().BeLessThan(50);
+        score.Weaknesses.Should().Contain(w => w.Contains("Could not extract technical competencies"));
+    }
+
+    [Fact]
+    public void CalculateScore_PunctuationKeywordsAndSynonyms_ShouldMatchCorrectly()
+    {
+        // Arrange - Candidate has C#, .NET, CI/CD, Postgres, and AWS
+        var resume = new ResumeSchema
+        {
+            PersonalInfo = new PersonalInfo { FullName = "Alex Dev", Title = "Senior .NET Core Engineer" },
+            Summary = "Experienced .NET Engineer specializing in C#, CI/CD pipelines, and cloud native architectures on AWS.",
+            Skills = new List<SkillCategory>
+            {
+                new() { CategoryName = "Languages", Skills = new List<string> { "C#", "SQL", "C++" } },
+                new() { CategoryName = "Backend & Cloud", Skills = new List<string> { ".NET Core", "Postgres", "AWS", "CI/CD", "Docker" } }
+            },
+            Experience = new List<WorkExperienceItem>
+            {
+                new()
+                {
+                    Company = "Enterprise Cloud",
+                    Role = "Backend Engineer",
+                    Highlights = new List<string>
+                    {
+                        "Architected microservices using C# and .NET with 99.99% reliability.",
+                        "Configured automated CI/CD deployment pipelines on AWS reducing deployment time by 45%."
+                    }
+                }
+            }
+        };
+
+        var job = new JobDescriptionSchema
+        {
+            Title = "Senior .NET Engineer",
+            Company = "Tech Innovators",
+            MustHaveSkills = new List<string> { "C#", ".NET", "PostgreSQL", "CI/CD" },
+            NiceToHaveSkills = new List<string> { "Amazon Web Services", "Docker", "C++" },
+            Keywords = new List<string> { "microservices", "pipelines", "reliability", "cloud" }
+        };
+
+        // Act
+        var score = _engine.CalculateScore(resume, job);
+
+        // Assert
+        score.MatchingSkills.Should().Contain("C#");
+        score.MatchingSkills.Should().Contain(".NET");
+        score.MatchingSkills.Should().Contain("PostgreSQL"); // Matched via "Postgres" synonym
+        score.MatchingSkills.Should().Contain("Amazon Web Services"); // Matched via "AWS" synonym
+        score.MatchingSkills.Should().Contain("CI/CD");
+        score.MissingSkills.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void CalculateScore_WhenResumeIsStronglyTailoredWithMetricsAndSkills_ShouldAchieveNinetyPercentOrHigher()
+    {
+        // Arrange - Fully tailored candidate resume matching 100% of Must-Have and Nice-To-Have skills with 80%+ metric bullets
+        var resume = new ResumeSchema
+        {
+            PersonalInfo = new PersonalInfo { FullName = "Sarah Connor", Title = "Lead Backend Systems Engineer" },
+            Summary = "Lead Backend Systems Engineer with 8+ years architecting scalable distributed systems using C#, ASP.NET Core, PostgreSQL, and Kubernetes on AWS. Track record of optimizing high-throughput APIs handling 50k+ req/sec.",
+            Skills = new List<SkillCategory>
+            {
+                new() { CategoryName = "Core Stack", Skills = new List<string> { "C#", ".NET Core", "ASP.NET Core", "PostgreSQL", "Kubernetes", "Docker" } },
+                new() { CategoryName = "Cloud & Architecture", Skills = new List<string> { "AWS", "Redis", "Kafka", "Microservices", "RESTful APIs", "CI/CD" } }
+            },
+            Experience = new List<WorkExperienceItem>
+            {
+                new()
+                {
+                    Company = "FinTech Global",
+                    Role = "Lead Backend Engineer",
+                    Highlights = new List<string>
+                    {
+                        "Designed and deployed 15+ microservices in C# and ASP.NET Core, scaling transaction volume by 3x.",
+                        "Optimized PostgreSQL queries and Redis caching, cutting p99 query latency by 42%.",
+                        "Implemented automated CI/CD pipelines in GitHub Actions, slashing release cycle time by 65%.",
+                        "Led containerization migration to Kubernetes on AWS achieving 99.999% system availability.",
+                        "Built event-driven data streaming engine using Kafka handling 20M events per day."
+                    }
+                }
+            }
+        };
+
+        var job = new JobDescriptionSchema
+        {
+            Title = "Lead Backend Systems Engineer",
+            Company = "Stripe",
+            MustHaveSkills = new List<string> { "C#", "ASP.NET Core", "PostgreSQL", "Kubernetes", "Microservices" },
+            NiceToHaveSkills = new List<string> { "AWS", "Redis", "Kafka", "Docker", "CI/CD" },
+            Keywords = new List<string> { "scalable", "distributed", "throughput", "latency", "streaming", "caching" }
+        };
+
+        // Act
+        var score = _engine.CalculateScore(resume, job);
+
+        // Assert - Highly aligned truthful profile should hit >= 90%
+        score.OverallScore.Should().BeGreaterThanOrEqualTo(90);
+        score.KeywordMatchScore.Should().BeGreaterThanOrEqualTo(85);
+        score.SkillsMatchScore.Should().Be(100);
+        score.ExperienceRelevanceScore.Should().BeGreaterThanOrEqualTo(90);
+    }
 }

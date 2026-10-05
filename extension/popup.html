@@ -4,57 +4,604 @@
   <meta charset="UTF-8">
   <title>Vedha AI Copilot</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { width: 340px; background: #09090b; color: #fafafa; padding: 16px; }
-    .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #27272a; padding-bottom: 12px; margin-bottom: 12px; }
-    .logo { font-size: 14px; font-weight: 800; color: #818cf8; display: flex; align-items: center; gap: 8px; }
-    .logo img { width: 22px; height: 22px; border-radius: 6px; object-fit: contain; }
-    .badge { font-size: 10px; background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 2px 6px; font-weight: 600; border-radius: 4px; }
-    .quota-badge { font-size: 10px; background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 6px; font-weight: 600; border-radius: 4px; }
-    .job-card { background: #18181b; border: 1px solid #27272a; border-radius: 10px; padding: 12px; margin-bottom: 14px; }
-    .job-title { font-size: 13px; font-weight: 700; color: #ffffff; margin-bottom: 2px; }
-    .job-company { font-size: 11px; color: #a1a1aa; }
-    .source-tag { font-size: 10px; color: #34d399; margin-top: 6px; display: inline-block; }
-    .btn-group { display: flex; flex-direction: column; gap: 8px; }
-    .btn { width: 100%; background: #4f46e5; color: white; border: none; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
-    .btn:hover { background: #4338ca; }
-    .btn-secondary { background: #27272a; color: #e4e4e7; border: 1px solid #3f3f46; }
-    .btn-secondary:hover { background: #3f3f46; }
-    .footer { font-size: 10px; color: #71717a; text-align: center; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; }
-    .status { font-size: 11px; color: #a1a1aa; text-align: center; padding: 20px 0; }
-    .fill-status { font-size: 11px; color: #34d399; text-align: center; margin-top: 6px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
+    body {
+      width: 380px;
+      min-height: 520px;
+      max-height: 600px;
+      background: #09090b;
+      color: #fafafa;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+
+    /* Scrollbar styling */
+    body::-webkit-scrollbar { width: 5px; }
+    body::-webkit-scrollbar-track { background: #09090b; }
+    body::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
+    body::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: #121215;
+      border-bottom: 1px solid #27272a;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .logo-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo-img {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      object-fit: contain;
+    }
+    .brand-title {
+      font-size: 13px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #a5b4fc, #6366f1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.01em;
+    }
+    .header-badges {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+    }
+    .quota-badge {
+      font-size: 10px;
+      background: rgba(16, 185, 129, 0.12);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      padding: 3px 7px;
+      font-weight: 600;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Tab Navigation (Price Hatke Style) */
+    .nav-tabs {
+      display: flex;
+      background: #18181b;
+      border-bottom: 1px solid #27272a;
+      padding: 4px 8px;
+      gap: 4px;
+    }
+    .tab-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #a1a1aa;
+      padding: 8px 4px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+    }
+    .tab-btn:hover {
+      background: #27272a;
+      color: #f4f4f5;
+    }
+    .tab-btn.active {
+      background: #27272a;
+      color: #818cf8;
+      font-weight: 700;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    /* Main Container */
+    .container {
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex: 1;
+    }
+
+    /* Tab Panels */
+    .tab-panel {
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .tab-panel.active {
+      display: flex;
+    }
+
+    /* Job Context Card */
+    .job-card {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 10px;
+      padding: 12px 14px;
+      position: relative;
+    }
+    .job-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .job-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.3;
+      margin-bottom: 3px;
+    }
+    .job-company {
+      font-size: 11px;
+      color: #a1a1aa;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .source-tag {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    /* Action Buttons */
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .btn {
+      width: 100%;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary {
+      background: linear-gradient(135deg, #4f46e5, #4338ca);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      box-shadow: 0 6px 16px rgba(79, 70, 229, 0.45);
+    }
+    .btn-easyapply {
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+    }
+    .btn-easyapply:hover {
+      background: linear-gradient(135deg, #0ea5e9, #0284c7);
+      box-shadow: 0 6px 16px rgba(2, 132, 199, 0.45);
+    }
+    .btn-secondary {
+      background: #18181b;
+      color: #e4e4e7;
+      border: 1px solid #3f3f46;
+    }
+    .btn-secondary:hover {
+      background: #27272a;
+      border-color: #52525b;
+      color: #ffffff;
+    }
+    .btn-emerald {
+      background: linear-gradient(135deg, #059669, #047857);
+      color: #ffffff;
+    }
+    .btn-emerald:hover {
+      background: linear-gradient(135deg, #10b981, #059669);
+    }
+
+    /* Status Messages */
+    .status-banner {
+      font-size: 11px;
+      padding: 9px 12px;
+      border-radius: 8px;
+      line-height: 1.4;
+      display: none;
+      animation: fadeIn 0.2s ease;
+    }
+    .status-banner.info {
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      color: #c7d2fe;
+    }
+    .status-banner.success {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #6ee7b7;
+    }
+    .status-banner.warning {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #fcd34d;
+    }
+
+    /* ATS Score Card */
+    .ats-gauge-card {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 10px;
+    }
+    .ats-circle {
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 800;
+      border: 4px solid #10b981;
+      box-shadow: 0 0 16px rgba(16, 185, 129, 0.3);
+      color: #ffffff;
+    }
+    .ats-metric-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      width: 100%;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .ats-metric-box {
+      background: #27272a;
+      padding: 8px 6px;
+      border-radius: 6px;
+      font-size: 10px;
+      text-align: center;
+    }
+    .ats-metric-val {
+      font-size: 13px;
+      font-weight: 700;
+      color: #818cf8;
+      margin-top: 2px;
+    }
+    .skills-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .skills-header {
+      font-size: 11px;
+      font-weight: 700;
+      color: #a1a1aa;
+    }
+    .pills-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      max-height: 110px;
+      overflow-y: auto;
+    }
+    .pill {
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    .pill-green {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .pill-amber {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    /* Cover Letter Tab */
+    .textarea-box {
+      width: 100%;
+      height: 180px;
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #e4e4e7;
+      font-size: 11px;
+      line-height: 1.5;
+      resize: vertical;
+      font-family: inherit;
+    }
+    .textarea-box:focus {
+      outline: none;
+      border-color: #6366f1;
+    }
+    .input-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .select-dropdown {
+      flex: 1;
+      background: #18181b;
+      border: 1px solid #27272a;
+      color: #e4e4e7;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      outline: none;
+    }
+
+    /* Profile Quick-Copy Drawer */
+    .profile-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 380px;
+      overflow-y: auto;
+    }
+    .profile-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #18181b;
+      border: 1px solid #27272a;
+      padding: 8px 10px;
+      border-radius: 6px;
+    }
+    .profile-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow: hidden;
+    }
+    .profile-key {
+      font-size: 9px;
+      color: #71717a;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .profile-val {
+      font-size: 11px;
+      color: #f4f4f5;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 250px;
+    }
+    .copy-btn {
+      background: #27272a;
+      border: 1px solid #3f3f46;
+      color: #a1a1aa;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .copy-btn:hover {
+      background: #3f3f46;
+      color: #ffffff;
+    }
+    .copy-btn.copied {
+      background: #059669;
+      color: #ffffff;
+      border-color: #10b981;
+    }
+
+    /* Footer */
+    .footer {
+      font-size: 10px;
+      color: #71717a;
+      padding: 10px 16px;
+      background: #121215;
+      border-top: 1px solid #27272a;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: auto;
+    }
+    .footer-link {
+      color: #818cf8;
+      text-decoration: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .footer-link:hover { text-decoration: underline; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
 <body>
+  <!-- Sticky Header -->
   <div class="header">
-    <div class="logo">
-      <img src="vedha-logo.png" alt="Vedha AI" />
-      <span>Vedha AI</span>
+    <div class="logo-wrapper">
+      <img src="vedha-logo.png" alt="Vedha AI" class="logo-img" />
+      <span class="brand-title">Vedha AI Copilot</span>
     </div>
-    <div class="quota-badge" id="dailyQuotaBadge">🛡️ Safe: 0/25 today</div>
+    <div class="header-badges">
+      <div class="status-dot" id="connectionDot" title="Engine Connected"></div>
+      <div class="quota-badge" id="dailyQuotaBadge">🛡️ Safe: 0/25 today</div>
+    </div>
   </div>
 
-  <div id="loading" class="status">Analyzing current job page...</div>
-
-  <div id="content" style="display: none;">
-    <div class="job-card">
-      <div class="job-title" id="jobTitle">Job Title</div>
-      <div class="job-company" id="jobCompany">Company</div>
-      <div class="source-tag" id="jobSource">Detected: LinkedIn</div>
-    </div>
-
-    <div class="btn-group">
-      <button class="btn" id="sendBtn">✨ Send to Vedha AI Orchestrator</button>
-      <button class="btn" id="autoApplyLinkedInBtn" style="background: linear-gradient(135deg, #0284c7, #0369a1);">⚡ Auto-Apply (LinkedIn Easy Apply)</button>
-      <button class="btn btn-secondary" id="autoFillBtn">🤖 Safe Biometric Auto-Fill (Anti-Ban)</button>
-    </div>
-
-    <div id="fillStatus" class="fill-status" style="display: none;"></div>
+  <!-- Navigation Tabs (Always Visible) -->
+  <div class="nav-tabs">
+    <button class="tab-btn active" data-tab="tab-copilot">⚡ Copilot</button>
+    <button class="tab-btn" data-tab="tab-ats">🎯 ATS Fit</button>
+    <button class="tab-btn" data-tab="tab-coverletter">📝 Cover Letter</button>
+    <button class="tab-btn" data-tab="tab-profile">👤 Profile</button>
   </div>
 
+  <!-- Main Content Container -->
+  <div class="container">
+    <!-- Active Status Banner -->
+    <div id="fillStatus" class="status-banner info"></div>
+
+    <!-- TAB 1: COPILOT (Always Ready) -->
+    <div id="tab-copilot" class="tab-panel active">
+      <!-- Target Job Context Card -->
+      <div class="job-card">
+        <div class="job-card-header">
+          <div>
+            <div class="job-title" id="jobTitle">Generic Careers Mode</div>
+            <div class="job-company" id="jobCompany">Active on all application portals</div>
+          </div>
+          <div class="source-tag" id="jobSource">Universal Web</div>
+        </div>
+      </div>
+
+      <!-- Core Action Suite (All Options by Default) -->
+      <div class="btn-group">
+        <button class="btn btn-easyapply" id="autoApplyLinkedInBtn">
+          <span>⚡</span>
+          <span>Auto-Apply (LinkedIn Easy Apply)</span>
+        </button>
+        <button class="btn btn-emerald" id="autoFillBtn">
+          <span>🤖</span>
+          <span>Safe Biometric Auto-Fill (Anti-Ban)</span>
+        </button>
+        <button class="btn btn-secondary" id="checkAtsQuickBtn">
+          <span>🎯</span>
+          <span>Instant ATS Score & Keyword Match</span>
+        </button>
+        <button class="btn btn-primary" id="sendBtn">
+          <span>✨</span>
+          <span>Stage in Vedha AI Studio</span>
+        </button>
+      </div>
+
+      <!-- Quick Feature Highlights -->
+      <div style="font-size: 10px; color: #71717a; text-align: center; margin-top: 4px;">
+        🛡️ Human keystroke jitter &nbsp;•&nbsp; Gemini Grounding &nbsp;•&nbsp; Review Gateway
+      </div>
+    </div>
+
+    <!-- TAB 2: ATS FIT ANALYSIS -->
+    <div id="tab-ats" class="tab-panel">
+      <div class="ats-gauge-card">
+        <div class="ats-circle" id="atsScoreCircle">--%</div>
+        <div style="font-weight: 700; font-size: 13px;" id="atsVerdict">Awaiting Analysis</div>
+        <div style="font-size: 11px; color: #a1a1aa;" id="atsRecommendation">Click below to compare current job against your Master Resume.</div>
+
+        <div class="ats-metric-grid">
+          <div class="ats-metric-box">
+            <div>Keywords</div>
+            <div class="ats-metric-val" id="atsKeywordScore">--%</div>
+          </div>
+          <div class="ats-metric-box">
+            <div>Hard Skills</div>
+            <div class="ats-metric-val" id="atsSkillsScore">--%</div>
+          </div>
+          <div class="ats-metric-box">
+            <div>Relevance</div>
+            <div class="ats-metric-val" id="atsRelevanceScore">--%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="skills-section">
+        <div class="skills-header">✅ Matching Core Skills:</div>
+        <div class="pills-container" id="matchedSkillsPills">
+          <span class="pill pill-green">None analyzed</span>
+        </div>
+      </div>
+
+      <div class="skills-section">
+        <div class="skills-header">⚠️ Missing Keywords &amp; Requirements:</div>
+        <div class="pills-container" id="missingSkillsPills">
+          <span class="pill pill-amber">None analyzed</span>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="runAtsAnalysisBtn">🎯 Run Full ATS Match Check</button>
+      <button class="btn btn-secondary" id="openTailorFromAtsBtn">✨ Tailor Resume to Fill Gaps</button>
+    </div>
+
+    <!-- TAB 3: COVER LETTER GENERATOR -->
+    <div id="tab-coverletter" class="tab-panel">
+      <div class="input-row">
+        <select id="coverLetterTone" class="select-dropdown">
+          <option value="Professional and confident">Professional &amp; Confident</option>
+          <option value="Enthusiastic and energetic">Enthusiastic &amp; Energetic</option>
+          <option value="Direct and concise">Direct &amp; Minimalist</option>
+          <option value="Executive and visionary">Executive &amp; Visionary</option>
+        </select>
+        <button class="btn btn-emerald" id="generateCoverLetterBtn" style="width: auto; padding: 8px 14px;">⚡ Generate</button>
+      </div>
+
+      <textarea id="coverLetterText" class="textarea-box" placeholder="Your tailored, ATS-aligned cover letter will appear here... Click Generate to create one instantly grounded on your Master Resume."></textarea>
+
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-secondary" id="copyCoverLetterBtn" style="flex: 1;">📋 Copy to Clipboard</button>
+        <button class="btn btn-secondary" id="downloadCoverLetterBtn" style="flex: 1;">📥 Download .txt</button>
+      </div>
+    </div>
+
+    <!-- TAB 4: CANDIDATE PROFILE & QUICK COPY -->
+    <div id="tab-profile" class="tab-panel">
+      <div style="font-size: 11px; color: #a1a1aa; margin-bottom: 2px;">
+        1-Click copy verified candidate fields into any application form:
+      </div>
+
+      <div class="profile-list" id="profileList">
+        <!-- Rendered dynamically by popup.js -->
+        <div style="text-align: center; color: #71717a; padding: 20px;">Loading profile details...</div>
+      </div>
+
+      <button class="btn btn-secondary" id="openProfileStudioBtn">✏️ Edit Profile in Vedha Studio</button>
+    </div>
+  </div>
+
+  <!-- Global Footer -->
   <div class="footer">
-    <span>Review Gateway Active</span>
-    <span style="color: #818cf8;">v1.2.0</span>
+    <span>🛡️ Review Gateway Active</span>
+    <a class="footer-link" id="openStudioLink">Open Vedha Studio ↗</a>
   </div>
 
   <script src="popup.js"></script>

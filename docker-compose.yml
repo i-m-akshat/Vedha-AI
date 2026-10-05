@@ -47,7 +47,7 @@ services:
       - vedha-network
 
   minio:
-    image: minio/minio:latest
+    image: cgr.dev/chainguard/minio:latest
     container_name: vedha-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"

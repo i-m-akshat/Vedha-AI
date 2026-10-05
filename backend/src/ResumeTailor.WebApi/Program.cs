@@ -391,6 +391,18 @@ app.MapGet("/health", async ([Microsoft.AspNetCore.Mvc.FromServices] Application
     });
 }).ExcludeFromDescription();
 
+app.MapGet("/api/health", async ([Microsoft.AspNetCore.Mvc.FromServices] ApplicationDbContext db) =>
+{
+    var isDbHealthy = await db.Database.CanConnectAsync();
+    return Results.Ok(new
+    {
+        Status = isDbHealthy ? "Healthy" : "Degraded",
+        Database = isDbHealthy ? "Connected" : "Unreachable",
+        Timestamp = DateTime.UtcNow,
+        Version = "1.0.0"
+    });
+}).ExcludeFromDescription();
+
 app.MapGet("/", () => Results.Ok(new
 {
     Name = "Vedha AI Platform API",

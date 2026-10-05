@@ -63,6 +63,60 @@ public class JobScraperTests
         result.Value.CleanedText.Should().NotContain("Navigation");
     }
 
+    [Fact]
+    public async Task ScrapeAsync_LinkedInAuthwallPage_ShouldDetectAuthwallAndReturnFailure()
+    {
+        const string authwallHtml = """
+            <html>
+              <head>
+                <title>LinkedIn Login, Sign in | LinkedIn</title>
+              </head>
+              <body>
+                <h1>Sign in</h1>
+                <button>Sign in with Apple</button>
+                <button>Sign in with a passkey</button>
+                <input name="session_key" />
+              </body>
+            </html>
+            """;
+        using var httpClient = new HttpClient(new StaticResponseHandler(authwallHtml));
+        var scraper = new JobScraperService(httpClient, NullLogger<JobScraperService>.Instance);
+
+        var result = await scraper.ScrapeAsync("https://www.linkedin.com/jobs/view/12345678");
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("LinkedIn authentication barrier detected");
+    }
+
+    [Fact]
+    public async Task ScrapeAsync_LinkedInGuestJobDetails_ShouldExtractJobInfo()
+    {
+        const string guestJobHtml = """
+            <html>
+              <head>
+                <title>Software Engineer at Eurofins — Bengaluru, Karnataka, India | LinkedIn Jobs</title>
+              </head>
+              <body>
+                <h1 class="top-card-layout__title">Software Engineer</h1>
+                <div class="topcard__flavor">Eurofins</div>
+                <div class="show-more-less-html__markup">
+                  <p>1-4 years of experience with developing end-to-end web applications using Microsoft stack of technologies (.NET, C#, WebAPI, SQL).</p>
+                </div>
+              </body>
+            </html>
+            """;
+        using var httpClient = new HttpClient(new StaticResponseHandler(guestJobHtml));
+        var scraper = new JobScraperService(httpClient, NullLogger<JobScraperService>.Instance);
+
+        var result = await scraper.ScrapeAsync("https://www.linkedin.com/jobs/search-results/?currentJobId=4471195758&keywords=.NET");
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Source.Should().Be(JobSource.LinkedIn);
+        result.Value.Company.Should().Be("Eurofins");
+        result.Value.Title.Should().Be("Software Engineer");
+        result.Value.CleanedText.Should().Contain("Microsoft stack of technologies (.NET, C#, WebAPI, SQL)");
+    }
+
     private sealed class StaticResponseHandler : HttpMessageHandler
     {
         private readonly string _content;

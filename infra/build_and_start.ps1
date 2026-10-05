@@ -79,15 +79,32 @@ if ($existingContainers -notcontains "vedha-nats") {
     podman start vedha-nats 2>$null | Out-Null
 }
 
+if ($existingContainers -notcontains "vedha-minio") {
+    Write-Host "Creating vedha-minio container..." -ForegroundColor Cyan
+    podman run -d --name vedha-minio --network infra_vedha-network --network-alias minio --network-alias vedha-minio `
+        -p 9000:9000 -p 9001:9001 `
+        -e MINIO_ROOT_USER="minioadmin" -e MINIO_ROOT_PASSWORD="minioadmin" `
+        -v minio_data:/data `
+        cgr.dev/chainguard/minio:latest server /data --console-address :9001
+} else {
+    podman start vedha-minio 2>$null | Out-Null
+}
+
 # 6. Start Application Containers (Backend, Frontend)
 Write-Host "Starting vedha-backend..." -ForegroundColor Cyan
 podman rm -f vedha-backend 2>$null | Out-Null
 podman run -d --name vedha-backend --network infra_vedha-network --network-alias backend --network-alias vedha-backend `
     -p 5000:8080 `
+    -v vedha_storage_data:/app/s3_local_cache `
     -e ASPNETCORE_ENVIRONMENT=Development `
     -e ConnectionStrings__DefaultConnection="Host=postgres;Port=5432;Database=$postgresDb;Username=$postgresUser;Password=$postgresPass;" `
     -e ConnectionStrings__Redis="redis:6379" `
     -e NatsSettings__Url="nats://nats:4222" `
+    -e S3Settings__Endpoint="minio:9000" `
+    -e S3Settings__PublicEndpoint="http://localhost:9000" `
+    -e S3Settings__AccessKey="minioadmin" `
+    -e S3Settings__SecretKey="minioadmin" `
+    -e S3Settings__BucketName="vedha-resumes" `
     -e JwtSettings__Secret="$jwtSecret" `
     -e JwtSettings__Issuer="$jwtIssuer" `
     -e JwtSettings__Audience="$jwtAudience" `

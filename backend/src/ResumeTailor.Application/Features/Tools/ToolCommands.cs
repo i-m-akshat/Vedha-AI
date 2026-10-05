@@ -163,26 +163,52 @@ public class ToolCommandHandler :
         var resumeSchema = JsonSerializer.Deserialize<ResumeSchema>(resume.TailoredStructuredJson, JsonOptions) ?? new ResumeSchema();
         var jobSchema = JsonSerializer.Deserialize<JobDescriptionSchema>(resume.JobDescription?.ExtractedSchemaJson ?? "{}", JsonOptions) ?? new JobDescriptionSchema();
 
+        var company = !string.IsNullOrWhiteSpace(resume.TargetCompany) && resume.TargetCompany != "Company" && resume.TargetCompany != "Target Company"
+            ? resume.TargetCompany
+            : (!string.IsNullOrWhiteSpace(jobSchema.Company) ? jobSchema.Company : "[Company Name]");
+
+        var role = !string.IsNullOrWhiteSpace(resume.TargetRole) && resume.TargetRole != "Role" && resume.TargetRole != "Target Position"
+            ? resume.TargetRole
+            : (!string.IsNullOrWhiteSpace(jobSchema.Title) ? jobSchema.Title : resumeSchema.PersonalInfo.Title ?? "Software Engineer");
+
+        var skills = jobSchema.MustHaveSkills.Count > 0
+            ? string.Join(", ", jobSchema.MustHaveSkills)
+            : (jobSchema.Keywords.Count > 0 
+                ? string.Join(", ", jobSchema.Keywords) 
+                : (resume.JobDescription?.CleanedText != null && resume.JobDescription.CleanedText.Length > 20
+                    ? resume.JobDescription.CleanedText.Substring(0, Math.Min(600, resume.JobDescription.CleanedText.Length))
+                    : "Key engineering responsibilities and problem-solving skills"));
+
+        var candidateHighlights = resumeSchema.Experience.SelectMany(e => e.Highlights).Take(5).ToList();
+        if (candidateHighlights.Count == 0 && resumeSchema.Projects.Count > 0)
+        {
+            candidateHighlights = resumeSchema.Projects.SelectMany(p => p.Highlights).Take(5).ToList();
+        }
+
         var aiProvider = _aiServiceFactory.GetProvider(user.PreferredAiProvider);
-        var systemPrompt = $@"You are an executive career advisor. Write an exceptional, compelling, ATS-aligned cover letter for the candidate applying to {resume.TargetCompany} for the {resume.TargetRole} position.
+        var systemPrompt = $@"You are an executive career advisor. Write an exceptional, compelling, ATS-aligned cover letter for the candidate applying to {company} for the {role} position.
 Tone: {request.Tone}.
 Guidelines:
-- Highlight true achievements from the candidate's tailored resume.
-- Connect candidate's past technical impact to company responsibilities.
-- Avoid clichés. Keep it concise (under 400 words).
-- Format in professional markdown.";
+- Output a clean, ready-to-send business letter formatted with clear paragraph breaks.
+- Do NOT output markdown code fences (like ```markdown), hashtags (#), or bullet points. Use standard formal letter paragraphs.
+- Start with date, candidate contact header, and salutation ('Dear Hiring Team at {company},').
+- Include an impactful opening paragraph, 1-2 evidence-backed body paragraphs connecting candidate's past metrics to the role requirements, and a confident closing.
+- End with professional sign-off ('Sincerely,') and candidate's full name.
+- Keep it concise (under 350 words).";
 
         var userPrompt = $@"
 Candidate Name: {resumeSchema.PersonalInfo.FullName}
-Target Role: {resume.TargetRole}
-Target Company: {resume.TargetCompany}
+Candidate Email: {resumeSchema.PersonalInfo.Email}
+Candidate Phone: {resumeSchema.PersonalInfo.Phone}
+Target Role: {role}
+Target Company: {company}
 Additional Focus Points: {request.SpecificPoints ?? "None"}
 
 Candidate Experience Highlights:
-{string.Join("\n", resumeSchema.Experience.SelectMany(e => e.Highlights).Take(5))}
+{string.Join("\n", candidateHighlights)}
 
-Job Requirements:
-{string.Join(", ", jobSchema.MustHaveSkills)}";
+Job Requirements & Stack:
+{skills}";
 
         var textResult = await aiProvider.GenerateTextAsync(
             systemPrompt,
@@ -203,7 +229,16 @@ Job Requirements:
             return Result<CoverLetterDto>.Failure($"Failed to generate cover letter: {textResult.Error}");
         }
 
-        return Result<CoverLetterDto>.Success(new CoverLetterDto(resume.TargetCompany, resume.TargetRole, textResult.Value, DateTime.UtcNow));
+        var cleanContent = textResult.Value.Trim();
+        if (cleanContent.StartsWith("```markdown", StringComparison.OrdinalIgnoreCase))
+            cleanContent = cleanContent.Substring("```markdown".Length);
+        else if (cleanContent.StartsWith("```", StringComparison.OrdinalIgnoreCase))
+            cleanContent = cleanContent.Substring(3);
+        if (cleanContent.EndsWith("```", StringComparison.OrdinalIgnoreCase))
+            cleanContent = cleanContent.Substring(0, cleanContent.Length - 3);
+        cleanContent = cleanContent.Trim();
+
+        return Result<CoverLetterDto>.Success(new CoverLetterDto(company, role, cleanContent, DateTime.UtcNow));
     }
 
     public async Task<Result<InterviewPrepDto>> Handle(GenerateInterviewPrepCommand request, CancellationToken cancellationToken)

@@ -167,16 +167,33 @@ def prepare_resume_pdf(s3_url: str = "", pdf_base64: str = "") -> str:
             return temp_path
 
         if s3_url:
-            if s3_url.startswith("http://") or s3_url.startswith("https://"):
-                resp = requests.get(s3_url, timeout=30)
+            object_key = s3_url
+            if f"/{MINIO_BUCKET}/" in s3_url:
+                object_key = s3_url.split(f"/{MINIO_BUCKET}/", 1)[1]
+            elif s3_url.startswith("http://") or s3_url.startswith("https://"):
+                parsed = urllib.parse.urlparse(s3_url)
+                parts = parsed.path.lstrip("/").split("/", 1)
+                if len(parts) > 1 and parts[0] == MINIO_BUCKET:
+                    object_key = parts[1]
+                else:
+                    object_key = parsed.path.lstrip("/")
+
+            try:
+                s3 = get_s3_client()
+                s3.download_file(MINIO_BUCKET, object_key, temp_path)
+                logger.info(f"Downloaded resume PDF via S3 SDK for key '{object_key}' to {temp_path} ({os.path.getsize(temp_path)} bytes)")
+                return temp_path
+            except Exception as s3_err:
+                logger.warning(f"S3 SDK download failed for key '{object_key}' ({s3_err}), attempting HTTP fallback...")
+                target_url = s3_url
+                if "localhost:9000" in target_url:
+                    target_url = target_url.replace("localhost:9000", MINIO_ENDPOINT)
+                resp = requests.get(target_url, timeout=30)
                 resp.raise_for_status()
                 with open(temp_path, "wb") as f:
                     f.write(resp.content)
-            else:
-                s3 = get_s3_client()
-                s3.download_file(MINIO_BUCKET, s3_url, temp_path)
-            logger.info(f"Downloaded resume PDF to {temp_path} ({os.path.getsize(temp_path)} bytes)")
-            return temp_path
+                logger.info(f"Downloaded resume PDF via HTTP from {target_url} to {temp_path} ({os.path.getsize(temp_path)} bytes)")
+                return temp_path
 
         # Minimal valid PDF placeholder
         with open(temp_path, "wb") as f:

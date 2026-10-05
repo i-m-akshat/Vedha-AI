@@ -26,6 +26,25 @@
           }
         }
       },
+      "AWSSDK.Core/4.0.102.8": {
+        "runtime": {
+          "lib/net8.0/AWSSDK.Core.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "4.0.102.8"
+          }
+        }
+      },
+      "AWSSDK.S3/4.0.104.1": {
+        "dependencies": {
+          "AWSSDK.Core": "4.0.102.8"
+        },
+        "runtime": {
+          "lib/net8.0/AWSSDK.S3.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "4.0.104.1"
+          }
+        }
+      },
       "BCrypt.Net-Next/4.0.3": {
         "runtime": {
           "lib/net6.0/BCrypt.Net-Next.dll": {
@@ -786,6 +805,7 @@
       },
       "ResumeTailor.Infrastructure/1.0.0": {
         "dependencies": {
+          "AWSSDK.S3": "4.0.104.1",
           "AngleSharp": "1.2.0",
           "BCrypt.Net-Next": "4.0.3",
           "DocumentFormat.OpenXml": "3.2.0",
@@ -822,6 +842,20 @@
       "sha512": "sha512-uF/PzSCVcb+b2nqVvHZbOqexoJ9R6QLjonugPf0PQl+0h7YKaFZeXyspctbHe5HGlx7/Iuk5BErtk+t63ac/ZA==",
       "path": "anglesharp/1.2.0",
       "hashPath": "anglesharp.1.2.0.nupkg.sha512"
+    },
+    "AWSSDK.Core/4.0.102.8": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-90B9Skhl+ORbtWNXrrmGdGhGvAfZiPmZafRYrB/xHelZjePIwPvXioqz9UiiF1vo21eDLzTnXh5EC4RjbNWsFQ==",
+      "path": "awssdk.core/4.0.102.8",
+      "hashPath": "awssdk.core.4.0.102.8.nupkg.sha512"
+    },
+    "AWSSDK.S3/4.0.104.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-syEbfUR1Qjy9WS0fmg5MWOq0aGghq+pBIyrvDP3BFLc5K2OITxMiwbPkZhEJeAq8SWRn2bfVaWWmNLp8hS9VwQ==",
+      "path": "awssdk.s3/4.0.104.1",
+      "hashPath": "awssdk.s3.4.0.104.1.nupkg.sha512"
     },
     "BCrypt.Net-Next/4.0.3": {
       "type": "package",

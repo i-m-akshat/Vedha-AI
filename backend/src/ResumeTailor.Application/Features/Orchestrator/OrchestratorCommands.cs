@@ -53,11 +53,18 @@ public class DetectedJobSourceDto
 
 public record DetectJobSourceQuery(string Url) : IRequest<Result<DetectedJobSourceDto>>;
 
+public record ScreeningQuestionPromptItem(
+    string QuestionText,
+    string? FieldType = null,
+    List<string>? Options = null
+);
+
 public record GenerateScreeningAnswersCommand(
     Guid UserId,
     string Company,
-    List<string> Questions,
-    Guid? MasterResumeId
+    List<string>? Questions = null,
+    Guid? MasterResumeId = null,
+    List<ScreeningQuestionPromptItem>? QuestionItems = null
 ) : IRequest<Result<List<ScreeningQuestionAnswerDto>>>;
 
 public record PrepareApplicationPackageCommand(
@@ -146,7 +153,18 @@ public class OrchestratorHandlers :
     public async Task<Result<List<ScreeningQuestionAnswerDto>>> Handle(GenerateScreeningAnswersCommand request, CancellationToken cancellationToken)
     {
         var answers = new List<ScreeningQuestionAnswerDto>();
-        if (request.Questions == null || !request.Questions.Any())
+        var items = new List<ScreeningQuestionPromptItem>();
+
+        if (request.QuestionItems != null && request.QuestionItems.Any())
+        {
+            items.AddRange(request.QuestionItems.Where(q => !string.IsNullOrWhiteSpace(q.QuestionText)));
+        }
+        else if (request.Questions != null && request.Questions.Any())
+        {
+            items.AddRange(request.Questions.Where(q => !string.IsNullOrWhiteSpace(q)).Select(q => new ScreeningQuestionPromptItem(q)));
+        }
+
+        if (!items.Any())
             return Result<List<ScreeningQuestionAnswerDto>>.Success(answers);
 
         // 1. Load Candidate Profile
@@ -182,11 +200,11 @@ public class OrchestratorHandlers :
 
         var existingMemories = await memoryQuery.ToListAsync(cancellationToken);
 
-        var unansweredQuestions = new List<string>();
+        var unansweredQuestions = new List<ScreeningQuestionPromptItem>();
 
-        foreach (var q in request.Questions)
+        foreach (var item in items)
         {
-            var trimmedQ = q.Trim();
+            var trimmedQ = item.QuestionText.Trim();
             var hash = ComputeHash(trimmedQ.ToLowerInvariant());
 
             var memMatch = existingMemories.FirstOrDefault(m => m.QuestionHash == hash);
@@ -212,12 +230,12 @@ public class OrchestratorHandlers :
                 }
                 else
                 {
-                    unansweredQuestions.Add(trimmedQ);
+                    unansweredQuestions.Add(item);
                 }
             }
         }
 
-        // 4. For remaining questions, invoke Gemini 2.0 Flash for grounded answers
+        // 4. For remaining questions, invoke Gemini for grounded answers
         if (unansweredQuestions.Any())
         {
             var aiService = _aiFactory.GetProvider(AiProviderType.Gemini);
@@ -229,7 +247,8 @@ CRITICAL RULES:
 2. For numeric years of experience questions, compute actual elapsed years from the work experience dates.
 3. For Work Authorization, Notice Period, and CTC questions, use the candidate profile values.
 4. For behavioral or open-ended questions, draft concise STAR-format responses (1-3 paragraphs maximum).
-5. Output valid JSON in the exact schema requested.";
+5. If 'Options' is provided for a question (e.g. for radio buttons or select dropdowns), 'AnswerText' MUST match one of the allowed options verbatim.
+6. Output valid JSON in the exact schema requested.";
 
             var userPrompt = $@"CANDIDATE PROFILE:
 - Phone: {profile?.PhoneNumber}
@@ -257,7 +276,7 @@ Respond with JSON array of objects:
 [
   {{
     ""QuestionText"": ""exact question text"",
-    ""AnswerText"": ""grounded answer"",
+    ""AnswerText"": ""grounded answer (must match one of Options if Options were provided)"",
     ""FieldType"": ""text|textarea|radio|select|number|boolean"",
     ""ConfidenceScore"": 0.95,
     ""EvidenceSnippet"": ""direct fact from resume/profile used""
@@ -404,21 +423,75 @@ Respond with JSON array of objects:
         // 4. Tailor Resume (Truth-Preserving STAR method)
         await _progressNotifier.SendProgressAsync(request.UserId, "Tailoring Resume", "Optimizing resume bullets and ATS keywords without hallucination...", 60, cancellationToken);
 
-        var tailorSystemPrompt = @"You are a Principal Resume Strategist and ATS Specialist.
-Tailor the master resume strictly for the target job description.
-RULES:
-1. Preserve 100% truth. DO NOT invent employers, job titles, degrees, or certifications.
-2. Align bullet points to highlight matching experience using the STAR method (Situation, Task, Action, Result) with quantified metrics.
-3. Elevate matching technical skills to the top of skill lists.
-4. Output valid JSON matching ResumeSchema.";
+        var tailorSystemPrompt = @"You are a Principal Executive Resume Strategist & ATS Optimization Specialist.
+Your task is to produce a HEAVILY TAILORED resume that is visibly and structurally different for each unique Job Description and achieves an ATS match score of 90%+ across modern enterprise parsers (Greenhouse, Lever, Workday, Taleo).
 
-        var tailorUserPrompt = $@"MASTER RESUME:
+---------------------------------------------------------------------------
+STRICT ZERO-LIE RULES (MANDATORY - ZERO TOLERANCE):
+---------------------------------------------------------------------------
+1. NEVER invent companies, employment periods, job titles, institutions, projects, certifications, or achievements.
+2. NEVER inject a skill or technology into a bullet that did not actually appear in that role/project.
+3. NEVER fabricate metrics - only use numbers or percentages that exist in the master resume.
+4. You MAY rephrase, reframe, restructure, reorder, consolidate, or expand existing bullet points.
+5. You MAY add or remove bullet points from a role AS LONG AS every bullet reflects something real that was in the master resume for that role.
+
+---------------------------------------------------------------------------
+AGGRESSIVE TAILORING & ATS MAXIMIZATION MANDATES (TARGET: 90%+ ATS SCORE):
+---------------------------------------------------------------------------
+
+[PERSONALINFO]:
+- Set the 'title' field to the EXACT target job title from the JD (e.g., ""Senior Full-Stack .NET Developer"").
+
+[SUMMARY - CRITICAL ATS KEYWORD ENGINE]:
+- The very first sentence MUST name the exact target job title from the JD.
+- Seamlessly weave 3-5 of the candidate's verified skills that DIRECTLY MATCH the JD's Must-Have Skills into the first 2 sentences.
+- Weave legitimate domain methodologies and competencies (e.g. Agile/Scrum, CI/CD, Code Reviews, Cross-functional collaboration, System Design) from the JD wherever the candidate truthfully performed them.
+- Do NOT write a generic summary - make it 3-4 compelling sentences tailored specifically to this company and role.
+
+[EXPERIENCE - BULLET SELECTION & METRIC RETENTION - CRITICAL]:
+- CRITICAL: Prioritize retaining and elevating master resume bullets that contain REAL QUANTIFIED METRICS (%, $, multipliers like 3x, scale counts, latency improvements).
+- Ensure at least 70%-80% of tailored bullets retain the candidate's genuine quantitative achievements from the master resume to maximize the ATS Experience Relevance Score.
+- High relevance roles: 5-7 bullets - expand with maximum detail, JD-aligned language, and metrics.
+- Medium relevance roles: 3-4 bullets - focus only on overlapping skills and metrics.
+- Low relevance roles: 2 bullets max - use only the 2 most transferable points.
+- Directly mirror canonical JD vocabulary, technical terms, and action verbs in bullets.
+
+[SKILLS - CANONICAL MATCHING]:
+- Organize skills into clear, relevant categories (e.g. ""Languages & Frameworks"", ""Cloud & DevOps"", ""Databases & Storage"", ""Architecture & Methodologies"").
+- Place the categories most relevant to the JD first.
+- Within each category, sort skills so JD-matching skills appear first.
+- Ensure all skills from the candidate's master resume that match the JD are included using canonical industry naming (e.g. C#, .NET Core, PostgreSQL, Docker, AWS, RESTful APIs).
+- DO NOT add skills the candidate does not have.
+
+[PROJECTS]:
+- Reorder projects so the most JD-relevant projects appear first.
+- For each project, rewrite bullets to emphasize aspects matching the JD and retain verified metrics.
+
+---------------------------------------------------------------------------
+OUTPUT FORMAT:
+---------------------------------------------------------------------------
+Output valid JSON exactly matching ResumeSchema.";
+
+        var tailorUserPrompt = $@"MASTER RESUME (JSON):
 {masterResume.StructuredJson}
 
 TARGET JOB DESCRIPTION:
-{jobDescEntity.ExtractedSchemaJson}
+Title: {jobSchema.Title}
+Company: {jobSchema.Company}
+Must-Have Skills: {string.Join(", ", jobSchema.MustHaveSkills)}
+Nice-To-Have Skills: {string.Join(", ", jobSchema.NiceToHaveSkills)}
+Key Responsibilities: {string.Join("; ", jobSchema.Responsibilities)}
+Frameworks: {string.Join(", ", jobSchema.Frameworks)}
+Tools: {string.Join(", ", jobSchema.Tools)}
+Databases: {string.Join(", ", jobSchema.Databases)}
+Cloud: {string.Join(", ", jobSchema.Cloud)}
+Keywords: {string.Join(", ", jobSchema.Keywords)}
 
-Generate tailored ResumeSchema in JSON.";
+INSTRUCTIONS:
+1. The summary MUST begin with the exact job title: ""{jobSchema.Title}"" and highlight 3-5 matching core competencies.
+2. In personalInfo, set 'title' to ""{jobSchema.Title}"".
+3. RETAIN at least 70%-80% of verified quantitative metrics (%, $, scale counts) from the master resume to maximize the ATS Experience Score.
+4. Return only the tailored ResumeSchema JSON with no commentary.";
 
         var tailorResult = await aiService.GenerateStructuredJsonAsync<ResumeSchema>(
             tailorSystemPrompt,
@@ -432,8 +505,33 @@ Generate tailored ResumeSchema in JSON.";
 
         var tailoredSchema = tailorResult.Value;
 
-        // Truth validation
+        // Preserve candidate's genuine personal contact info while adopting the tailored target job title
+        var targetTitle = !string.IsNullOrWhiteSpace(tailoredSchema.PersonalInfo?.Title)
+            ? tailoredSchema.PersonalInfo.Title
+            : (!string.IsNullOrWhiteSpace(jobSchema.Title) ? jobSchema.Title : masterSchema.PersonalInfo.Title);
+
+        tailoredSchema.PersonalInfo = new PersonalInfo
+        {
+            FullName = masterSchema.PersonalInfo.FullName,
+            Email = masterSchema.PersonalInfo.Email,
+            Phone = masterSchema.PersonalInfo.Phone,
+            Location = masterSchema.PersonalInfo.Location,
+            Title = targetTitle,
+            LinkedInUrl = masterSchema.PersonalInfo.LinkedInUrl,
+            GitHubUrl = masterSchema.PersonalInfo.GitHubUrl,
+            PortfolioUrl = masterSchema.PersonalInfo.PortfolioUrl
+        };
+
+        // Truth validation with safe fallback
         var truthValidation = _atsEngine.ValidateTruthPreservation(masterSchema, tailoredSchema);
+        if (truthValidation.IsFailure)
+        {
+            tailoredSchema.Experience = masterSchema.Experience;
+            tailoredSchema.Education = masterSchema.Education;
+            tailoredSchema.Certifications = masterSchema.Certifications;
+            tailoredSchema.Projects = masterSchema.Projects;
+        }
+
         var atsScore = _atsEngine.CalculateScore(tailoredSchema, jobSchema);
 
         var generatedResume = new GeneratedResume
