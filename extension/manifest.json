@@ -6,18 +6,26 @@
   "permissions": [
     "activeTab",
     "scripting",
-    "storage"
+    "sidePanel",
+    "storage",
+    "tabs"
   ],
   "host_permissions": [
     "*://*/*"
   ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "popup.html"
+  },
   "icons": {
     "16": "vedha-logo.png",
     "48": "vedha-logo.png",
     "128": "vedha-logo.png"
   },
   "action": {
-    "default_popup": "popup.html",
     "default_title": "Vedha AI Copilot",
     "default_icon": {
       "16": "vedha-logo.png",

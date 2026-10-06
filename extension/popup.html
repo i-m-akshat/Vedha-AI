@@ -4,11 +4,24 @@
   <meta charset="UTF-8">
   <title>Vedha AI Copilot</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    }
+    html {
+      box-sizing: border-box;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
-      width: 380px;
-      min-height: 520px;
-      max-height: 600px;
+      width: 390px;
+      min-height: 540px;
+      max-height: 620px;
       background: #09090b;
       color: #fafafa;
       display: flex;
@@ -16,22 +29,50 @@
       overflow-x: hidden;
       overflow-y: auto;
       font-size: 12px;
+      margin: 0;
+      padding: 0;
     }
 
-    /* Scrollbar styling */
+    /* Responsive Adaptation for Chrome Side Panel Mode */
+    @media screen and (min-height: 621px), screen and (min-width: 395px) {
+      html, body {
+        width: 100%;
+        min-height: 100vh;
+        max-height: 100vh;
+        height: 100vh;
+        overflow-y: auto;
+      }
+    }
+
+    /* Explicit Side Panel Mode Toggled by Context Detection */
+    html.sidepanel-mode,
+    body.sidepanel-mode {
+      width: 100% !important;
+      min-height: 100vh !important;
+      max-height: 100vh !important;
+      height: 100vh !important;
+      overflow-y: auto !important;
+    }
+
+    body.sidepanel-mode #openSidePanelBtn {
+      display: none !important;
+    }
+
+    /* Scrollbar */
     body::-webkit-scrollbar { width: 5px; }
     body::-webkit-scrollbar-track { background: #09090b; }
     body::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
     body::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
 
-    /* Header */
+    /* Sticky Glass Header */
     .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 12px 16px;
-      background: #121215;
-      border-bottom: 1px solid #27272a;
+      background: rgba(18, 18, 22, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       position: sticky;
       top: 0;
       z-index: 50;
@@ -39,80 +80,83 @@
     .logo-wrapper {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 9px;
     }
     .logo-img {
       width: 24px;
       height: 24px;
       border-radius: 6px;
       object-fit: contain;
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
     }
     .brand-title {
       font-size: 13px;
       font-weight: 800;
-      background: linear-gradient(135deg, #a5b4fc, #6366f1);
+      background: linear-gradient(135deg, #c7d2fe, #818cf8);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      letter-spacing: -0.01em;
+      letter-spacing: -0.02em;
     }
     .header-badges {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 7px;
     }
     .status-dot {
-      width: 7px;
-      height: 7px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
       background: #10b981;
-      box-shadow: 0 0 8px #10b981;
+      box-shadow: 0 0 10px #10b981;
+      transition: all 0.3s ease;
     }
     .quota-badge {
       font-size: 10px;
-      background: rgba(16, 185, 129, 0.12);
+      background: rgba(16, 185, 129, 0.1);
       color: #34d399;
       border: 1px solid rgba(16, 185, 129, 0.25);
-      padding: 3px 7px;
+      padding: 3px 8px;
       font-weight: 600;
-      border-radius: 6px;
+      border-radius: 9999px;
       display: flex;
       align-items: center;
       gap: 4px;
     }
 
-    /* Tab Navigation (Price Hatke Style) */
+    /* Segmented Navigation Tabs (Simplify & Linear Style) */
     .nav-tabs {
       display: flex;
-      background: #18181b;
-      border-bottom: 1px solid #27272a;
-      padding: 4px 8px;
-      gap: 4px;
+      background: #121216;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 6px 10px;
+      gap: 5px;
     }
     .tab-btn {
       flex: 1;
       background: transparent;
       border: none;
       color: #a1a1aa;
-      padding: 8px 4px;
+      padding: 7px 4px;
       font-size: 11px;
       font-weight: 600;
-      border-radius: 6px;
+      border-radius: 7px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 5px;
-      transition: all 0.15s ease;
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .tab-btn:hover {
-      background: #27272a;
-      color: #f4f4f5;
+      background: rgba(255, 255, 255, 0.05);
+      color: #fafafa;
     }
     .tab-btn.active {
       background: #27272a;
-      color: #818cf8;
+      color: #a5b4fc;
       font-weight: 700;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
     /* Main Container */
@@ -134,13 +178,14 @@
       display: flex;
     }
 
-    /* Job Context Card */
+    /* Job Card (Simplify Style) */
     .job-card {
-      background: #18181b;
-      border: 1px solid #27272a;
-      border-radius: 10px;
+      background: #141418;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 11px;
       padding: 12px 14px;
       position: relative;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
     }
     .job-card-header {
       display: flex;
@@ -153,7 +198,7 @@
       font-weight: 700;
       color: #ffffff;
       line-height: 1.3;
-      margin-bottom: 3px;
+      margin-bottom: 2px;
     }
     .job-company {
       font-size: 11px;
@@ -170,9 +215,147 @@
       color: #38bdf8;
       background: rgba(56, 189, 248, 0.12);
       border: 1px solid rgba(56, 189, 248, 0.25);
-      padding: 2px 6px;
-      border-radius: 4px;
+      padding: 2px 7px;
+      border-radius: 9999px;
       white-space: nowrap;
+    }
+
+    /* Multi-Step Stepper Progress Bar (Simplify Style) */
+    .stepper-container {
+      background: #141418;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 11px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .stepper-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #a1a1aa;
+    }
+    .stepper-track {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+    }
+    .stepper-track::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 14px;
+      right: 14px;
+      height: 2px;
+      background: #27272a;
+      transform: translateY(-50%);
+      z-index: 1;
+    }
+    .step-node {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .step-circle {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #18181b;
+      border: 1.5px solid #3f3f46;
+      color: #a1a1aa;
+      font-size: 10px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.25s ease;
+    }
+    .step-node.active .step-circle {
+      background: #6366f1;
+      border-color: #818cf8;
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(99, 102, 241, 0.6);
+      animation: pulseGlow 1.8s infinite;
+    }
+    .step-node.completed .step-circle {
+      background: #10b981;
+      border-color: #34d399;
+      color: #ffffff;
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+    }
+    .step-label {
+      font-size: 9px;
+      color: #71717a;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .step-node.active .step-label {
+      color: #a5b4fc;
+      font-weight: 700;
+    }
+    .step-node.completed .step-label {
+      color: #34d399;
+    }
+
+    /* Agent Live Telemetry HUD */
+    .agent-telemetry-card {
+      display: none;
+      background: rgba(99, 102, 241, 0.08);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 10px;
+      padding: 10px 12px;
+      flex-direction: column;
+      gap: 8px;
+      animation: fadeIn 0.2s ease;
+    }
+    .agent-telemetry-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .agent-radar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #c7d2fe;
+    }
+    .radar-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #818cf8;
+      box-shadow: 0 0 8px #818cf8;
+      animation: pulseGlow 1.2s infinite;
+    }
+    .agent-status-text {
+      font-size: 11px;
+      color: #e2e8f0;
+      line-height: 1.4;
+    }
+    .agent-progress-bar-wrap {
+      width: 100%;
+      height: 4px;
+      background: #27272a;
+      border-radius: 9999px;
+      overflow: hidden;
+    }
+    .agent-progress-bar-fill {
+      height: 100%;
+      width: 25%;
+      background: linear-gradient(90deg, #6366f1, #38bdf8);
+      border-radius: 9999px;
+      transition: width 0.3s ease;
     }
 
     /* Action Buttons */
@@ -184,8 +367,8 @@
     .btn {
       width: 100%;
       border: none;
-      padding: 10px 14px;
-      border-radius: 8px;
+      padding: 11px 14px;
+      border-radius: 9px;
       font-size: 12px;
       font-weight: 700;
       cursor: pointer;
@@ -196,15 +379,18 @@
       transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .btn:active { transform: scale(0.98); }
-    .btn-primary {
-      background: linear-gradient(135deg, #4f46e5, #4338ca);
-      color: #ffffff;
-      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
-    }
-    .btn-primary:hover {
+
+    .btn-hero {
       background: linear-gradient(135deg, #6366f1, #4f46e5);
-      box-shadow: 0 6px 16px rgba(79, 70, 229, 0.45);
+      color: #ffffff;
+      box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.15);
     }
+    .btn-hero:hover {
+      background: linear-gradient(135deg, #818cf8, #6366f1);
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.55);
+    }
+
     .btn-easyapply {
       background: linear-gradient(135deg, #0284c7, #0369a1);
       color: #ffffff;
@@ -214,6 +400,15 @@
       background: linear-gradient(135deg, #0ea5e9, #0284c7);
       box-shadow: 0 6px 16px rgba(2, 132, 199, 0.45);
     }
+
+    .btn-emerald {
+      background: linear-gradient(135deg, #059669, #047857);
+      color: #ffffff;
+    }
+    .btn-emerald:hover {
+      background: linear-gradient(135deg, #10b981, #059669);
+    }
+
     .btn-secondary {
       background: #18181b;
       color: #e4e4e7;
@@ -224,12 +419,77 @@
       border-color: #52525b;
       color: #ffffff;
     }
-    .btn-emerald {
-      background: linear-gradient(135deg, #059669, #047857);
-      color: #ffffff;
+
+    .btn-abort {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+      padding: 5px 9px;
+      font-size: 10px;
+      border-radius: 6px;
+      cursor: pointer;
     }
-    .btn-emerald:hover {
-      background: linear-gradient(135deg, #10b981, #059669);
+    .btn-abort:hover {
+      background: rgba(239, 68, 68, 0.25);
+    }
+
+    /* Mode Toggle Switch Card */
+    .mode-switch-card {
+      background: #141418;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 9px;
+      padding: 9px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .mode-switch-label {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .mode-switch-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #e4e4e7;
+    }
+    .mode-switch-desc {
+      font-size: 9px;
+      color: #71717a;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 34px;
+      height: 18px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #27272a;
+      transition: .2s;
+      border-radius: 34px;
+      border: 1px solid #3f3f46;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 12px;
+      width: 12px;
+      left: 2px;
+      bottom: 2px;
+      background-color: white;
+      transition: .2s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #4f46e5;
+      border-color: #6366f1;
+    }
+    input:checked + .slider:before {
+      transform: translateX(16px);
     }
 
     /* Status Messages */
@@ -259,9 +519,9 @@
 
     /* ATS Score Card */
     .ats-gauge-card {
-      background: #18181b;
-      border: 1px solid #27272a;
-      border-radius: 10px;
+      background: #141418;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 11px;
       padding: 16px;
       display: flex;
       flex-direction: column;
@@ -341,8 +601,8 @@
     .textarea-box {
       width: 100%;
       height: 180px;
-      background: #18181b;
-      border: 1px solid #27272a;
+      background: #141418;
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 8px;
       padding: 10px 12px;
       color: #e4e4e7;
@@ -362,8 +622,8 @@
     }
     .select-dropdown {
       flex: 1;
-      background: #18181b;
-      border: 1px solid #27272a;
+      background: #141418;
+      border: 1px solid rgba(255, 255, 255, 0.08);
       color: #e4e4e7;
       padding: 8px 10px;
       border-radius: 6px;
@@ -383,8 +643,8 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: #18181b;
-      border: 1px solid #27272a;
+      background: #141418;
+      border: 1px solid rgba(255, 255, 255, 0.08);
       padding: 8px 10px;
       border-radius: 6px;
     }
@@ -436,8 +696,8 @@
       font-size: 10px;
       color: #71717a;
       padding: 10px 16px;
-      background: #121215;
-      border-top: 1px solid #27272a;
+      background: rgba(18, 18, 22, 0.95);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -455,22 +715,31 @@
       from { opacity: 0; transform: translateY(-4px); }
       to { opacity: 1; transform: translateY(0); }
     }
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.55; }
+    }
   </style>
 </head>
 <body>
-  <!-- Sticky Header -->
+  <!-- Sticky Glass Header -->
   <div class="header">
     <div class="logo-wrapper">
       <img src="vedha-logo.png" alt="Vedha AI" class="logo-img" />
       <span class="brand-title">Vedha AI Copilot</span>
     </div>
     <div class="header-badges">
+      <button id="pinToScreenBtn" title="Pin floating Copilot directly over page & modals" style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); color: #6ee7b7; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s;">
+        <span>📌</span><span>Pin</span>
+      </button>
+      <button id="openSidePanelBtn" title="Open as permanent Chrome Side Panel" style="background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.35); color: #c7d2fe; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s;">
+        <span>◨</span><span>Panel</span>
+      </button>
       <div class="status-dot" id="connectionDot" title="Engine Connected"></div>
-      <div class="quota-badge" id="dailyQuotaBadge">🛡️ Safe: 0/25 today</div>
     </div>
   </div>
 
-  <!-- Navigation Tabs (Always Visible) -->
+  <!-- Segmented Navigation Tabs (Simplify Style) -->
   <div class="nav-tabs">
     <button class="tab-btn active" data-tab="tab-copilot">⚡ Copilot</button>
     <button class="tab-btn" data-tab="tab-ats">🎯 ATS Fit</button>
@@ -483,7 +752,7 @@
     <!-- Active Status Banner -->
     <div id="fillStatus" class="status-banner info"></div>
 
-    <!-- TAB 1: COPILOT (Always Ready) -->
+    <!-- TAB 1: COPILOT (Multi-Step Autonomous Agent) -->
     <div id="tab-copilot" class="tab-panel active">
       <!-- Target Job Context Card -->
       <div class="job-card">
@@ -496,21 +765,80 @@
         </div>
       </div>
 
-      <!-- Core Action Suite (All Options by Default) -->
+      <!-- Multi-Step Progress Stepper (Simplify Style) -->
+      <div class="stepper-container" id="stepperContainer">
+        <div class="stepper-header">
+          <span>Application Journey</span>
+          <span id="stepperStepCount">Step 1 of 4</span>
+        </div>
+        <div class="stepper-track">
+          <div class="step-node active" id="stepNode1">
+            <div class="step-circle">1</div>
+            <span class="step-label">Contact</span>
+          </div>
+          <div class="step-node" id="stepNode2">
+            <div class="step-circle">2</div>
+            <span class="step-label">Experience</span>
+          </div>
+          <div class="step-node" id="stepNode3">
+            <div class="step-circle">3</div>
+            <span class="step-label">Screening</span>
+          </div>
+          <div class="step-node" id="stepNode4">
+            <div class="step-circle">4</div>
+            <span class="step-label">Review</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Agent Telemetry Card (When active) -->
+      <div class="agent-telemetry-card" id="agentTelemetryCard">
+        <div class="agent-telemetry-header">
+          <div class="agent-radar">
+            <div class="radar-dot"></div>
+            <span id="agentActivityTitle">AI Agent Autonomous Loop</span>
+          </div>
+          <button class="btn-abort" id="abortAgentBtn">✕ Stop Agent</button>
+        </div>
+        <div class="agent-status-text" id="agentStatusDetail">
+          Scanning DOM inputs and calculating progression path...
+        </div>
+        <div class="agent-progress-bar-wrap">
+          <div class="agent-progress-bar-fill" id="agentProgressBar"></div>
+        </div>
+      </div>
+
+      <!-- Mode Switch Toggle: Review Gateway -->
+      <div class="mode-switch-card">
+        <div class="mode-switch-label">
+          <span class="mode-switch-title">🛡️ Review Gateway Guardrail</span>
+          <span class="mode-switch-desc">Pause at final review screen before submitting</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="reviewGatewayToggle" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <!-- Primary Action Suite -->
       <div class="btn-group">
-        <button class="btn btn-easyapply" id="autoApplyLinkedInBtn">
+        <!-- Main Autonomous Loop Button -->
+        <button class="btn btn-hero" id="autoAdvanceBtn">
           <span>⚡</span>
-          <span>Auto-Apply (LinkedIn Easy Apply)</span>
+          <span>Autonomous Auto-Fill & Next Step</span>
         </button>
+        <!-- LinkedIn Easy Apply Copilot -->
+        <button class="btn btn-easyapply" id="autoApplyLinkedInBtn">
+          <span>💼</span>
+          <span>LinkedIn Easy Apply Copilot</span>
+        </button>
+        <!-- Single Page Safe Fill -->
         <button class="btn btn-emerald" id="autoFillBtn">
           <span>🤖</span>
-          <span>Safe Biometric Auto-Fill (Anti-Ban)</span>
+          <span>Single-Page Safe Biometric Fill</span>
         </button>
-        <button class="btn btn-secondary" id="checkAtsQuickBtn">
-          <span>🎯</span>
-          <span>Instant ATS Score & Keyword Match</span>
-        </button>
-        <button class="btn btn-primary" id="sendBtn">
+        <!-- Stage in Studio -->
+        <button class="btn btn-secondary" id="sendBtn">
           <span>✨</span>
           <span>Stage in Vedha AI Studio</span>
         </button>
@@ -518,7 +846,7 @@
 
       <!-- Quick Feature Highlights -->
       <div style="font-size: 10px; color: #71717a; text-align: center; margin-top: 4px;">
-        🛡️ Human keystroke jitter &nbsp;•&nbsp; Gemini Grounding &nbsp;•&nbsp; Review Gateway
+        🛡️ Human keystroke jitter &nbsp;•&nbsp; Gemini Grounding &nbsp;•&nbsp; Anti-Ban Safe
       </div>
     </div>
 
@@ -559,7 +887,7 @@
         </div>
       </div>
 
-      <button class="btn btn-primary" id="runAtsAnalysisBtn">🎯 Run Full ATS Match Check</button>
+      <button class="btn btn-hero" id="runAtsAnalysisBtn">🎯 Run Full ATS Match Check</button>
       <button class="btn btn-secondary" id="openTailorFromAtsBtn">✨ Tailor Resume to Fill Gaps</button>
     </div>
 
@@ -590,7 +918,6 @@
       </div>
 
       <div class="profile-list" id="profileList">
-        <!-- Rendered dynamically by popup.js -->
         <div style="text-align: center; color: #71717a; padding: 20px;">Loading profile details...</div>
       </div>
 
@@ -600,7 +927,7 @@
 
   <!-- Global Footer -->
   <div class="footer">
-    <span>🛡️ Review Gateway Active</span>
+    <span id="footerGuardrailText">🛡️ Review Gateway Active</span>
     <a class="footer-link" id="openStudioLink">Open Vedha Studio ↗</a>
   </div>
 
