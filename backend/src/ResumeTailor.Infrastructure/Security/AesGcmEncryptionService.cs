@@ -13,9 +13,11 @@ public class AesGcmEncryptionService : IEncryptionService
 
     public AesGcmEncryptionService(IConfiguration configuration)
     {
-        var configuredKey = configuration["SecuritySettings:DataProtectionKey"] 
-                            ?? configuration["JwtSettings:Secret"] 
-                            ?? "VedhaAi_Enterprise_Default_AES256_Master_Key_Secret_Must_Be_32Bytes!";
+        var configuredKey = configuration["SecuritySettings:DataProtectionKey"];
+        if (string.IsNullOrWhiteSpace(configuredKey))
+            configuredKey = configuration["JwtSettings:Secret"];
+        if (string.IsNullOrWhiteSpace(configuredKey))
+            configuredKey = "VedhaAi_Enterprise_Default_AES256_Master_Key_Secret_Must_Be_32Bytes!";
 
         // Derive deterministic 32-byte (256-bit) key using SHA256
         _key = SHA256.HashData(Encoding.UTF8.GetBytes(configuredKey));

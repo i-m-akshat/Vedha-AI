@@ -88,7 +88,7 @@ services:
       - S3Settings__SecretKey=${MINIO_SECRET_KEY:-minioadmin}
       - S3Settings__BucketName=${MINIO_BUCKET:-vedha-resumes}
       - S3Settings__UseSsl=${MINIO_USE_SSL:-false}
-      - JwtSettings__Secret=${JWT_SECRET}
+      - JwtSettings__Secret=${JWT_SECRET:-super_secret_jwt_key_at_least_32_characters_long_for_security_hs256}
       - JwtSettings__Issuer=${JWT_ISSUER:-VedhaApi}
       - JwtSettings__Audience=${JWT_AUDIENCE:-VedhaClient}
       - JwtSettings__ExpiryMinutes=${JWT_EXPIRY_MINUTES:-1440}
@@ -159,4 +159,5 @@ volumes:
 
 networks:
   vedha-network:
+    name: infra_vedha-network
     driver: bridge

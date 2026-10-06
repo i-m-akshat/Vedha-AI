@@ -40,9 +40,12 @@ public class JwtTokenGenerator : IJwtTokenGenerator
 
     public string GenerateToken(Guid userId, string email, string role)
     {
-        var secret = _configuration["JwtSettings:Secret"] ?? "super_secret_jwt_key_at_least_32_characters_long_for_security_hs256";
-        var issuer = _configuration["JwtSettings:Issuer"] ?? "VedhaApi";
-        var audience = _configuration["JwtSettings:Audience"] ?? "VedhaClient";
+        var rawSecret = _configuration["JwtSettings:Secret"];
+        var secret = !string.IsNullOrWhiteSpace(rawSecret) && rawSecret.Trim().Length >= 32
+            ? rawSecret.Trim()
+            : "super_secret_jwt_key_at_least_32_characters_long_for_security_hs256";
+        var issuer = !string.IsNullOrWhiteSpace(_configuration["JwtSettings:Issuer"]) ? _configuration["JwtSettings:Issuer"]!.Trim() : "VedhaApi";
+        var audience = !string.IsNullOrWhiteSpace(_configuration["JwtSettings:Audience"]) ? _configuration["JwtSettings:Audience"]!.Trim() : "VedhaClient";
         var expiryMinutes = int.TryParse(_configuration["JwtSettings:ExpiryMinutes"], out var mins) ? mins : 1440;
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));

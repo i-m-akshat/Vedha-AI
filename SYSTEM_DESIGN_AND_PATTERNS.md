@@ -35,6 +35,10 @@ This document is designed as a deep architectural walkthrough of **Vedha AI**. W
    - [6. Value Object Pattern (Domain-Driven Design)](#6-value-object-pattern-domain-driven-design)
    - [7. Facade / Orchestrator Pattern](#7-facade--orchestrator-pattern)
    - [8. Observer / Pub-Sub Pattern (SignalR WebSockets)](#8-observer--pub-sub-pattern-signalr-websockets)
+   - [9. Competing Consumers & Event-Driven Streaming (NATS JetStream)](#9-competing-consumers--event-driven-streaming-nats-jetstream)
+   - [10. Resilient Fallback & Dual-Engine Strategy (Crawl4AI + AngleSharp)](#10-resilient-fallback--dual-engine-strategy-crawl4ai--anglesharp)
+   - [11. Remote Storage Facade with AWS SigV4 Signing (MinIO S3)](#11-remote-storage-facade-with-aws-sigv4-signing-minio-s3)
+   - [12. DOM Mutation Observer & Adaptive Modal Elevation](#12-dom-mutation-observer--adaptive-modal-elevation)
 5. [System Design Concepts: Scalability, Resilience & State Management](#5-system-design-concepts-scalability-resilience--state-management)
    - [Dual-Database Strategy (PostgreSQL vs SQLite)](#dual-database-strategy-postgresql-vs-sqlite)
    - [Cache-Aside Pattern with Redis & Memory Fallback](#cache-aside-pattern-with-redis--memory-fallback)
@@ -260,6 +264,30 @@ Instead of bloated "God Service" classes (like `ResumeService` with 30 methods),
 ### 8. Observer / Pub-Sub Pattern (SignalR WebSockets)
 * **Where**: [`TailoringProgressHub.cs`](file:///A:/AIProjects/Resumebuilder/backend/src/ResumeTailor.WebApi/Hubs/TailoringProgressHub.cs).
 * **Why**: Decouples background progress updates from client polling. As the backend progresses through stages (`Scraping ➔ Parsing ➔ Tailoring ➔ Scoring ➔ Exporting`), handlers publish event notifications to connected client observers over WebSockets.
+
+---
+
+### 9. Competing Consumers & Event-Driven Streaming (NATS JetStream)
+* **Where**: `INatsPublisher`, `NatsPublisher.cs`, and `NatsWorkerEventConsumerHostedService.cs`.
+* **Why**: Long-running AI synthesis and headless Playwright workflows must not execute synchronously on ASP.NET Core request threads. By publishing to durable NATS streams (`app.job.ingested`, `app.resume.generated`), worker replicas pull and process messages using competing consumer groups with at-least-once durability and automatic redelivery.
+
+---
+
+### 10. Resilient Fallback & Dual-Engine Strategy (Crawl4AI + AngleSharp)
+* **Where**: [`JobScraperService.cs`](file:///A:/AIProjects/Resumebuilder/backend/src/ResumeTailor.Infrastructure/WebScraping/JobScrapers.cs) and [`Crawl4AiService.cs`](file:///A:/AIProjects/Resumebuilder/backend/src/ResumeTailor.Infrastructure/WebScraping/Crawl4AiService.cs).
+* **Why**: Solves the fragility of web scraping. Complex JavaScript-rendered platforms (LinkedIn, Naukri) route to the Crawl4AI Playwright microservice for stealth DOM unrolling. If Crawl4AI times out or encounters network limits, the service seamlessly falls back to local AngleSharp HTTP parsing without throwing an unhandled exception to the candidate.
+
+---
+
+### 11. Remote Storage Facade with AWS SigV4 Signing (MinIO S3)
+* **Where**: [`MinioS3StorageService.cs`](file:///A:/AIProjects/Resumebuilder/backend/src/ResumeTailor.Infrastructure/Storage/MinioS3StorageService.cs) and [`StorageController.cs`](file:///A:/AIProjects/Resumebuilder/backend/src/ResumeTailor.WebApi/Controllers/StorageController.cs).
+* **Why**: Abstracting object storage behind an S3 interface decouples file management from local disks. All write/read operations use AWS Signature Version 4 cryptographic signing against MinIO with persistent local cache failover and HTTP range-request streaming.
+
+---
+
+### 12. DOM Mutation Observer & Adaptive Modal Elevation
+* **Where**: [`extension/content.js`](file:///A:/AIProjects/Resumebuilder/extension/content.js) (`manageModalStacking`).
+* **Why**: Career portals like LinkedIn dynamically inject modal dialogs (`.artdeco-modal`) inside complex stacking contexts. The extension monitors DOM tree mutations with a `MutationObserver`, automatically elevating open application dialogs above all overlays (`z-index: 2,147,483,100`) while clamping the copilot dock to prevent UI occlusion.
 
 ---
 

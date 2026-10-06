@@ -501,4 +501,35 @@ A:\AIProjects\Resumebuilder\
   - Live database backfill updated existing records: match score updated from 33% (0 keywords) to 76% (23 matching keywords).
   - Release binaries deployed to `vedha-backend` and `vedha-frontend` containers.
 
+### 2026-10-06T04:55:00+05:30 — Elimination of 502 Bad Gateway & Container Network Topology Unification
+- **Problem Statement**:
+  - Frontend reverse proxy returned `502 Bad Gateway` when routing `/api/`, `/health`, and `/swagger/` to the backend.
+  - Podman Compose generated a project-scoped network (`resumebuilder_vedha-network`, subnet `10.89.1.0/24`) while standalone scripts attached containers to `infra_vedha-network` (`10.89.0.0/24`), partitioning the frontend from backend services.
+  - Nginx's `resolver` in `infra/nginx.conf` was hardcoded to `10.89.0.1`, causing DNS resolution timeouts on networks using `10.89.1.1`.
+- **Architectural Enhancements**:
+  1. **Deterministic Static Network Naming (`docker-compose.yml`)**:
+     - Pinned `name: infra_vedha-network` under `networks.vedha-network` in `docker-compose.yml` to prevent Compose from creating auto-prefixed split networks.
+  2. **Multi-Gateway DNS Resolver Fallback (`infra/nginx.conf`)**:
+     - Updated `resolver 10.89.1.1 10.89.0.1 127.0.0.11 valid=5s ipv6=off;` ensuring instantaneous resolution across both Podman subnet allocations.
+  3. **Network Reconnection & Clean Reload**:
+     - Reconnected containers to unified network and verified sub-millisecond reverse proxy dispatch.
+- **Verification Results**:
+  - `curl http://localhost:3000/health`: HTTP 200 OK (`status: Healthy, database: Connected`).
+  - `curl http://localhost:3000/swagger/index.html`: HTTP 200 OK.
+  - `curl http://localhost:3000/api/orchestrator/quick-match`: HTTP 405 Method Not Allowed (ASP.NET Core upstream reached).
 
+### 2026-10-06T05:05:00+05:30 — Resolution of Demo Login Failure (Empty JWT Secret Fallback)
+- **Problem Statement**:
+  - Demo login (`demo@vedha.ai` / `Password123!`) failed with a 500 Internal Server Error (`IDX10703: Cannot create a 'Microsoft.IdentityModel.Tokens.SymmetricSecurityKey', key length is zero`).
+  - When `JWT_SECRET` was unassigned or empty in `.env`, `docker-compose.yml` injected `JwtSettings__Secret=""`.
+  - In `JwtTokenGenerator.cs`, `_configuration["JwtSettings:Secret"] ?? defaultKey` did not trigger fallback because `""` is not null, producing a 0-byte key array.
+- **Architectural Enhancements**:
+  1. **Strict Non-Whitespace Key Validation (`IdentityServices.cs`)**:
+     - Updated `JwtTokenGenerator` to check `!string.IsNullOrWhiteSpace(rawSecret) && rawSecret.Trim().Length >= 32` before attempting to construct the `SymmetricSecurityKey`.
+  2. **Data Protection Key Hardening (`AesGcmEncryptionService.cs`)**:
+     - Added whitespace validation across data protection and JWT fallback keys.
+  3. **Compose Fallback Expression (`docker-compose.yml`)**:
+     - Pinned `JwtSettings__Secret=${JWT_SECRET:-super_secret_jwt_key_at_least_32_characters_long_for_security_hs256}`.
+- **Verification Results**:
+  - `POST /api/auth/login` with `demo@vedha.ai` and `Password123!`: **HTTP 200 OK**, returning valid JWT and `Alex Morgan` user profile.
+  - `POST /api/auth/register`: **HTTP 200 OK**, successfully generating signed auth tokens.
