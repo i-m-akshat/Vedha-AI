@@ -299,6 +299,69 @@
     element.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
   }
 
+  // Enhanced dropdown/select handler for React/Vue/Angular controlled components
+  async function selectDropdownOption(selectEl, optionValueOrText) {
+    if (!selectEl || optionValueOrText === undefined || optionValueOrText === null) return false;
+    
+    const target = String(optionValueOrText).toLowerCase().trim();
+    const options = Array.from(selectEl.options);
+    
+    // Find matching option by value or text
+    let chosenOpt = options.find(o => 
+      (o.value && o.value.toLowerCase() === target) ||
+      (o.text && o.text.trim().toLowerCase() === target) ||
+      (o.text && o.text.trim().toLowerCase().includes(target))
+    );
+    
+    // Fallback: fuzzy match
+    if (!chosenOpt) {
+      chosenOpt = options.find(o => 
+        o.text && o.text.toLowerCase().includes(target.replace(/\s+/g, ''))
+      );
+    }
+    
+    if (!chosenOpt) {
+      return false;
+    }
+    
+    // For React controlled components, we need to use the native setter
+    // and dispatch proper events
+    setNativeValue(selectEl, chosenOpt.value);
+    
+    // Additional React 18+ specific: dispatch events that React listens to
+    selectEl.focus();
+    try {
+      selectEl.dispatchEvent(new Event("focus", { bubbles: true, composed: true }));
+    } catch {}
+    
+    // Native value setter already called via setNativeValue
+    // Now dispatch the change event
+    try {
+      selectEl.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+    } catch {}
+    
+    // Also dispatch input event for good measure
+    try {
+      selectEl.dispatchEvent(new InputEvent("input", { 
+        bubbles: true, 
+        composed: true,
+        inputType: "insertText",
+        data: chosenOpt.value 
+      }));
+    } catch {}
+    
+    selectEl.blur();
+    try {
+      selectEl.dispatchEvent(new Event("blur", { bubbles: true, composed: true }));
+    } catch {}
+    
+    // Visual feedback
+    selectEl.style.border = "2px solid #10b981";
+    selectEl.setAttribute("title", "✨ Auto-selected by Vedha AI");
+    
+    return true;
+  }
+
   // 5. Humanized Biometric Keystroke Jitter & Typo Simulation
   async function typeLikeHuman(el, text) {
     if (!el || text === undefined || text === null) return false;
@@ -309,19 +372,23 @@
     el.focus();
     await sleep(randomBetween(50, 100));
 
-    // Clear existing
+    // Clear existing - use native setter
     setNativeValue(el, "");
     el.dispatchEvent(new Event("focus", { bubbles: true, composed: true }));
+    await sleep(randomBetween(50, 100));
 
     for (let i = 0; i < strText.length; i++) {
       const char = strText[i];
-      el.value += char;
-      el.dispatchEvent(new KeyboardEvent("keydown", { key: char, bubbles: true }));
-      el.dispatchEvent(new InputEvent("input", { data: char, bubbles: true }));
-      el.dispatchEvent(new KeyboardEvent("keyup", { key: char, bubbles: true }));
+      // Build value incrementally and use native setter
+      const newValue = el.value + char;
+      setNativeValue(el, newValue);
+      el.dispatchEvent(new KeyboardEvent("keydown", { key: char, bubbles: true, composed: true }));
+      el.dispatchEvent(new InputEvent("input", { data: char, bubbles: true, composed: true, inputType: "insertText" }));
+      el.dispatchEvent(new KeyboardEvent("keyup", { key: char, bubbles: true, composed: true }));
       await sleep(randomBetween(15, 35));
     }
 
+    // Final native set to ensure React picks it up
     setNativeValue(el, strText);
     el.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
     el.dispatchEvent(new Event("blur", { bubbles: true, composed: true }));
@@ -870,26 +937,98 @@
   function getFieldQuestionText(el, raw = false) {
     if (!el) return "";
     let question = "";
+    
+    // Strategy 1: Check form field containers with specific selectors
     const container = el.closest(
-      ".fb-dash-form-element, [data-test-form-builder-single-line-text-form-component], [data-test-form-builder-radio-button-form-component], [data-test-text-entity-list-form-component], [data-test-form-builder-select-form-component], .jobs-easy-apply-form-section__grouping, div[class*='form-element'], fieldset"
+      ".fb-dash-form-element, [data-test-form-builder-single-line-text-form-component], [data-test-form-builder-radio-button-form-component], [data-test-text-entity-list-form-component], [data-test-form-builder-select-form-component], .jobs-easy-apply-form-section__grouping, div[class*='form-element'], fieldset, [data-testid], [data-cy], [data-qa], .form-group, .form-field"
     );
     if (container) {
       const header = container.querySelector(
-        "label, legend, span.fb-dash-form-element__label, .t-14.t-bold, span[aria-hidden='true'], [data-test-form-builder-radio-button-form-component__title]"
+        "label, legend, span.fb-dash-form-element__label, .t-14.t-bold, span[aria-hidden='true'], [data-test-form-builder-radio-button-form-component__title], [data-testid*='label'], [data-cy*='label']"
       );
       if (header && header.innerText.trim()) question = header.innerText.trim();
     }
+    
+    // Strategy 2: Check for associated label by ID
     if (!question && el.id) {
       const lbl = document.querySelector(`label[for="${el.id}"]`);
       if (lbl && lbl.innerText.trim()) question = lbl.innerText.trim();
     }
+    
+    // Strategy 3: Check if element is wrapped in a label
     if (!question) {
       const parentLbl = el.closest("label");
       if (parentLbl && parentLbl.innerText.trim()) question = parentLbl.innerText.trim();
     }
+    
+    // Strategy 4: Check aria-label, placeholder, name attributes
     if (!question) {
       question = el.getAttribute("aria-label") || el.getAttribute("placeholder") || el.getAttribute("name") || "";
     }
+    
+    // Strategy 5: Check parent elements for text content that looks like a label
+    if (!question) {
+      let parent = el.parentElement;
+      let depth = 0;
+      while (parent && depth < 4) {
+        // Look for label-like elements in siblings or parent
+        const possibleLabels = parent.querySelectorAll("label, .label, [class*='label'], span, p, dt");
+        for (const pl of possibleLabels) {
+          const txt = pl.innerText.trim();
+          if (txt && txt.length > 1 && txt.length < 100 && !txt.includes("\n")) {
+            // Check if this label is associated with our element
+            if (pl.getAttribute("for") === el.id || pl.contains(el) || pl.closest("label") === parentLbl) {
+              question = txt;
+              break;
+            }
+            // Also check if label text is near the input
+            const rect1 = el.getBoundingClientRect();
+            const rect2 = pl.getBoundingClientRect();
+            if (Math.abs(rect1.top - rect2.top) < 30 && Math.abs(rect1.left - rect2.left) < 200) {
+              question = txt;
+              break;
+            }
+          }
+        }
+        if (question) break;
+        parent = parent.parentElement;
+        depth++;
+      }
+    }
+    
+    // Strategy 6: Check input type/name patterns for common fields
+    if (!question) {
+      const type = el.type?.toLowerCase() || "";
+      const name = el.name?.toLowerCase() || "";
+      const id = el.id?.toLowerCase() || "";
+      
+      if (type === "tel" || name.includes("phone") || id.includes("phone") || name.includes("mobile") || id.includes("mobile")) {
+        question = "Phone Number";
+      } else if (type === "email" || name.includes("email") || id.includes("email")) {
+        question = "Email Address";
+      } else if (name.includes("first") && (name.includes("name") || name.includes("fname")) || id.includes("first") && (id.includes("name") || id.includes("fname"))) {
+        question = "First Name";
+      } else if (name.includes("last") && (name.includes("name") || name.includes("lname")) || id.includes("last") && (id.includes("name") || id.includes("lname"))) {
+        question = "Last Name";
+      } else if ((name === "name" || name.includes("fullname") || name.includes("full_name")) || (id === "name" || id.includes("fullname") || id.includes("full_name"))) {
+        question = "Full Name";
+      } else if (name.includes("city") || id.includes("city") || name.includes("location") || id.includes("location") || name.includes("address") || id.includes("address")) {
+        question = "City / Location";
+      } else if (name.includes("linkedin") || id.includes("linkedin")) {
+        question = "LinkedIn URL";
+      } else if (name.includes("github") || id.includes("github")) {
+        question = "GitHub URL";
+      } else if (name.includes("portfolio") || id.includes("portfolio") || name.includes("website") || id.includes("website")) {
+        question = "Portfolio / Website URL";
+      } else if (name.includes("salary") || id.includes("salary") || name.includes("ctc") || id.includes("ctc") || name.includes("compensation") || id.includes("compensation")) {
+        question = "Expected Salary / CTC";
+      } else if (name.includes("notice") || id.includes("notice") || name.includes("start") || id.includes("start")) {
+        question = "Notice Period";
+      } else if (type === "number" || name.includes("year") || id.includes("year") || name.includes("experience") || id.includes("experience")) {
+        question = "Years of Experience";
+      }
+    }
+    
     question = question.replace(/[\*\r\n]+/g, " ").trim();
     return raw ? question : question.toLowerCase();
   }
@@ -1403,7 +1542,7 @@ Return JSON array in format:
       }
     }
 
-    // 4. Dropdowns (<select>)
+    // 4. Dropdowns (<select>) - Using enhanced React/Vue compatible handler
     for (const sel of selects) {
       if (sel.selectedIndex > 0 && sel.value && sel.value.toLowerCase() !== "select an option") continue;
 
@@ -1415,49 +1554,36 @@ Return JSON array in format:
         if (matchedKey) answerText = geminiAnswers[matchedKey];
       }
 
-      let chosenOpt = null;
-      if (answerText) {
-        const ansLower = answerText.toLowerCase();
-        chosenOpt = Array.from(sel.options).find(o => {
-          const t = o.text.trim().toLowerCase();
-          return t === ansLower || t.includes(ansLower) || ansLower.includes(t);
-        });
-      }
-
-      if (!chosenOpt) {
-        let wantYes = null;
+      // Determine what to select
+      let selectValue = answerText;
+      
+      // Rule-based fallback for standard yes/no questions
+      if (!selectValue) {
         if (q.includes("sponsorship") || q.includes("require visa") || q.includes("visa sponsorship")) {
-          wantYes = safePayload.requiresVisaSponsorship === true;
+          selectValue = safePayload.requiresVisaSponsorship === true ? "Yes" : "No";
         } else if (q.includes("authorized") || q.includes("legally") || q.includes("eligible")) {
-          wantYes = true;
+          selectValue = "Yes";
         } else if (q.includes("commute") || q.includes("relocate") || q.includes("background check")) {
-          wantYes = true;
+          selectValue = "Yes";
         } else if (q.includes("experience") || q.includes("years")) {
-          chosenOpt = Array.from(sel.options).find(o => {
-            const t = o.text.toLowerCase();
-            return t.includes("5") || t.includes("3-5") || t.includes("4-6") || t.includes("senior");
-          });
-        }
-
-        if (wantYes !== null && !chosenOpt) {
-          const targetWord = wantYes ? "yes" : "no";
-          chosenOpt = Array.from(sel.options).find(o => o.text.toLowerCase().includes(targetWord));
-        }
-
-        // Fallback: If still no option chosen, select first non-placeholder option
-        if (!chosenOpt && sel.options.length > 1 && sel.selectedIndex <= 0) {
-          const firstValid = Array.from(sel.options).find(o => o.value && !o.text.toLowerCase().includes("select") && !o.text.toLowerCase().includes("choose"));
-          if (firstValid) chosenOpt = firstValid;
+          selectValue = "5+"; // Will fuzzy match "5", "3-5", "4-6", "senior"
         }
       }
 
-      if (chosenOpt) {
-        sel.value = chosenOpt.value;
-        sel.dispatchEvent(new Event("change", { bubbles: true }));
-        sel.style.border = "2px solid #10b981";
-        sel.setAttribute("title", "✨ Auto-filled by Vedha AI");
-        filledCount++;
-        await sleep(150);
+      // Fallback: If still no value, select first non-placeholder option
+      if (!selectValue && sel.options.length > 1 && sel.selectedIndex <= 0) {
+        const firstValid = Array.from(sel.options).find(o => 
+          o.value && !o.text.toLowerCase().includes("select") && !o.text.toLowerCase().includes("choose")
+        );
+        if (firstValid) selectValue = firstValid.value;
+      }
+
+      if (selectValue) {
+        const success = await selectDropdownOption(sel, selectValue);
+        if (success) {
+          filledCount++;
+          await sleep(150);
+        }
       }
     }
 
@@ -2999,6 +3125,9 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
       isPinned = sessionStorage.getItem("vedha_dock_pinned") === "true";
     } catch (_) {}
 
+    // Dock state managed via variable (more reliable than reading style.display in Shadow DOM)
+    let dockExpanded = isPinned;
+
     // Collapsed Pill with Drag Grip
     const pill = document.createElement("div");
     pill.id = "vedha-copilot-pill";
@@ -3009,7 +3138,7 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
       border-radius: 9999px;
       box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
       padding: 10px 18px;
-      display: ${isPinned ? "none" : "flex"};
+      display: ${dockExpanded ? "none" : "flex"};
       align-items: center;
       gap: 9px;
       cursor: grab;
@@ -3040,7 +3169,7 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
     const dock = document.createElement("div");
     dock.id = "vedha-copilot-dock";
     dock.style.cssText = `
-      display: ${isPinned ? "flex" : "none"};
+      display: ${dockExpanded ? "flex" : "none"};
       width: 320px;
       background: #09090b;
       color: #fafafa;
@@ -3204,6 +3333,13 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
     pill.addEventListener("pointerdown", handleDragStart);
     dock.querySelector("#vedha-dock-header")?.addEventListener("pointerdown", handleDragStart);
 
+    function syncDockState(expanded) {
+      dockExpanded = expanded;
+      dock.style.display = dockExpanded ? "flex" : "none";
+      pill.style.display = dockExpanded ? "none" : "flex";
+      dock.dataset.vedhaExpanded = String(dockExpanded);
+    }
+
     pill.addEventListener("click", (e) => {
       if (hasMoved) {
         hasMoved = false;
@@ -3211,14 +3347,13 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
         e.stopPropagation();
         return;
       }
-      const isVisible = dock.style.display === "flex";
-      dock.style.display = isVisible ? "none" : "flex";
-      pill.style.display = isVisible ? "flex" : "none";
+      // Read current state from data attribute (synced with message listener)
+      const currentExpanded = dock.dataset.vedhaExpanded === "true";
+      syncDockState(!currentExpanded);
     });
 
     dock.querySelector("#vedha-dock-close")?.addEventListener("click", () => {
-      dock.style.display = "none";
-      pill.style.display = "flex";
+      syncDockState(false);
       isPinned = false;
       try { sessionStorage.setItem("vedha_dock_pinned", "false"); } catch (_) {}
     });
@@ -3381,6 +3516,9 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
       window.open(url, "_blank");
     });
 
+    // Initialize data attribute for state sync with message listener
+    dock.dataset.vedhaExpanded = String(dockExpanded);
+
     const targetContainer = shadowRoot || root;
     targetContainer.appendChild(dock);
     targetContainer.appendChild(pill);
@@ -3493,6 +3631,7 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
       if (isUserPinned && dockCard && dockPill) {
         dockCard.style.display = "flex";
         dockPill.style.display = "none";
+        dockCard.dataset.vedhaExpanded = "true";
       }
     } else {
       if (dockRoot) {
@@ -3561,6 +3700,7 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
       if (dockCard && dockPill) {
         dockCard.style.display = "flex";
         dockPill.style.display = "none";
+        dockCard.dataset.vedhaExpanded = "true";
         const pinBtn = dockCard.querySelector("#vedha-dock-pin");
         const pinLabel = dockCard.querySelector("#vedha-pin-label");
         if (pinBtn) {

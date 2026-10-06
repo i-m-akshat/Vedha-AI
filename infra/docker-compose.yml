@@ -159,4 +159,5 @@ volumes:
 
 networks:
   vedha-network:
+    name: infra_vedha-network
     driver: bridge

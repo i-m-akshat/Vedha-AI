@@ -176,3 +176,113 @@ if (typeof module !== "undefined" && module.exports) {
     version: "1.0.0"
   };
 }
+
+// ==========================================
+// Shared Authentication Sync (Extension <-> Web App)
+// ==========================================
+
+const AUTH_STORAGE_KEYS = ["vedha_token", "jwtToken", "token", "candidateProfile", "cachedMasterResume", "cachedUser", "vedha_review_gateway"];
+const WEBAPP_ORIGIN = "http://localhost:3000";
+
+/**
+ * Syncs auth state from web app localStorage to chrome.storage.local
+ * Called periodically and on extension startup
+ */
+async function syncAuthFromWebApp() {
+  const cr = getChrome();
+  if (!cr?.storage?.local) return;
+  
+  try {
+    // Query tabs on the web app origin
+    const tabs = await cr.tabs.query({ url: `${WEBAPP_ORIGIN}/*` });
+    if (tabs.length === 0) return;
+    
+    // Execute script in the web app tab to read localStorage
+    const results = await cr.scripting.executeScript({
+      target: { tabId: tabs[0].id },
+      func: (keys) => {
+        const data = {};
+        for (const key of keys) {
+          const val = localStorage.getItem(key);
+          if (val) data[key] = val;
+        }
+        return data;
+      },
+      args: [AUTH_STORAGE_KEYS]
+    });
+    
+    const webAppData = results?.[0]?.result;
+    if (webAppData && Object.keys(webAppData).length > 0) {
+      await cr.storage.local.set(webAppData);
+      console.log("[Vedha SW] Synced auth from web app:", Object.keys(webAppData));
+    }
+  } catch (err) {
+    // Silently fail - web app might not be open
+    console.debug("[Vedha SW] Auth sync from web app skipped:", err?.message || err);
+  }
+}
+
+/**
+ * Syncs auth state from chrome.storage.local to web app localStorage
+ * Called when extension storage changes
+ */
+async function syncAuthToWebApp(changes) {
+  const cr = getChrome();
+  if (!cr?.storage?.local) return;
+  
+  const relevantChanges = {};
+  for (const key of AUTH_STORAGE_KEYS) {
+    if (changes[key] && changes[key].newValue !== undefined) {
+      relevantChanges[key] = changes[key].newValue;
+    }
+  }
+  
+  if (Object.keys(relevantChanges).length === 0) return;
+  
+  try {
+    const tabs = await cr.tabs.query({ url: `${WEBAPP_ORIGIN}/*` });
+    if (tabs.length === 0) return;
+    
+    await cr.scripting.executeScript({
+      target: { tabId: tabs[0].id },
+      func: (data) => {
+        for (const [key, value] of Object.entries(data)) {
+          if (value === null || value === undefined) {
+            localStorage.removeItem(key);
+          } else {
+            localStorage.setItem(key, value);
+          }
+        }
+        // Dispatch storage event for React app to pick up
+        window.dispatchEvent(new StorageEvent('storage', { key: 'vedha_token' }));
+      },
+      args: [relevantChanges]
+    });
+    
+    console.log("[Vedha SW] Synced auth to web app:", Object.keys(relevantChanges));
+  } catch (err) {
+    console.debug("[Vedha SW] Auth sync to web app skipped:", err?.message || err);
+  }
+}
+
+// Listen for storage changes in extension and sync to web app
+if (cr?.storage?.local?.onChanged) {
+  cr.storage.local.onChanged.addListener(syncAuthToWebApp);
+}
+
+// Periodic sync from web app (every 30 seconds when web app is open)
+setInterval(syncAuthFromWebApp, 30000);
+
+// Sync on extension startup
+syncAuthFromWebApp();
+
+// Expose for testing
+if (typeof globalThis !== "undefined") {
+  globalThis.__VEDHA_BACKGROUND__ = {
+    configureSidePanelBehavior,
+    handleActionClick,
+    syncAuthFromWebApp,
+    syncAuthToWebApp,
+    version: "1.0.0"
+  };
+}
