@@ -161,7 +161,14 @@ npm run dev
 ├── INTERESTING_THINGS.md    # 18 deep engineering highlights & innovation breakdowns
 ├── README.md                # Project documentation and quick start guide
 ├── context.md               # Continuous architecture knowledge base & session history
-├── docker-compose.yml       # Production multi-service container orchestration
+├── infra/
+│   ├── docker-compose.yml       # Production multi-service container orchestration
+│   ├── Dockerfile.backend       # Multi-stage .NET 10 container image
+│   ├── Dockerfile.frontend      # Multi-stage Node 22 + Alpine Nginx container image
+│   ├── Dockerfile.worker        # Playwright Python 3.11 container image
+│   ├── nginx.conf               # Reverse proxy configuration with multi-gateway resolver
+│   ├── localhost_proxy.py       # Transparent host-to-WSL proxy
+│   └── build_and_start.ps1      # Automated build and container orchestrator
 ├── backend/                 # ASP.NET Core 10 Clean Architecture Solution
 │   ├── src/
 │   │   ├── ResumeTailor.Domain/         # Entities, Value Objects, Domain Events

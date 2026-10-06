@@ -99,7 +99,7 @@ Instead of bloated "God Service" classes (like `ResumeService` with 30 methods),
 
 ### Commands (Mutations / Write Operations)
 - Focus exclusively on state modification, validation, and side effects.
-- Examples in [`TailoringCommands.cs`](file:///A:/AIProjects/Resumebuilder/backend/src/ResumeTailor.Application/Features/Tailoring/TailoringCommands.cs):
+- Examples in [`TailorCommands.cs`](file:///A:/AIProjects/Resumebuilder/backend/src/ResumeTailor.Application/Features/Tailoring/TailorCommands.cs):
   - `UploadMasterResumeCommand` ➔ Parses file, creates `MasterResume`, persists to DB.
   - `TailorResumeCommand` ➔ Executes scraping, AI prompt synthesis, ATS scoring, and persists `GeneratedResume`.
 - Examples in [`OrchestratorCommands.cs`](file:///A:/AIProjects/Resumebuilder/backend/src/ResumeTailor.Application/Features/Orchestrator/OrchestratorCommands.cs):
@@ -274,7 +274,7 @@ Instead of bloated "God Service" classes (like `ResumeService` with 30 methods),
 ---
 
 ### 10. Resilient Fallback & Dual-Engine Strategy (Crawl4AI + AngleSharp)
-* **Where**: [`JobScraperService.cs`](file:///A:/AIProjects/Resumebuilder/backend/src/ResumeTailor.Infrastructure/WebScraping/JobScrapers.cs) and [`Crawl4AiService.cs`](file:///A:/AIProjects/Resumebuilder/backend/src/ResumeTailor.Infrastructure/WebScraping/Crawl4AiService.cs).
+* **Where**: [`JobScraperService.cs`](file:///A:/AIProjects/Resumebuilder/backend/src/ResumeTailor.Infrastructure/WebScraping/JobScraperService.cs) and [`Crawl4AiService.cs`](file:///A:/AIProjects/Resumebuilder/backend/src/ResumeTailor.Infrastructure/WebScraping/Crawl4AiService.cs).
 * **Why**: Solves the fragility of web scraping. Complex JavaScript-rendered platforms (LinkedIn, Naukri) route to the Crawl4AI Playwright microservice for stealth DOM unrolling. If Crawl4AI times out or encounters network limits, the service seamlessly falls back to local AngleSharp HTTP parsing without throwing an unhandled exception to the candidate.
 
 ---

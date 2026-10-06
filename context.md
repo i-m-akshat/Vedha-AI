@@ -42,7 +42,7 @@
 |                                                                                       |
 |  +--------------------+   +--------------------+   +-------------------------------+  |
 |  |   vedha-frontend   |   |   vedha-backend    |   |         vedha-worker          |  |
-|  |   (Nginx / React)  |   | (ASP.NET Core 9.0) |   | (Python 3.11 Playwright/NATS) |  |
+|  |   (Nginx / React)  |   | (ASP.NET Core 10.0) |   | (Python 3.11 Playwright/NATS) |  |
 |  |   Port: 3000       |   | Port: 5000 (8080)  |   | Port: 8000                    |  |
 |  +--------------------+   +---------+----------+   +---------------+---------------+  |
 |                                     |                              |                  |
@@ -69,7 +69,7 @@
 | Service | Container Name | Internal Port | Host Port | Technology | Purpose |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Frontend** | `vedha-frontend` | `80` | `3000` | React 18, Vite, Tailwind | User interface, Result Studio, Orchestrator Queue |
-| **Backend** | `vedha-backend` | `8080` | `5000` | ASP.NET Core 9.0 | Clean Architecture WebApi, RAG Engine, Auth, S3 |
+| **Backend** | `vedha-backend` | `8080` | `5000` | ASP.NET Core 10.0 | Clean Architecture WebApi, RAG Engine, Auth, S3 |
 | **Database** | `vedha-postgres` | `5432` | `5432` | PostgreSQL 16 + pgvector | Relational data, candidate profiles, embeddings |
 | **Cache** | `vedha-redis` | `6379` | `6379` | Redis 7 Alpine | Distributed locks, idempotency, session cache |
 | **Broker** | `vedha-nats` | `4222`, `8222` | `4222`, `8222` | NATS JetStream latest | Decoupled event streams (`app.>`) |

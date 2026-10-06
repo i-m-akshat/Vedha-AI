@@ -418,7 +418,7 @@ In [`DocumentParsers.cs`](file:///A:/AIProjects/Resumebuilder/backend/src/Resume
 Feeding raw HTML from modern career portals (like LinkedIn, Workday, or Greenhouse) into an LLM wastes thousands of unnecessary tokens on navigation menus, JavaScript bundles, tracking tags, CSS styles, footer disclosures, and cookie consent banners. Raw job pages often exceed 200 KB of HTML, driving up LLM cost and confusing the parser.
 
 ### How We Solved It
-In [`JobScrapers.cs`](file:///A:/AIProjects/Resumebuilder/backend/src/ResumeTailor.Infrastructure/WebScraping/JobScrapers.cs), we built an **AngleSharp Semantic Sanitization Pipeline**:
+In [`JobScraperService.cs`](file:///A:/AIProjects/Resumebuilder/backend/src/ResumeTailor.Infrastructure/WebScraping/JobScraperService.cs), we built an **AngleSharp Semantic Sanitization Pipeline**:
 1. **Aggressive DOM Pruning**: Instantly strips `<script>`, `<style>`, `<svg>`, `<nav>`, `<footer>`, `<header>`, `<iframe>`, and hidden advertising tracking pixels.
 2. **Semantic Element Preservation**: Keeps only semantic structural elements (`<h1>`–`<h6>`, `<ul>`, `<ol>`, `<li>`, `<p>`, `<strong>`, `<table>`).
 3. **Token Reduction**: Compresses the job description payload by **over 75%** while preserving 100% of the job requirements, qualifications, and role responsibilities for the AI engine.
