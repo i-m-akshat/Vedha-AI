@@ -27,6 +27,14 @@
       window.localStorage.getItem("vedha_token") ||
       window.localStorage.getItem("resumate_token");
     if (token) chrome.storage.local.set({ vedha_token: token });
+
+    window.addEventListener("message", (event) => {
+      if (event.data?.type === "VEDHA_AUTH_TOKEN_SYNC" && event.data.token) {
+        chrome.storage.local.set({ vedha_token: event.data.token, cachedUser: event.data.user });
+      } else if (event.data?.type === "VEDHA_AUTH_TOKEN_CLEAR") {
+        chrome.storage.local.remove(["vedha_token", "cachedUser", "candidateProfile", "cachedMasterResume"]);
+      }
+    });
   }
 
   syncWebAppToken();
