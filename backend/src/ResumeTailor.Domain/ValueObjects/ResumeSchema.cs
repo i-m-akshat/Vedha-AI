@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text.RegularExpressions;
+
 namespace ResumeTailor.Domain.ValueObjects;
 
 public class PersonalInfo
@@ -80,4 +83,130 @@ public class ResumeSchema
     public List<EducationItem> Education { get; set; } = new();
     public List<CertificationItem> Certifications { get; set; } = new();
     public List<AchievementItem> Achievements { get; set; } = new();
+
+    public void NormalizeAndSortExperience()
+    {
+        if (Experience != null && Experience.Count > 0)
+        {
+            Experience = ExperienceChronologyHelper.SortChronologically(Experience);
+        }
+    }
+}
+
+public static class ExperienceChronologyHelper
+{
+    private static readonly Regex YearRegex = new(@"\b(19\d{2}|20\d{2})\b", RegexOptions.Compiled);
+
+    private static readonly Dictionary<string, int> MonthMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "jan", 1 }, { "january", 1 },
+        { "feb", 2 }, { "february", 2 },
+        { "mar", 3 }, { "march", 3 },
+        { "apr", 4 }, { "april", 4 },
+        { "may", 5 },
+        { "jun", 6 }, { "june", 6 },
+        { "jul", 7 }, { "july", 7 },
+        { "aug", 8 }, { "august", 8 },
+        { "sep", 9 }, { "sept", 9 }, { "september", 9 },
+        { "oct", 10 }, { "october", 10 },
+        { "nov", 11 }, { "november", 11 },
+        { "dec", 12 }, { "december", 12 }
+    };
+
+    public static bool IsPresentRole(WorkExperienceItem item)
+    {
+        if (item.IsCurrent) return true;
+        if (!string.IsNullOrWhiteSpace(item.EndDate))
+        {
+            var end = item.EndDate.Trim();
+            if (end.Equals("present", StringComparison.OrdinalIgnoreCase) ||
+                end.Equals("current", StringComparison.OrdinalIgnoreCase) ||
+                end.Equals("now", StringComparison.OrdinalIgnoreCase) ||
+                end.Equals("ongoing", StringComparison.OrdinalIgnoreCase) ||
+                end.Contains("present", StringComparison.OrdinalIgnoreCase) ||
+                end.Contains("current", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static DateTime ParseDateSafe(string? dateStr, bool isEndDate = false)
+    {
+        if (string.IsNullOrWhiteSpace(dateStr))
+            return isEndDate ? DateTime.MinValue : DateTime.MinValue;
+
+        var trimmed = dateStr.Trim();
+
+        if (trimmed.Equals("present", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("current", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("now", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("ongoing", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Contains("present", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Contains("current", StringComparison.OrdinalIgnoreCase))
+        {
+            return DateTime.MaxValue;
+        }
+
+        string[] formats =
+        {
+            "MMM yyyy", "MMMM yyyy", "MMM. yyyy", "MM/yyyy", "M/yyyy", "yyyy-MM", "yyyy/MM",
+            "yyyy", "d MMM yyyy", "MMM d, yyyy", "yyyy-MM-dd", "MM/dd/yyyy", "M/d/yyyy"
+        };
+
+        if (DateTime.TryParseExact(trimmed, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var exactDate))
+        {
+            return exactDate;
+        }
+
+        if (DateTime.TryParse(trimmed, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
+        {
+            return parsedDate;
+        }
+
+        var match = YearRegex.Match(trimmed);
+        if (match.Success && int.TryParse(match.Value, out var year))
+        {
+            int month = isEndDate ? 12 : 1;
+            foreach (var kvp in MonthMap)
+            {
+                if (Regex.IsMatch(trimmed, $@"\b{kvp.Key}\b", RegexOptions.IgnoreCase))
+                {
+                    month = kvp.Value;
+                    break;
+                }
+            }
+            int day = isEndDate ? Math.Min(28, DateTime.DaysInMonth(year, month)) : 1;
+            return new DateTime(year, month, day);
+        }
+
+        return isEndDate ? DateTime.MinValue : DateTime.MinValue;
+    }
+
+    public static List<WorkExperienceItem> SortChronologically(IEnumerable<WorkExperienceItem>? items)
+    {
+        if (items == null) return new List<WorkExperienceItem>();
+
+        var list = items.ToList();
+        foreach (var item in list)
+        {
+            if (IsPresentRole(item))
+            {
+                item.IsCurrent = true;
+                if (string.IsNullOrWhiteSpace(item.EndDate))
+                {
+                    item.EndDate = "Present";
+                }
+            }
+        }
+
+        return list
+            .OrderByDescending(x => IsPresentRole(x) ? 1 : 0)
+            .ThenByDescending(x => IsPresentRole(x)
+                ? ParseDateSafe(x.StartDate, isEndDate: false)
+                : ParseDateSafe(x.EndDate, isEndDate: true))
+            .ThenByDescending(x => ParseDateSafe(x.StartDate, isEndDate: false))
+            .ToList();
+    }
 }

@@ -103,3 +103,26 @@ export interface ResumeVersionDto {
   changeDescription: string;
   createdAtUtc: string;
 }
+
+export function sortExperiencesChronologically(experiences: WorkExperienceItem[]): WorkExperienceItem[] {
+  if (!experiences || experiences.length === 0) return [];
+  const isPresent = (e: WorkExperienceItem) =>
+    e.isCurrent ||
+    Boolean(e.endDate && /present|current|now|ongoing/i.test(e.endDate));
+
+  const parseYear = (s?: string) => {
+    if (!s) return 0;
+    const match = s.match(/\b(19\d{2}|20\d{2})\b/);
+    return match ? parseInt(match[1], 10) : 0;
+  };
+
+  return [...experiences].sort((a, b) => {
+    const aPres = isPresent(a) ? 1 : 0;
+    const bPres = isPresent(b) ? 1 : 0;
+    if (aPres !== bPres) return bPres - aPres;
+
+    const aYear = parseYear(aPres ? a.startDate : (a.endDate || a.startDate));
+    const bYear = parseYear(bPres ? b.startDate : (b.endDate || b.startDate));
+    return bYear - aYear;
+  });
+}

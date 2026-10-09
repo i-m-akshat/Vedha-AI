@@ -283,6 +283,7 @@ CRITICAL ACCURACY & INTEGRITY RULES:
         var masterResume = await _context.MasterResumes
             .FirstOrDefaultAsync(r => r.UserId == userId && r.IsActive, cancellationToken);
 
+        schema.NormalizeAndSortExperience();
         var jsonString = JsonSerializer.Serialize(schema, JsonOptions);
 
         // Auto-extract and populate CandidateProfile from parsed resume details (per user requirement)
@@ -423,6 +424,7 @@ CRITICAL ACCURACY & INTEGRITY RULES:
             .FirstOrDefaultAsync(r => r.UserId == userId && r.IsActive, cancellationToken)
             ?? throw new NotFoundException(nameof(MasterResume), userId);
 
+        request.Schema.NormalizeAndSortExperience();
         var jsonString = JsonSerializer.Serialize(request.Schema, JsonOptions);
         masterResume.Title = request.Title;
         masterResume.StructuredJson = jsonString;
@@ -462,6 +464,7 @@ CRITICAL ACCURACY & INTEGRITY RULES:
             return Result<MasterResumeDto?>.Success(null);
 
         var schema = JsonSerializer.Deserialize<ResumeSchema>(masterResume.StructuredJson, JsonOptions) ?? new ResumeSchema();
+        schema.NormalizeAndSortExperience();
 
         return Result<MasterResumeDto?>.Success(new MasterResumeDto(
             masterResume.Id,

@@ -285,11 +285,8 @@ if (aiResult.IsSuccess)
             Highlights = selectedAchievements.Take(6).ToList()
         });
 
-        // 3. Sort all experiences in reverse-chronological order (most recent start date first)
-        experienceItems = experienceItems
-            .OrderByDescending(x => int.TryParse(x.StartDate, out var s) ? s : 0)
-            .ThenByDescending(x => x.IsCurrent)
-            .ToList();
+        // 3. Sort all experiences in reverse-chronological order (present employment always first)
+        experienceItems = ExperienceChronologyHelper.SortChronologically(experienceItems);
 
         // 4. Extract skills from EvidenceKnowledgeBaseJson and add to resume Skills for ATS scoring
         var candidateProfile = user.CandidateProfile;

@@ -232,7 +232,8 @@ AGGRESSIVE TAILORING & ATS MAXIMIZATION MANDATES (TARGET: 90%+ ATS SCORE):
     * MEDIUM relevance (partial match - some overlap with JD): 3-4 bullets - focus only on overlapping skills and metrics.
     * LOW relevance (minimal overlap with JD): 2 bullets max - use only the 2 most transferable points.
 - NEVER give every role the same number of bullets - this signals un-tailored output and is FORBIDDEN.
-- Reorder experience entries so the most JD-relevant role appears FIRST in the list (even if not chronological).
+- CRITICAL CHRONOLOGICAL ORDERING MANDATE: The candidate's CURRENT / PRESENT employment (where isCurrent == true or endDate contains 'Present' / 'Current') MUST ALWAYS APPEAR FIRST in the experience list. Never place an older past role above current employment.
+- All subsequent past employment entries MUST strictly follow reverse-chronological order (most recent past role first, descending by end/start date).
 - Directly mirror canonical JD vocabulary, technical terms, and action verbs in bullets (e.g., if JD says ""design implement and support"", use those words in the bullet).
 - Every HIGH-relevance bullet MUST contain at least one specific JD keyword from Must-Have Skills or Key Responsibilities.
 - If a bullet from the master resume is not relevant to this JD, DROP IT - do not rephrase irrelevant bullets just to keep bullet count.
@@ -290,7 +291,8 @@ INSTRUCTIONS:
 3. RETAIN at least 70%-80% of verified quantitative metrics (%, $, scale counts) from the master resume to maximize the ATS Experience Score.
 4. The summary MUST begin with the exact job title: ""{jobSchema.Title}"" and highlight 3-5 matching core competencies.
 5. In personalInfo, set 'title' to ""{jobSchema.Title}"".
-6. Return only the tailored ResumeSchema JSON with no commentary.";
+6. The candidate's CURRENT / PRESENT employment (isCurrent == true or endDate is 'Present') MUST be FIRST in the experience array, followed by past roles in reverse-chronological order.
+7. Return only the tailored ResumeSchema JSON with no commentary.";
 
         var apiKey = providerType switch
         {
@@ -356,6 +358,9 @@ INSTRUCTIONS:
             tailoredSchema.Projects = masterSchema.Projects;
         }
 
+        // 4b. Enforce strict chronological ordering (Present / Current employment ALWAYS comes first)
+        masterSchema.NormalizeAndSortExperience();
+        tailoredSchema.NormalizeAndSortExperience();
 
         // 5. Calculate ATS Score & Recruiter Feedback
         await _progressNotifier.SendProgressAsync(userId, "ATS Scoring", "Performing keyword density, semantic match, and recruiter scorecard analysis...", 80, cancellationToken);
@@ -450,6 +455,8 @@ INSTRUCTIONS:
 
         var masterSchema = JsonSerializer.Deserialize<ResumeSchema>(generatedResume.MasterResume?.StructuredJson ?? "{}", JsonOptions) ?? new ResumeSchema();
         var tailoredSchema = JsonSerializer.Deserialize<ResumeSchema>(generatedResume.TailoredStructuredJson, JsonOptions) ?? new ResumeSchema();
+        masterSchema.NormalizeAndSortExperience();
+        tailoredSchema.NormalizeAndSortExperience();
         var atsScore = JsonSerializer.Deserialize<AtsScoreBreakdown>(generatedResume.AtsAnalysis?.AnalysisDataJson ?? "{}", JsonOptions) ?? new AtsScoreBreakdown();
 
         return Result<TailoredResumeResultDto>.Success(new TailoredResumeResultDto(
@@ -477,6 +484,8 @@ INSTRUCTIONS:
             ?? throw new NotFoundException(nameof(GeneratedResume), request.Id);
 
         var masterSchema = JsonSerializer.Deserialize<ResumeSchema>(generatedResume.MasterResume?.StructuredJson ?? "{}", JsonOptions) ?? new ResumeSchema();
+        masterSchema.NormalizeAndSortExperience();
+        request.UpdatedSchema.NormalizeAndSortExperience();
 
         // Validate truth preservation
         var truthResult = _atsScoringEngine.ValidateTruthPreservation(masterSchema, request.UpdatedSchema);
