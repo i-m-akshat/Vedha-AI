@@ -36,6 +36,7 @@ public class User : AuditableEntity
     public ICollection<CareerAchievement> CareerAchievements { get; set; } = new List<CareerAchievement>();
     public ICollection<ApplicationAudit> ApplicationAudits { get; set; } = new List<ApplicationAudit>();
     public ICollection<IdempotentTransaction> IdempotentTransactions { get; set; } = new List<IdempotentTransaction>();
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }
 
 public class MasterResume : AuditableEntity

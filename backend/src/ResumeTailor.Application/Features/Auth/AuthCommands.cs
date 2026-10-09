@@ -28,7 +28,11 @@ public record ExportUserDataQuery : IRequest<Result<UserDataExportDto>>;
 
 public record DeleteUserAccountCommand : IRequest<Result<bool>>;
 
-public record AuthResponseDto(string Token, UserDto User);
+public record AuthResponseDto(string Token, string RefreshToken, UserDto User);
+
+public record RefreshTokenCommand(string AccessToken, string RefreshToken) : IRequest<Result<AuthResponseDto>>;
+
+public record RevokeTokenCommand(string RefreshToken) : IRequest<Result<bool>>;
 
 public record UserDto(
     Guid Id,
@@ -79,6 +83,8 @@ public class LoginCommandValidator : AbstractValidator<LoginCommand>
 public class AuthCommandHandler :
     IRequestHandler<RegisterCommand, Result<AuthResponseDto>>,
     IRequestHandler<LoginCommand, Result<AuthResponseDto>>,
+    IRequestHandler<RefreshTokenCommand, Result<AuthResponseDto>>,
+    IRequestHandler<RevokeTokenCommand, Result<bool>>,
     IRequestHandler<UpdateApiKeyCommand, Result<bool>>,
     IRequestHandler<GetCurrentUserQuery, Result<UserDto>>,
     IRequestHandler<ExportUserDataQuery, Result<UserDataExportDto>>,
@@ -125,9 +131,20 @@ public class AuthCommandHandler :
         await _context.SaveChangesAsync(cancellationToken);
 
         var token = _jwtTokenGenerator.GenerateToken(user.Id, user.Email, user.Role);
-        var userDto = MapToUserDto(user);
+        var refreshToken = _jwtTokenGenerator.GenerateRefreshToken();
 
-        return Result<AuthResponseDto>.Success(new AuthResponseDto(token, userDto));
+        var refreshTokenEntity = new RefreshToken
+        {
+            UserId = user.Id,
+            Token = refreshToken,
+            ExpiresAtUtc = DateTime.UtcNow.AddDays(30),
+            CreatedAtUtc = DateTime.UtcNow
+        };
+        _context.RefreshTokens.Add(refreshTokenEntity);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var userDto = MapToUserDto(user);
+        return Result<AuthResponseDto>.Success(new AuthResponseDto(token, refreshToken, userDto));
     }
 
     public async Task<Result<AuthResponseDto>> Handle(LoginCommand request, CancellationToken cancellationToken)
@@ -137,9 +154,81 @@ public class AuthCommandHandler :
             return Result<AuthResponseDto>.Failure("Invalid email or password.");
 
         var token = _jwtTokenGenerator.GenerateToken(user.Id, user.Email, user.Role);
-        var userDto = MapToUserDto(user);
+        var refreshToken = _jwtTokenGenerator.GenerateRefreshToken();
 
-        return Result<AuthResponseDto>.Success(new AuthResponseDto(token, userDto));
+        var refreshTokenEntity = new RefreshToken
+        {
+            UserId = user.Id,
+            Token = refreshToken,
+            ExpiresAtUtc = DateTime.UtcNow.AddDays(30),
+            CreatedAtUtc = DateTime.UtcNow
+        };
+        _context.RefreshTokens.Add(refreshTokenEntity);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var userDto = MapToUserDto(user);
+        return Result<AuthResponseDto>.Success(new AuthResponseDto(token, refreshToken, userDto));
+    }
+
+    public async Task<Result<AuthResponseDto>> Handle(RefreshTokenCommand request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.AccessToken) || string.IsNullOrWhiteSpace(request.RefreshToken))
+            return Result<AuthResponseDto>.Failure("Access token and refresh token are required.");
+
+        var principal = _jwtTokenGenerator.GetPrincipalFromExpiredToken(request.AccessToken);
+        if (principal == null)
+            return Result<AuthResponseDto>.Failure("Invalid access token.");
+
+        var claim = principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                 ?? principal.FindFirst("sub")?.Value;
+
+        if (!Guid.TryParse(claim, out var userId))
+            return Result<AuthResponseDto>.Failure("Invalid access token identity.");
+
+        var storedToken = await _context.RefreshTokens
+            .FirstOrDefaultAsync(r => r.Token == request.RefreshToken && r.UserId == userId, cancellationToken);
+
+        if (storedToken == null || !storedToken.IsActive)
+            return Result<AuthResponseDto>.Failure("Invalid, expired, or revoked refresh token.");
+
+        var user = await _context.Users.FindAsync(new object[] { userId }, cancellationToken);
+        if (user == null)
+            return Result<AuthResponseDto>.Failure("User not found.");
+
+        // Rotate Refresh Token
+        var newRefreshToken = _jwtTokenGenerator.GenerateRefreshToken();
+        storedToken.RevokedAtUtc = DateTime.UtcNow;
+        storedToken.ReplacedByToken = newRefreshToken;
+
+        var newRefreshTokenEntity = new RefreshToken
+        {
+            UserId = user.Id,
+            Token = newRefreshToken,
+            ExpiresAtUtc = DateTime.UtcNow.AddDays(30),
+            CreatedAtUtc = DateTime.UtcNow
+        };
+        _context.RefreshTokens.Add(newRefreshTokenEntity);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var newAccessToken = _jwtTokenGenerator.GenerateToken(user.Id, user.Email, user.Role);
+        return Result<AuthResponseDto>.Success(new AuthResponseDto(newAccessToken, newRefreshToken, MapToUserDto(user)));
+    }
+
+    public async Task<Result<bool>> Handle(RevokeTokenCommand request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.RefreshToken))
+            return Result<bool>.Failure("Refresh token is required.");
+
+        var storedToken = await _context.RefreshTokens
+            .FirstOrDefaultAsync(r => r.Token == request.RefreshToken, cancellationToken);
+
+        if (storedToken != null && storedToken.IsActive)
+        {
+            storedToken.RevokedAtUtc = DateTime.UtcNow;
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+
+        return Result<bool>.Success(true);
     }
 
     public async Task<Result<bool>> Handle(UpdateApiKeyCommand request, CancellationToken cancellationToken)

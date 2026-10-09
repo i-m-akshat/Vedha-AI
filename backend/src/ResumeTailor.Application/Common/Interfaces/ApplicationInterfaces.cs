@@ -13,6 +13,8 @@ public interface ICurrentUserService
 public interface IJwtTokenGenerator
 {
     string GenerateToken(Guid userId, string email, string role);
+    string GenerateRefreshToken();
+    System.Security.Claims.ClaimsPrincipal? GetPrincipalFromExpiredToken(string token);
 }
 
 public interface IPasswordHasher

@@ -37,6 +37,28 @@ public class AuthController : BaseApiController
         return Ok(result.Value);
     }
 
+    [HttpPost("refresh")]
+    [AllowAnonymous]
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenCommand command)
+    {
+        var result = await Mediator.Send(command);
+        if (result.IsFailure)
+            return Unauthorized(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
+
+    [HttpPost("revoke")]
+    [AllowAnonymous]
+    public async Task<IActionResult> RevokeToken([FromBody] RevokeTokenCommand command)
+    {
+        var result = await Mediator.Send(command);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(new { success = true, message = "Token revoked successfully." });
+    }
+
     [HttpGet("me")]
     [Authorize]
     public async Task<IActionResult> GetCurrentUser()

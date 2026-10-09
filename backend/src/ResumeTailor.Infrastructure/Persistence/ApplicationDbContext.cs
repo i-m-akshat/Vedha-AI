@@ -29,6 +29,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<CareerAchievement> CareerAchievements => Set<CareerAchievement>();
     public DbSet<ApplicationAudit> ApplicationAudits => Set<ApplicationAudit>();
     public DbSet<IdempotentTransaction> IdempotentTransactions => Set<IdempotentTransaction>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -103,6 +104,18 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             b.HasOne(t => t.User)
              .WithMany(u => u.IdempotentTransactions)
              .HasForeignKey(t => t.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RefreshToken>(b =>
+        {
+            b.HasKey(r => r.Id);
+            b.HasIndex(r => r.Token).IsUnique();
+            b.HasIndex(r => r.UserId);
+            b.Property(r => r.Token).IsRequired().HasMaxLength(256);
+            b.HasOne(r => r.User)
+             .WithMany(u => u.RefreshTokens)
+             .HasForeignKey(r => r.UserId)
              .OnDelete(DeleteBehavior.Cascade);
         });
 
