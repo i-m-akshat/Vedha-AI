@@ -26,7 +26,7 @@ def get_wsl_ip():
                 return ip
     except Exception as e:
         if not _cached_ip:
-            _cached_ip = "127.0.0.1"
+            _cached_ip = None
     return _cached_ip
 
 def forward(src, dst, done_event):
@@ -47,6 +47,13 @@ def forward(src, dst, done_event):
 
 def handle_connection(client, port):
     target_ip = get_wsl_ip()
+    if not target_ip or target_ip in ("127.0.0.1", "localhost"):
+        try:
+            client.close()
+        except Exception:
+            pass
+        return
+
     target_port = port
     remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
