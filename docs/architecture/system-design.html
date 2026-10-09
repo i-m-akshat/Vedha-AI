@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vedha AI — System Design & Distributed Infrastructure Architecture</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090a0f;
+      --card-bg: #11131a;
+      --card-bg-elevated: #161922;
+      --border: #212533;
+      --border-accent: #373d52;
+      --text-main: #f1f3f9;
+      --text-muted: #9aa1b5;
+      --text-dim: #646b82;
+      --primary: #6366f1;
+      --primary-light: #818cf8;
+      --primary-glow: rgba(99, 102, 241, 0.15);
+      --emerald: #10b981;
+      --emerald-glow: rgba(16, 185, 129, 0.15);
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --cyan: #06b6d4;
+      --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    html.light {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --card-bg-elevated: #f1f5f9;
+      --border: #e2e8f0;
+      --border-accent: #cbd5e1;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #94a3b8;
+      --primary: #4f46e5;
+      --primary-light: #6366f1;
+      --primary-glow: rgba(79, 70, 229, 0.1);
+      --emerald: #059669;
+      --emerald-glow: rgba(5, 150, 105, 0.1);
+      --amber: #d97706;
+      --rose: #e11d48;
+      --cyan: #0891b2;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.65;
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+      transition: background-color 0.25s ease, color 0.25s ease;
+    }
+
+    /* Sidebar Navigation */
+    aside.sidebar {
+      width: 320px;
+      height: 100vh;
+      position: sticky;
+      top: 0;
+      background: var(--card-bg);
+      border-right: 1px solid var(--border);
+      padding: 28px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .brand img {
+      height: 34px;
+      width: auto;
+      object-fit: contain;
+    }
+    .brand-title {
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--text-main);
+    }
+    .brand-badge {
+      font-size: 10px;
+      padding: 2px 7px;
+      background: var(--primary-glow);
+      color: var(--primary-light);
+      border-radius: 4px;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      font-family: var(--font-mono);
+    }
+
+    .sub-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sub-nav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 12.5px;
+      transition: color 0.15s;
+    }
+    .sub-nav a:hover, .sub-nav a.active {
+      color: var(--primary-light);
+      font-weight: 600;
+    }
+
+    .toc {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+    }
+    .toc a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toc a:hover {
+      background: var(--card-bg-elevated);
+      color: var(--text-main);
+    }
+    .toc .sec-num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .sidebar-footer {
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+    .theme-btn {
+      width: 100%;
+      background: var(--card-bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .theme-btn:hover {
+      border-color: var(--border-accent);
+    }
+
+    /* Main Content */
+    main.content {
+      flex: 1;
+      padding: 48px 48px 100px 48px;
+      max-width: 1100px;
+    }
+    @media (max-width: 900px) {
+      body { flex-direction: column; }
+      aside.sidebar { width: 100%; height: auto; position: static; }
+      main.content { padding: 24px; }
+    }
+
+    .doc-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+    .badge-primary { background: var(--primary-glow); color: var(--primary-light); border: 1px solid rgba(99, 102, 241, 0.3); }
+    .badge-emerald { background: var(--emerald-glow); color: var(--emerald); border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-mono { font-family: var(--font-mono); background: var(--card-bg-elevated); color: var(--text-dim); }
+
+    h1 {
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      margin-bottom: 12px;
+      line-height: 1.25;
+    }
+    .lead-text {
+      font-size: 16px;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+      max-width: 860px;
+    }
+
+    .callout {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--emerald);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin: 28px 0;
+    }
+    .callout-title {
+      font-weight: 700;
+      font-size: 13.5px;
+      color: var(--emerald);
+      margin-bottom: 6px;
+    }
+    .callout p {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    section {
+      margin-bottom: 56px;
+      scroll-margin-top: 32px;
+    }
+    h2.section-heading {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      margin-bottom: 16px;
+      color: var(--text-main);
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    p {
+      font-size: 14.5px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .diagram-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      margin: 24px 0;
+      text-align: center;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin: 20px 0;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .card-title {
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 8px;
+      color: var(--text-main);
+    }
+    .card p {
+      font-size: 13px;
+      margin: 0;
+    }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      background: var(--card-bg-elevated);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--primary-light);
+    }
+    pre {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: #cbd5e1;
+      line-height: 1.5;
+      margin: 16px 0;
+    }
+
+    .table-container {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin: 20px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+      text-align: left;
+    }
+    th {
+      background: var(--card-bg-elevated);
+      color: var(--text-main);
+      padding: 12px 16px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 12px 16px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    tr:last-child td { border-bottom: none; }
+
+    footer.doc-footer {
+      padding-top: 36px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      font-size: 12.5px;
+      color: var(--text-dim);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar Navigation -->
+  <aside class="sidebar">
+    <div class="brand">
+      <img src="../assets/vedha-logo.png" alt="Vedha AI Logo" id="sidebar-logo">
+      <span class="brand-title">Vedha System Design</span>
+      <span class="brand-badge">v2.4</span>
+    </div>
+
+    <div class="sub-nav">
+      <a href="index.html">🏛️ Architecture Hub</a>
+      <a href="hld.html">📘 High-Level Design (HLD)</a>
+      <a href="lld.html">📐 Low-Level Design (LLD)</a>
+      <a href="system-design.html" class="active">🌐 System Design & Infra</a>
+      <a href="../adr/index.html">📜 ADR Catalog</a>
+    </div>
+
+    <nav class="toc">
+      <a href="#overview"><span class="sec-num">01</span> System Design Overview</a>
+      <a href="#topology"><span class="sec-num">02</span> Multi-Container Topology</a>
+      <a href="#nats-streaming"><span class="sec-num">03</span> NATS JetStream Streaming</a>
+      <a href="#e2e-dataflow"><span class="sec-num">04</span> End-to-End Data Flow</a>
+      <a href="#db-schema"><span class="sec-num">05</span> PostgreSQL ER Schema</a>
+      <a href="#storage-s3"><span class="sec-num">06</span> MinIO S3 Object Topologies</a>
+      <a href="#anti-bot"><span class="sec-num">07</span> Anti-Bot Stealth Architecture</a>
+      <a href="#resilience"><span class="sec-num">08</span> Security & Failure Recovery</a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button onclick="toggleTheme()" class="theme-btn" id="themeBtn">
+        <span>🌙 Toggle Theme</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="content">
+    <div class="doc-meta">
+      <span class="badge badge-primary">Distributed Systems</span>
+      <span class="badge badge-emerald">Production Verified</span>
+      <span class="badge badge-mono">Docker Compose • NATS • Postgres</span>
+    </div>
+
+    <h1>System Design & Distributed Infrastructure Architecture</h1>
+    <p class="lead-text">
+      This document details the distributed runtime topology, asynchronous event streaming pipelines, database schema design, object storage topologies, anti-bot scraping sidecars, and operational failure modes that comprise the Vedha AI production ecosystem.
+    </p>
+
+    <div class="callout">
+      <div class="callout-title">💡 Plain-English Summary: What is System Design?</div>
+      <p>
+        System Design explains how multiple independent computers, servers, databases, and background robots work together without stepping on each other's toes. Think of an international airport: you have passport control (our Auth service), baggage sorting (our S3 storage), flight radar (our NATS message bus), and airplanes taking off (our AI scrapers). Everything must communicate reliably, even if one service restarts or a website tries to block our bot.
+      </p>
+    </div>
+
+    <!-- SECTION 1: OVERVIEW -->
+    <section id="overview">
+      <h2 class="section-heading">1. Distributed Architecture Overview</h2>
+      <p>
+        Vedha AI is architected as an <strong>Event-Driven Micro-Service Mesh</strong> deployed via Docker Compose in the <code>infra/</code> folder. The system separates interactive user traffic (HTTP REST/SignalR) from heavy, unpredictable background tasks (headless web crawling, AI tailoring, document rendering) using an asynchronous NATS JetStream message bus.
+      </p>
+
+      <div class="diagram-box">
+        <svg viewBox="0 0 780 250" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+          <!-- Client Surface -->
+          <rect x="20" y="30" width="160" height="190" rx="10" fill="#161922" stroke="#6366f1" stroke-width="1.5"/>
+          <text x="35" y="60" fill="#818cf8" font-family="Geist, sans-serif" font-size="13" font-weight="700">Client Interfaces</text>
+          <rect x="35" y="75" width="130" height="40" rx="6" fill="#11131a" stroke="#212533"/>
+          <text x="45" y="95" fill="#f1f3f9" font-family="Geist, sans-serif" font-size="10.5" font-weight="600">React 18 SPA</text>
+          <text x="45" y="108" fill="#646b82" font-family="JetBrains Mono, monospace" font-size="8">localhost:3000</text>
+          <rect x="35" y="125" width="130" height="40" rx="6" fill="#11131a" stroke="#212533"/>
+          <text x="45" y="145" fill="#34d399" font-family="Geist, sans-serif" font-size="10.5" font-weight="600">Chrome Extension</text>
+          <text x="45" y="158" fill="#646b82" font-family="JetBrains Mono, monospace" font-size="8">Manifest V3 MV3</text>
+          <rect x="35" y="175" width="130" height="35" rx="6" fill="#11131a" stroke="#212533"/>
+          <text x="45" y="195" fill="#fcd34d" font-family="JetBrains Mono, monospace" font-size="8.5">SignalR WebSocket</text>
+
+          <!-- Arrow Client -> API -->
+          <line x1="180" y1="125" x2="230" y2="125" stroke="#818cf8" stroke-width="2"/>
+          <polygon points="230,125 222,120 222,130" fill="#818cf8"/>
+
+          <!-- Gateway & Backend -->
+          <rect x="230" y="30" width="230" height="190" rx="10" fill="#1e1b4b" stroke="#6366f1" stroke-width="2"/>
+          <text x="245" y="60" fill="#c7d2fe" font-family="Geist, sans-serif" font-size="13" font-weight="700">ASP.NET Core 10 Web API</text>
+          <text x="245" y="78" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="10">Port 5000 • CQRS Orchestration</text>
+          <rect x="245" y="90" width="200" height="34" rx="6" fill="#11131a" stroke="#373d52"/>
+          <text x="255" y="112" fill="#cbd5e1" font-family="JetBrains Mono, monospace" font-size="8.5">JWT Auth & Claims Filter</text>
+          <rect x="245" y="132" width="200" height="34" rx="6" fill="#11131a" stroke="#373d52"/>
+          <text x="255" y="154" fill="#a7f3d0" font-family="JetBrains Mono, monospace" font-size="8.5">Truth Invariant Verifier</text>
+          <rect x="245" y="174" width="200" height="34" rx="6" fill="#11131a" stroke="#373d52"/>
+          <text x="255" y="196" fill="#818cf8" font-family="JetBrains Mono, monospace" font-size="8.5">ExperienceChronologyHelper</text>
+
+          <!-- Arrow API -> Event Bus -->
+          <line x1="460" y1="125" x2="510" y2="125" stroke="#6366f1" stroke-width="2"/>
+          <polygon points="510,125 502,120 502,130" fill="#6366f1"/>
+
+          <!-- Event Bus & Workers -->
+          <rect x="510" y="30" width="250" height="190" rx="10" fill="#161922" stroke="#10b981" stroke-width="1.5"/>
+          <text x="525" y="60" fill="#10b981" font-family="Geist, sans-serif" font-size="13" font-weight="700">Distributed Infrastructure</text>
+          <rect x="525" y="75" width="220" height="40" rx="6" fill="#11131a" stroke="#373d52"/>
+          <text x="535" y="95" fill="#f1f3f9" font-family="Geist, sans-serif" font-size="10.5" font-weight="600">NATS JetStream (Port 4222)</text>
+          <text x="535" y="108" fill="#646b82" font-family="JetBrains Mono, monospace" font-size="8">crawler.jobs • tailor.jobs</text>
+          <rect x="525" y="123" width="220" height="40" rx="6" fill="#064e3b" stroke="#10b981"/>
+          <text x="535" y="143" fill="#6ee7b7" font-family="Geist, sans-serif" font-size="10.5" font-weight="600">Crawl4AI Sidecar (Port 11235)</text>
+          <text x="535" y="156" fill="#a7f3d0" font-family="JetBrains Mono, monospace" font-size="8">Python Stealth • Playwright</text>
+          <rect x="525" y="171" width="220" height="40" rx="6" fill="#11131a" stroke="#373d52"/>
+          <text x="535" y="191" fill="#fcd34d" font-family="Geist, sans-serif" font-size="10.5" font-weight="600">PostgreSQL 16 & MinIO S3</text>
+          <text x="535" y="204" fill="#646b82" font-family="JetBrains Mono, monospace" font-size="8">pgvector • JSONB • PDF Storage</text>
+        </svg>
+      </div>
+    </section>
+
+    <!-- SECTION 2: CONTAINER TOPOLOGY -->
+    <section id="topology">
+      <h2 class="section-heading">2. Multi-Container Docker Topology</h2>
+      <p>
+        The complete environment is configured under <code>infra/docker-compose.yml</code>. All services communicate over the internal isolated bridge network <code>vedha-network</code>:
+      </p>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Container Name</th>
+              <th>Base Image</th>
+              <th>Host Port</th>
+              <th>Internal Purpose</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>vedha-api</code></td>
+              <td><code>mcr.microsoft.com/dotnet/aspnet:10.0</code></td>
+              <td><code>5000:5000</code></td>
+              <td>ASP.NET Core Web API, MediatR CQRS handlers, SignalR Hub.</td>
+            </tr>
+            <tr>
+              <td><code>vedha-frontend</code></td>
+              <td><code>nginx:alpine</code></td>
+              <td><code>3000:80</code></td>
+              <td>React 18 SPA, static asset serving, dynamic API reverse proxy.</td>
+            </tr>
+            <tr>
+              <td><code>vedha-crawler</code></td>
+              <td><code>unclecode/crawl4ai:latest</code></td>
+              <td><code>11235:11235</code></td>
+              <td>Stealth headless crawler with anti-bot bypass & DOM JS hooks.</td>
+            </tr>
+            <tr>
+              <td><code>vedha-postgres</code></td>
+              <td><code>pgvector/pgvector:pg16</code></td>
+              <td><code>5432:5432</code></td>
+              <td>Relational state, RefreshTokens, JSONB resume schemas, vector store.</td>
+            </tr>
+            <tr>
+              <td><code>vedha-nats</code></td>
+              <td><code>nats:latest -js</code></td>
+              <td><code>4222:4222, 8222:8222</code></td>
+              <td>NATS JetStream persistent event broker & queue group dispatcher.</td>
+            </tr>
+            <tr>
+              <td><code>vedha-minio</code></td>
+              <td><code>minio/minio:latest</code></td>
+              <td><code>9000:9000, 9001:9001</code></td>
+              <td>S3-compatible object storage for generated PDF, Word, and text files.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SECTION 3: NATS STREAMING -->
+    <section id="nats-streaming">
+      <h2 class="section-heading">3. Asynchronous Event Streaming with NATS JetStream</h2>
+      <p>
+        To prevent HTTP request timeouts when processing complex documents or navigating multi-page job postings, tasks are published to JetStream queues.
+      </p>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Stream Configuration (VEDHA_STREAM)</div>
+          <p>
+            Retains messages with <code>FileStorage</code> mode. Subjects: <code>crawler.jobs</code>, <code>tailor.jobs</code>, and <code>copilot.events</code>. Enforces at-least-once delivery with durable consumer groups.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-title">Poison Pill Protection & Dead-Letter Handling</div>
+          <p>
+            Consumers configure <code>MaxDeliver: 3</code> and <code>AckWait: 30s</code>. If an unparseable job posting crashes the parser 3 times, the message is automatically routed to <code>deadletter.jobs</code>.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: E2E DATAFLOW -->
+    <section id="e2e-dataflow">
+      <h2 class="section-heading">4. End-to-End Execution Sequence</h2>
+      <p>
+        Detailed trace of what occurs from the instant a user inputs a job URL to the download of a truthful, tailored PDF resume:
+      </p>
+
+      <div class="diagram-box">
+        <svg viewBox="0 0 760 310" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+          <!-- Swimlanes -->
+          <text x="60" y="25" fill="#818cf8" font-family="Geist, sans-serif" font-size="12" font-weight="700">User / UI</text>
+          <text x="210" y="25" fill="#818cf8" font-family="Geist, sans-serif" font-size="12" font-weight="700">Web API</text>
+          <text x="360" y="25" fill="#10b981" font-family="Geist, sans-serif" font-size="12" font-weight="700">Crawl4AI</text>
+          <text x="510" y="25" fill="#f59e0b" font-family="Geist, sans-serif" font-size="12" font-weight="700">AI Model</text>
+          <text x="660" y="25" fill="#ef4444" font-family="Geist, sans-serif" font-size="12" font-weight="700">Database & S3</text>
+
+          <line x1="90" y1="35" x2="90" y2="290" stroke="#212533" stroke-width="1.5" stroke-dasharray="4"/>
+          <line x1="240" y1="35" x2="240" y2="290" stroke="#212533" stroke-width="1.5" stroke-dasharray="4"/>
+          <line x1="390" y1="35" x2="390" y2="290" stroke="#212533" stroke-width="1.5" stroke-dasharray="4"/>
+          <line x1="540" y1="35" x2="540" y2="290" stroke="#212533" stroke-width="1.5" stroke-dasharray="4"/>
+          <line x1="690" y1="35" x2="690" y2="290" stroke="#212533" stroke-width="1.5" stroke-dasharray="4"/>
+
+          <!-- Step 1 -->
+          <line x1="90" y1="65" x2="240" y2="65" stroke="#818cf8" stroke-width="1.5"/>
+          <polygon points="240,65 233,61 233,69" fill="#818cf8"/>
+          <text x="105" y="58" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="9.5">1. POST /api/tailor/scrape</text>
+
+          <!-- Step 2 -->
+          <line x1="240" y1="100" x2="390" y2="100" stroke="#10b981" stroke-width="1.5"/>
+          <polygon points="390,100 383,96 383,104" fill="#10b981"/>
+          <text x="255" y="93" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="9.5">2. Stealth Crawl Request</text>
+
+          <!-- Step 3 -->
+          <line x1="390" y1="135" x2="240" y2="135" stroke="#10b981" stroke-width="1.5" stroke-dasharray="3"/>
+          <polygon points="240,135 247,131 247,139" fill="#10b981"/>
+          <text x="260" y="128" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="9.5">3. Clean Markdown JD</text>
+
+          <!-- Step 4 -->
+          <line x1="240" y1="170" x2="540" y2="170" stroke="#f59e0b" stroke-width="1.5"/>
+          <polygon points="540,170 533,166 533,174" fill="#f59e0b"/>
+          <text x="280" y="163" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="9.5">4. Structured Tailor Prompt + Ground Truth</text>
+
+          <!-- Step 5 -->
+          <line x1="540" y1="205" x2="240" y2="205" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="3"/>
+          <polygon points="240,205 247,201 247,209" fill="#f59e0b"/>
+          <text x="310" y="198" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="9.5">5. Raw Tailored Resume JSON</text>
+
+          <!-- Step 6: Internal Processing -->
+          <rect x="180" y="225" width="120" height="26" rx="4" fill="#1e1b4b" stroke="#6366f1"/>
+          <text x="188" y="241" fill="#c7d2fe" font-family="JetBrains Mono, monospace" font-size="8">Chronology & Metric Check</text>
+
+          <!-- Step 7 -->
+          <line x1="240" y1="265" x2="690" y2="265" stroke="#ef4444" stroke-width="1.5"/>
+          <polygon points="690,265 683,261 683,269" fill="#ef4444"/>
+          <text x="400" y="258" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="9.5">7. Save Entity + Upload PDF</text>
+
+          <!-- Step 8 -->
+          <line x1="240" y1="285" x2="90" y2="285" stroke="#34d399" stroke-width="1.5"/>
+          <polygon points="90,285 97,281 97,289" fill="#34d399"/>
+          <text x="110" y="280" fill="#34d399" font-family="Geist, sans-serif" font-size="9.5">8. HTTP 201 + SignalR Complete</text>
+        </svg>
+      </div>
+    </section>
+
+    <!-- SECTION 5: DB SCHEMA -->
+    <section id="db-schema">
+      <h2 class="section-heading">5. PostgreSQL Relational & Vector Schema</h2>
+      <p>
+        The relational schema enforces referential integrity with foreign key cascade rules while leveraging native <code>jsonb</code> for document flexibility:
+      </p>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Table Name</th>
+              <th>Primary Key</th>
+              <th>Foreign Keys</th>
+              <th>Key Columns & Constraints</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Users</code></td>
+              <td><code>Id (UUID)</code></td>
+              <td>None</td>
+              <td><code>Email (UNIQUE)</code>, <code>PasswordHash</code>, <code>FullName</code>, <code>CreatedAt</code></td>
+            </tr>
+            <tr>
+              <td><code>RefreshTokens</code></td>
+              <td><code>Id (UUID)</code></td>
+              <td><code>UserId -> Users(Id) ON DELETE CASCADE</code></td>
+              <td><code>Token (UNIQUE, VARCHAR 256)</code>, <code>ExpiresAtUtc</code>, <code>RevokedAtUtc</code></td>
+            </tr>
+            <tr>
+              <td><code>MasterResumes</code></td>
+              <td><code>Id (UUID)</code></td>
+              <td><code>UserId -> Users(Id) ON DELETE CASCADE</code></td>
+              <td><code>Title</code>, <code>Schema (JSONB)</code>, <code>RawText</code>, <code>UpdatedAt</code></td>
+            </tr>
+            <tr>
+              <td><code>TailoredResumes</code></td>
+              <td><code>Id (UUID)</code></td>
+              <td><code>MasterResumeId -> MasterResumes(Id)</code></td>
+              <td><code>JobTitle</code>, <code>Company</code>, <code>TailoredSchema (JSONB)</code>, <code>AtsScore</code></td>
+            </tr>
+            <tr>
+              <td><code>JobApplications</code></td>
+              <td><code>Id (UUID)</code></td>
+              <td><code>UserId -> Users(Id)</code></td>
+              <td><code>JobTitle</code>, <code>Company</code>, <code>Status (Applied, Interview, Offer)</code>, <code>Notes</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SECTION 6: STORAGE S3 -->
+    <section id="storage-s3">
+      <h2 class="section-heading">6. MinIO S3 Object Topologies</h2>
+      <p>
+        Binary documents are segregated across dedicated buckets:
+      </p>
+      <ul>
+        <li><code>master-resumes/</code>: Original user PDF and DOCX uploads before parsing.</li>
+        <li><code>tailored-resumes/</code>: Clean, rendered PDF resumes generated by QuestPDF.</li>
+        <li><code>exports/</code>: Markdown and Word documents with 15-minute temporary pre-signed download URLs.</li>
+      </ul>
+    </section>
+
+    <!-- SECTION 7: ANTI-BOT -->
+    <section id="anti-bot">
+      <h2 class="section-heading">7. Anti-Bot Stealth Architecture (ADR-004)</h2>
+      <p>
+        The dedicated <code>vedha-crawler</code> container uses Crawl4AI to bypass enterprise anti-bot defenses:
+      </p>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Browser Fingerprint Spoofing</div>
+          <p>
+            Modifies navigator properties (<code>navigator.webdriver = false</code>), randomizes canvas noise, and normalizes viewport dimensions to mirror real macOS/Windows Google Chrome installations.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-title">Dynamic Accordion Unrolling</div>
+          <p>
+            Injects custom JavaScript hooks to locate and click <em>"See more"</em> and <em>"Show full job description"</em> buttons before stripping navigation menus and extracting clean Markdown.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 8: RESILIENCE -->
+    <section id="resilience">
+      <h2 class="section-heading">8. Security Threat Modeling & Operational Resilience</h2>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Security Invariants</div>
+          <p>
+            • JWT keys stored in environment variables (never committed to Git).<br>
+            • OWASP-compliant password hashing.<br>
+            • Pre-signed S3 download URLs expire after 15 minutes.<br>
+            • Cross-origin postMessage restricted strictly to verified origin.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-title">Fault Recovery & Self-Healing</div>
+          <p>
+            • <code>restart: unless-stopped</code> on all Docker services.<br>
+            • NATS consumer dead-letter queue isolation.<br>
+            • Automatic 3-tier scraping fallback (Crawl4AI -> Playwright -> AngleSharp).<br>
+            • Automatic metric violation rollback to candidate master resume.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="doc-footer">
+      <div>Vedha AI System Design • Maintained per <a href="../AGENTS.md" style="color: var(--primary-light);">AGENTS.md</a></div>
+      <div>Strict HTML Visual Standard • 2026</div>
+    </footer>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = html.classList.toggle('dark');
+      html.classList.toggle('light', !isDark);
+      const btn = document.getElementById('themeBtn');
+      const logo = document.getElementById('sidebar-logo');
+      if (isDark) {
+        btn.innerHTML = '<span>🌙 Toggle Theme</span>';
+        if (logo) logo.src = '../assets/VedhaAI-Dark.png';
+      } else {
+        btn.innerHTML = '<span>☀️ Toggle Theme</span>';
+        if (logo) logo.src = '../assets/vedha-logo.png';
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const isDark = document.documentElement.classList.contains('dark');
+      const logo = document.getElementById('sidebar-logo');
+      if (logo) {
+        logo.src = isDark ? '../assets/VedhaAI-Dark.png' : '../assets/vedha-logo.png';
+      }
+    });
+  </script>
+</body>
+</html>

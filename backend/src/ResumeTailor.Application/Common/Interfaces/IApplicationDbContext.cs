@@ -22,6 +22,7 @@ public interface IApplicationDbContext
     DbSet<CareerAchievement> CareerAchievements { get; }
     DbSet<ApplicationAudit> ApplicationAudits { get; }
     DbSet<IdempotentTransaction> IdempotentTransactions { get; }
+    DbSet<RefreshToken> RefreshTokens { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -20,6 +20,7 @@ public class ResumeExportService : IResumeExportService
 
     public Task<byte[]> ExportPdfAsync(ResumeSchema resume, TemplateStyle style, CancellationToken cancellationToken = default)
     {
+        resume.NormalizeAndSortExperience();
         var totalHighlights = resume.Experience.Sum(e => e.Highlights.Count) + resume.Projects.Sum(p => p.Highlights.Count);
         var totalWords = (resume.Summary?.Length ?? 0) / 5 + totalHighlights * 15;
 
@@ -239,6 +240,7 @@ public class ResumeExportService : IResumeExportService
 
     public Task<byte[]> ExportDocxAsync(ResumeSchema resume, TemplateStyle style, CancellationToken cancellationToken = default)
     {
+        resume.NormalizeAndSortExperience();
         var (fontFamily, primaryHexColor) = style switch
         {
             TemplateStyle.ModernMinimalist => ("Arial", "1E3A8A"), // Deep Navy Blue
@@ -486,6 +488,7 @@ public class ResumeExportService : IResumeExportService
 
     public string ExportMarkdown(ResumeSchema resume)
     {
+        resume.NormalizeAndSortExperience();
         var sb = new StringBuilder();
         sb.AppendLine($"# {resume.PersonalInfo.FullName}");
         if (!string.IsNullOrWhiteSpace(resume.PersonalInfo.Title)) sb.AppendLine($"**{resume.PersonalInfo.Title}**");

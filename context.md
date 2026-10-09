@@ -533,3 +533,164 @@ A:\AIProjects\Resumebuilder\
 - **Verification Results**:
   - `POST /api/auth/login` with `demo@vedha.ai` and `Password123!`: **HTTP 200 OK**, returning valid JWT and `Alex Morgan` user profile.
   - `POST /api/auth/register`: **HTTP 200 OK**, successfully generating signed auth tokens.
+
+### 2026-10-09T21:38:00+05:30 — Full Authentication (Registration & Login) End-to-End Hardening & Error Feedback
+- **Problem Statement**:
+  - Login and registration flows failed or triggered silent refresh loops in the frontend SPA.
+  - Axios 401 response interceptor blindly redirected to `/login` via `window.location.href`, destroying React state and preventing login error messages (`"Invalid email or password."`) from ever displaying.
+  - Validation failures from ASP.NET Core FluentValidation (`ValidationException`) return `{ errors: { Password: [...] }, detail: ... }`, which `AuthPages.tsx` failed to display because it only inspected `data.error`.
+  - Inbound JWT claim handling in `CurrentUserService` failed to resolve standard `sub` claims, threatening user session invalidation on protected endpoints.
+  - Demo user seeding skipped creating `demo@vedha.ai` if any existing user record was found in the database.
+  - `start_services.sh` defaulted JWT issuer/audience to `ResuMateApi` instead of `VedhaApi`, invalidating cross-environment tokens.
+  - `localhost_proxy.py` forwarded to `127.0.0.1` when WSL2 was offline, triggering infinite socket recursive loops.
+- **Architectural Enhancements**:
+  1. **Axios 401 Response Interceptor Protection (`frontend/src/api/client.ts`)**:
+     - Excluded `/auth/login` and `/auth/register` requests from the 401 redirect mechanism.
+     - Replaced destructive `window.location.href` navigation with a custom `vedha:unauthorized` decoupled event.
+  2. **Rich Validation Error Parser (`frontend/src/pages/AuthPages.tsx`)**:
+     - Implemented `extractErrorMessage` to unpack and concatenate validation error dictionaries, details, titles, and direct error messages.
+  3. **Zustand Auth Store Hardening (`frontend/src/stores/useAuthStore.ts` & `App.tsx`)**:
+     - Standardized canonical token storage key (`vedha_token`), added `isInitialized` state flag, and subscribed to unauthorized events to avoid UI flashes or race conditions.
+  4. **Dual JWT Claims & Multi-Fallback Resolution (`IdentityServices.cs`)**:
+     - Emitted both `ClaimTypes.NameIdentifier` and `JwtRegisteredClaimNames.Sub`.
+     - Updated `CurrentUserService.UserId` to fall back through `NameIdentifier`, `JwtRegisteredClaimNames.Sub`, and `"sub"`.
+  5. **Idempotent Seeding & Schema Safeguards (`Program.cs`)**:
+     - Made `demo@vedha.ai` seeding fully idempotent (checking specifically by email) and automatically ensuring default developer passwords in development mode.
+     - Added `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` for all missing `User` columns (`CreditsBalance`, `MasterContextJson`, `CustomOpenAiKey`, `CustomClaudeKey`, `CustomGeminiKey`, `PreferredAiProvider`, `PreferredModel`) across SQLite and PostgreSQL.
+  6. **Infrastructure Alignment (`start_services.sh` & `localhost_proxy.py`)**:
+     - Standardized default JWT issuer/audience to `VedhaApi` and `VedhaClient`.
+     - Prevented `localhost_proxy.py` from forward looping into `127.0.0.1`.
+  7. **Automated Unit Testing (`ResumeTailor.UnitTests/AuthTests.cs`)**:
+     - Added comprehensive unit tests validating password hashing/verification, standard and WS-Federation JWT claims emission, claim resolution across `CurrentUserService`, and encryption masking.
+- **Verification Results**:
+  - Auth unit test suite created and validated.
+  - Clean separation between auth failure feedback and session expiration confirmed.
+
+### 2026-10-09T22:00:00+05:30 — Refresh Token Engine, Transparent Rotation & Migration Infrastructure
+- **Problem Statement**:
+  - Auth tokens previously relied on a single 24-hour JWT stored in browser `localStorage`, with no revocation mechanism or transparent renewal.
+  - Database schema evolution lacked explicit `RefreshTokens` relational structures and cascade deletion configurations.
+- **Architectural Enhancements**:
+  1. **Domain & Data Access Layer (`RefreshToken.cs` & `ApplicationDbContext.cs`)**:
+     - Introduced `RefreshToken` entity with cryptographic token string, UTC expiration, revocation timestamp, replacement token pointer, and computed lifecycle properties (`IsExpired`, `IsRevoked`, `IsActive`).
+     - Added foreign key relationship and index on `Token` with cascade deletion linked to `User`.
+  2. **Identity & Cryptography (`IdentityServices.cs`)**:
+     - Added `IJwtTokenGenerator.GenerateRefreshToken()` generating 64-byte cryptographically secure random tokens.
+     - Added `IJwtTokenGenerator.GetPrincipalFromExpiredToken()` allowing claim extraction from expired tokens while strictly enforcing HMAC-SHA256 signature validation.
+  3. **MediatR Commands & Handlers (`AuthCommands.cs`)**:
+     - Implemented `RefreshTokenCommand` (validates expired token identity, verifies active refresh token, executes OWASP token rotation, mints new token pair).
+     - Implemented `RevokeTokenCommand` (revokes specified token for graceful logout).
+     - Updated `RegisterCommand` and `LoginCommand` to generate and persist initial 30-day refresh tokens.
+  4. **WebApi Endpoints (`AuthController.cs`)**:
+     - Exposed `POST /api/auth/refresh` returning HTTP 200 with rotated `{ token, refreshToken, user }` or HTTP 401 on invalid/revoked tokens.
+     - Exposed `POST /api/auth/revoke` returning HTTP 200 confirming token revocation.
+  5. **Automated Schema Migration at Startup (`Program.cs`)**:
+     - Added idempotent `CREATE TABLE IF NOT EXISTS "RefreshTokens"` and indexes across PostgreSQL and SQLite fallback databases.
+  6. **Frontend Transparent Rotation & Request Queuing (`client.ts` & `useAuthStore.ts`)**:
+     - Configured Axios response interceptor to intercept 401 errors on protected endpoints.
+     - Implemented queueing mechanism: while token refresh is in-flight, concurrent failing requests are enqueued and automatically replayed once the new access token is acquired.
+     - Excluded auth endpoints (`/auth/login`, `/auth/register`, `/auth/refresh`, `/auth/revoke`) from recursion loops.
+     - Updated Zustand store to persist `vedha_refresh_token` and invoke `revokeToken` upon user logout.
+  7. **Testing & Verification (`AuthTests.cs`)**:
+     - Added unit tests covering refresh token cryptographic entropy, claim extraction on expired tokens, invalid signature rejection, and entity lifecycle state flags.
+     - All 49 backend unit tests passed. TypeScript verification (`tsc --noEmit`) succeeded with 0 errors.
+
+### 2026-10-09T22:20:00+05:30 — Kinetic Pixel Minimalist & Brutalist Precision Design Suite Integration
+- **Source Assets**:
+  - Adopted designs directly from local prototype suite: `D:\utildownload\stitch_ai_career_copilot_suite\stitch_ai_career_copilot_suite`.
+  - Design Tokens: `kinetic_operational_console/DESIGN.md`, `pixel_brutalist_precision/DESIGN.md`.
+  - Screen Templates: `kinetic_pixel_minimalist_auth_gateway/code.html`, `kinetic_pixel_minimalist_copilot_mission_control/code.html`, `kinetic_pixel_minimalist_ai_resume_studio/code.html`, `kinetic_pixel_minimalist_browser_hud/code.html`.
+  - 3D Interactive Artifacts: `three.js_1/code.html` (interactive 3D voxel matrix).
+- **Architectural Enhancements**:
+  1. **Typography & Core Head Assets (`frontend/index.html` & `tailwind.config.js`)**:
+     - Loaded `Space Grotesk`, `Geist`, `Inter`, `JetBrains Mono`, and `Material Symbols Outlined`.
+     - Integrated `.pixel-grid` radial dot canvas background and brutalist surface tokens.
+  2. **Interactive 3D Three.js Component (`VoxelMatrixCanvas.tsx`)**:
+     - Embedded monolithic architectural 3D voxel matrix with wireframe edge rendering, floating orbital particle cluster, subtle breathing cycle, and parallax mouse tracking.
+  3. **Brutalist Auth Gateway (`AuthPages.tsx`)**:
+     - Converted `LoginPage` & `RegisterPage` to the split-view Kinetic portal:
+       - Left: Autonomous career propulsion showcase, 3D Voxel matrix viewport, live `PIPELINE.STREAM()` telemetry (Stripe, Linear, Anthropic), and global submissions counter.
+       - Right: Terminal auth interface with `[SIGN IN]` / `[REGISTER]` toggle tabs, `> OPERATOR_ID`, `> PASSKEY_HASH`, GitHub/Google SSO, FIDO2 checkbox, and one-click demo login.
+  4. **Mission Control Shell & Navigation (`AppLayout.tsx`)**:
+     - Rebuilt top header: `KINETIC v2.4.0`, `[COPILOT_ACTIVE: 3_PIPELINES]`, `DISPATCHED: 418`, `AVG_ATS: 94.6%`, `+ NEW AGENT JOB`, and operator avatar pill.
+     - Built left control rails aside: `01 // EXECUTION_STREAM`, `02 // ATS_OPTIMIZER`, `03 // LIVE_TELEMETRY`, `RESUME_VAULT`, `CANDIDATE_MEMORY`, and host daemon health card.
+  5. **Mission Control Dashboard (`DashboardPage.tsx`)**:
+     - Implemented 4 high-density metric cards (`// ACTIVE_WORKERS`, `// DISPATCHED_7D`, `// ATS_PRECISION`, `// CONVERSIONS`).
+     - Added interactive control deck (`[MASTER_KILL]`, `DAILY_CAP: 50/DAY`, `MIN_ATS: 88%`, `FORCE_SWEEP`).
+     - Added split-view `// PIPELINE_STREAM` and `// STDOUT_INSPECTOR` terminal log with real-time SSE stream.
+  6. **Resume Studio & ATS Optimizer (`TailorStudioPage.tsx`)**:
+     - Implemented decomposed JD spec header, ATS neural alignment score ring (96% Match, +18% post-tailored lift), vector analysis tokens, and professional experience diff cards with strikethrough baseline and highlighted injected tokens.
+- **Verification Results**:
+  - `npx tsc --noEmit`: **0 TypeScript errors**.
+  - All existing React Query hooks, Zustand stores, and backend endpoints intact.
+
+### 2026-10-09T22:45:00+05:30 — Full Stitch AI Design Suite Harmonization & Container Deployment
+- **Problem Statement**:
+  - `vedha-backend` container network was partitioned from `vedha-postgres`, and PostgreSQL role `resumate_admin` was missing.
+  - Remaining application views (`OrchestratorQueuePage.tsx` and `ResultStudioPage.tsx`) needed to be brought into complete alignment with the Stitch AI Career Copilot Suite (`kinetic_pixel_minimalist_browser_hud`).
+  - Frontend production container required rebuilding to serve the new Kinetic UI bundle to the browser on `http://localhost:3000`.
+- **Architectural Enhancements**:
+  1. **Backend Connectivity & Database Dual-Role Compatibility**:
+     - Connected all infra containers (`vedha-postgres`, `vedha-redis`, `vedha-nats`, `vedha-minio`, `vedha-crawler`) to `infra_vedha-network`.
+     - Created role `resumate_admin` with password `resumate_secret_password_change_me` on `resumate_db` in PostgreSQL alongside `vedha_admin` on `vedha_db`.
+     - Verified `POST /api/auth/register` and `POST /api/auth/login` both returning HTTP 200 OK with valid JWT and refresh tokens.
+  2. **Browser HUD & Orchestrator Queue Harmonization (`OrchestratorQueuePage.tsx`)**:
+     - Fully mapped to `kinetic_pixel_minimalist_browser_hud/code.html`:
+       - Top telemetry strip: `// EXT_V2.14_HOOK // ACTIVE`, `WS_BRIDGE: ws://127.0.0.1:9042/bridge`, `DOM_MUTATION_OBSERVER: ACTIVE`, `TARGET_ORIGIN`, Credits balance pill.
+       - Simulated browser viewport: window title bar with dot controls, job board header card (`DD`, role, 97.4% ATS match), application questionnaire with auto-filled fields, dynamic PDF resume attachment with SHA-256 and ATS-tailored badge, and synthesized screening question responses.
+       - Floating Kinetic HUD: master autopilot segmented toggle (`AUTOPILOT: ON / PAUSED`), field mapping heuristics (`[ 42/42 SOLVED ]` with stepped progress bar and live telemetry console), artifact matrix, 4-step execution stepper (`1. INGEST`, `2. TAILOR`, `3. ANTI-BOT`, `4. SUBMIT`), HITL status badge, and `EXECUTE AUTO-APPLY SEQUENCE` button.
+       - Platform connectors: Greenhouse, LinkedIn, Lever.co, Workday Engine with latency and sync status.
+       - Extension ingestion buffer table with real-time queue items and autonomous NATS runs.
+  3. **Result Studio Harmonization (`ResultStudioPage.tsx`)**:
+     - Upgraded to Pixel Brutalist Precision: `#0e0e0e` / `#121212` backgrounds, `#262626` sharp borders, `Space Grotesk` headings, `JetBrains Mono` telemetry badges.
+     - Document canvas: high-contrast white paper preview with sharp borders, professional typography, and template style switcher (`ATS`, `MODERN`, `EXECUTIVE`, `TECH`).
+     - ATS Scorecard: circular SVG gauge, density metrics, verified matching competencies cloud, missing keywords audit, and recruiter feedback.
+     - Modals: Cover letter generator, interview prep coach, and skills roadmap.
+  4. **Production Container Rebuild & Deployment**:
+     - Rebuilt `localhost/infra-frontend:latest` using `infra/Dockerfile.frontend` with Node 22 Vite production build and Nginx runtime.
+     - Restarted `vedha-frontend` container on port 3000.
+     - Verified `http://localhost:3000` returns HTTP 200 OK.
+- **Verification Results**:
+  - Frontend production build (`tsc && vite build`) succeeded with 0 errors.
+  - All 7 infra containers running and healthy in Podman.
+  - Endpoints `http://localhost:5000` (API) and `http://localhost:3000` (UI) verified live.
+
+### 2026-10-09T23:35:00+05:30 — Extension Theme Toggler, Revert Auto-Apply Restrictions & Complete Extension AI Orchestrator Pipeline
+- **Problem Statement**:
+  - Extension auto-apply changes in `content.js` previously enforced strict LinkedIn modal constraints that interfered with general portal compatibility.
+  - User requested reverting the auto-apply changes while preserving shared authentication and minimalist theme enhancements.
+  - User requested a proper, full-featured AI Orchestrator & Copilot Pipeline inside the browser extension.
+- **Architectural Enhancements**:
+  1. **Reverted Auto-Apply Changes (`extension/content.js`)**:
+     - Restored original `getTopLevelModal` logic (`return top || el`).
+     - Reverted `runAutonomousMultiStepFill` to original flexible multi-portal container resolution and progression detection.
+     - Preserved shared web app auth synchronization (`VEDHA_AUTH_TOKEN_SYNC` listener).
+  2. **Extension AI Orchestrator & Copilot Pipeline Suite (`extension/popup.html`, `extension/popup.js`)**:
+     - **Tab 1: ⚡ Copilot**: Target Job detection, 4-step Application Journey Stepper (`Contact ➔ Experience ➔ Screening ➔ Review`), live telemetry card with radar dot & progress bar, Review Gateway toggle, Auto-Fill action, and 1-Click "Queue Full Application Package" (`POST /api/orchestrator/prepare-package`).
+     - **Tab 2: 🎯 AI Match**: Live ATS scoring and gap analysis against candidate's active Master Resume (`POST /api/orchestrator/quick-match`), displaying fit percentage, matched core skills, and missing keywords.
+     - **Tab 3: 📝 Cover Letter**: 1-click tailored cover letter generator powered by Gemini AI (`POST /api/orchestrator/quick-cover-letter`), with voice/tone selector, copy-to-clipboard, and text export.
+     - **Tab 4: 👤 Profile**: Real candidate data with 1-click copy buttons and studio edit redirect.
+     - **Tab 5: ⚙️ Settings**: Account details, daily pacing safety counter, and sign out.
+  3. **Theme Toggler & Single-Logo Rule Preserved**:
+     - Theme persistence in `chrome.storage.local`.
+     - Single-logo header branding: `vedha-logo.png` for light theme, `VedhaAI-Dark.png` for dark theme (no text).
+- **Verification Results**:
+  - `node.exe -c extension/popup.js`: 0 syntax errors.
+  - `node.exe -c extension/content.js`: 0 syntax errors.
+  - `git diff extension/content.js`: Auto-apply changes cleanly reverted; token sync intact.
+
+### 2026-10-09T23:44:00+05:30 — Unified Web App & Extension Single-Logo Calibration & Theme Toggler Integration
+- **Architectural Enhancements**:
+  1. **Strict Single-Logo Enforcement (No Text/Title)**:
+     - In Dark mode: Exclusively render `/VedhaAI-Dark.png` (since "Vedha AI" is already stylistically rendered in the graphic).
+     - In Light mode: Exclusively render `/vedha-logo.png`.
+     - Removed all redundant adjacent title text ("Vedha AI", "Career Copilot") across both Web App (`AppLayout.tsx`, `AuthPages.tsx`) and Extension (`popup.html`, `popup.js`).
+  2. **Proportional Optical Sizing Calibration**:
+     - `VedhaAI-Dark.png` (aspect ratio 3:1): Configured to `h-8` (`32px`) in Web App and `26px` in Extension (`max-w-[140px]`).
+     - `vedha-logo.png` (aspect ratio 1.5:1): Configured to `h-9` (`36px`) in Web App and `32px` in Extension (`max-w-[110px]`).
+  3. **Theme Toggler (`Sun` / `Moon`)**:
+     - Embedded live theme toggler button in `AppLayout.tsx` header (via Zustand `useThemeStore` with persistence in `localStorage`), `AuthPages.tsx`, and `extension/popup.html` (via `chrome.storage.local`).
+  4. **Production Deployment**:
+     - Rebuilt and tagged `localhost/infra-frontend:latest` in Podman; restarted `vedha-frontend`.
+     - Confirmed `http://localhost:3000` responding with HTTP 200 OK.
+

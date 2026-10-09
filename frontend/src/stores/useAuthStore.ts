@@ -7,6 +7,7 @@ interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isInitialized: boolean;
   login: (email: string, pass: string) => Promise<void>;
   register: (email: string, pass: string, name: string) => Promise<void>;
   logout: () => void;
@@ -14,61 +15,113 @@ interface AuthState {
   updateKeys: (data: { preferredProvider: AiProviderType; preferredModel?: string; openAiKey?: string; claudeKey?: string; geminiKey?: string }) => Promise<void>;
 }
 
-const getInitialToken = () => localStorage.getItem('vedha_token') || localStorage.getItem('resumate_token');
-
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  token: getInitialToken(),
-  isAuthenticated: !!getInitialToken(),
-  isLoading: false,
-
-  login: async (email, pass) => {
-    set({ isLoading: true });
-    try {
-      const res = await authApi.login(email, pass);
-      localStorage.setItem('vedha_token', res.token);
-      set({ user: res.user, token: res.token, isAuthenticated: true, isLoading: false });
-    } catch (e) {
-      set({ isLoading: false });
-      throw e;
-    }
-  },
-
-  register: async (email, pass, name) => {
-    set({ isLoading: true });
-    try {
-      const res = await authApi.register(email, pass, name);
-      localStorage.setItem('vedha_token', res.token);
-      set({ user: res.user, token: res.token, isAuthenticated: true, isLoading: false });
-    } catch (e) {
-      set({ isLoading: false });
-      throw e;
-    }
-  },
-
-  logout: () => {
-    localStorage.removeItem('vedha_token');
+const getInitialToken = () => {
+  if (typeof window === 'undefined') return null;
+  const token = localStorage.getItem('vedha_token') || localStorage.getItem('resumate_token');
+  if (token) {
+    localStorage.setItem('vedha_token', token);
     localStorage.removeItem('resumate_token');
-    set({ user: null, token: null, isAuthenticated: false });
-  },
+  }
+  return token;
+};
 
-  fetchMe: async () => {
-    try {
-      const user = await authApi.getCurrentUser();
-      set({ user, isAuthenticated: true });
-    } catch {
+const initialToken = getInitialToken();
+
+export const useAuthStore = create<AuthState>((set) => {
+  if (typeof window !== 'undefined') {
+    window.addEventListener('vedha:unauthorized', () => {
       localStorage.removeItem('vedha_token');
+      localStorage.removeItem('vedha_refresh_token');
       localStorage.removeItem('resumate_token');
-      set({ user: null, token: null, isAuthenticated: false });
-    }
-  },
+      set({ user: null, token: null, isAuthenticated: false, isInitialized: true, isLoading: false });
+    });
+  }
 
-  updateKeys: async (data) => {
-    await authApi.updateKeys(data);
-    const user = await authApi.getCurrentUser();
-    set({ user });
-  },
-}));
+  return {
+    user: null,
+    token: initialToken,
+    isAuthenticated: !!initialToken,
+    isLoading: false,
+    isInitialized: !initialToken,
+
+    login: async (email, pass) => {
+      set({ isLoading: true });
+      try {
+        const res = await authApi.login(email, pass);
+        localStorage.setItem('vedha_token', res.token);
+        if (res.refreshToken) {
+          localStorage.setItem('vedha_refresh_token', res.refreshToken);
+        }
+        localStorage.removeItem('resumate_token');
+        if (typeof window !== 'undefined') {
+          window.postMessage({ type: 'VEDHA_AUTH_TOKEN_SYNC', token: res.token, user: res.user }, '*');
+        }
+        set({ user: res.user, token: res.token, isAuthenticated: true, isInitialized: true, isLoading: false });
+      } catch (e) {
+        set({ isLoading: false });
+        throw e;
+      }
+    },
+
+    register: async (email, pass, name) => {
+      set({ isLoading: true });
+      try {
+        const res = await authApi.register(email, pass, name);
+        localStorage.setItem('vedha_token', res.token);
+        if (res.refreshToken) {
+          localStorage.setItem('vedha_refresh_token', res.refreshToken);
+        }
+        localStorage.removeItem('resumate_token');
+        if (typeof window !== 'undefined') {
+          window.postMessage({ type: 'VEDHA_AUTH_TOKEN_SYNC', token: res.token, user: res.user }, '*');
+        }
+        set({ user: res.user, token: res.token, isAuthenticated: true, isInitialized: true, isLoading: false });
+      } catch (e) {
+        set({ isLoading: false });
+        throw e;
+      }
+    },
+
+    logout: () => {
+      const refreshToken = localStorage.getItem('vedha_refresh_token');
+      if (refreshToken) {
+        authApi.revokeToken(refreshToken).catch(() => {});
+      }
+      localStorage.removeItem('vedha_token');
+      localStorage.removeItem('vedha_refresh_token');
+      localStorage.removeItem('resumate_token');
+      if (typeof window !== 'undefined') {
+        window.postMessage({ type: 'VEDHA_AUTH_TOKEN_CLEAR' }, '*');
+      }
+      set({ user: null, token: null, isAuthenticated: false, isInitialized: true, isLoading: false });
+    },
+
+    fetchMe: async () => {
+      try {
+        const user = await authApi.getCurrentUser();
+        const currentToken = localStorage.getItem('vedha_token');
+        if (typeof window !== 'undefined' && currentToken) {
+          window.postMessage({ type: 'VEDHA_AUTH_TOKEN_SYNC', token: currentToken, user }, '*');
+        }
+        set({ user, isAuthenticated: true, isInitialized: true });
+      } catch {
+        localStorage.removeItem('vedha_token');
+        localStorage.removeItem('vedha_refresh_token');
+        localStorage.removeItem('resumate_token');
+        if (typeof window !== 'undefined') {
+          window.postMessage({ type: 'VEDHA_AUTH_TOKEN_CLEAR' }, '*');
+        }
+        set({ user: null, token: null, isAuthenticated: false, isInitialized: true });
+      }
+    },
+
+    updateKeys: async (data) => {
+      await authApi.updateKeys(data);
+      const user = await authApi.getCurrentUser();
+      set({ user });
+    },
+  };
+});
 
 const getSavedThemeIsDark = () => {
   if (typeof window === 'undefined') return true;

@@ -159,10 +159,17 @@ public class NatsWorkerEventConsumerHostedService : BackgroundService
             }
         }, stoppingToken);
 
-        // Keep service alive
-        while (!stoppingToken.IsCancellationRequested)
+        // Keep service alive until cancellation is requested
+        try
         {
-            await Task.Delay(1000, stoppingToken);
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                await Task.Delay(1000, stoppingToken);
+            }
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // Graceful shutdown
         }
     }
 }

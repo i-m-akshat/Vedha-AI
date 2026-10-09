@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vedha AI — Low-Level Design (LLD) & Component Blueprint</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090a0f;
+      --card-bg: #11131a;
+      --card-bg-elevated: #161922;
+      --border: #212533;
+      --border-accent: #373d52;
+      --text-main: #f1f3f9;
+      --text-muted: #9aa1b5;
+      --text-dim: #646b82;
+      --primary: #6366f1;
+      --primary-light: #818cf8;
+      --primary-glow: rgba(99, 102, 241, 0.15);
+      --emerald: #10b981;
+      --emerald-glow: rgba(16, 185, 129, 0.15);
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --cyan: #06b6d4;
+      --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    html.light {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --card-bg-elevated: #f1f5f9;
+      --border: #e2e8f0;
+      --border-accent: #cbd5e1;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #94a3b8;
+      --primary: #4f46e5;
+      --primary-light: #6366f1;
+      --primary-glow: rgba(79, 70, 229, 0.1);
+      --emerald: #059669;
+      --emerald-glow: rgba(5, 150, 105, 0.1);
+      --amber: #d97706;
+      --rose: #e11d48;
+      --cyan: #0891b2;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.65;
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+      transition: background-color 0.25s ease, color 0.25s ease;
+    }
+
+    /* Sidebar Navigation */
+    aside.sidebar {
+      width: 320px;
+      height: 100vh;
+      position: sticky;
+      top: 0;
+      background: var(--card-bg);
+      border-right: 1px solid var(--border);
+      padding: 28px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .brand img {
+      height: 34px;
+      width: auto;
+      object-fit: contain;
+    }
+    .brand-title {
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--text-main);
+    }
+    .brand-badge {
+      font-size: 10px;
+      padding: 2px 7px;
+      background: var(--primary-glow);
+      color: var(--primary-light);
+      border-radius: 4px;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      font-family: var(--font-mono);
+    }
+
+    .sub-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sub-nav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 12.5px;
+      transition: color 0.15s;
+    }
+    .sub-nav a:hover, .sub-nav a.active {
+      color: var(--primary-light);
+      font-weight: 600;
+    }
+
+    .toc {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+    }
+    .toc a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toc a:hover {
+      background: var(--card-bg-elevated);
+      color: var(--text-main);
+    }
+    .toc .sec-num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .sidebar-footer {
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+    .theme-btn {
+      width: 100%;
+      background: var(--card-bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .theme-btn:hover {
+      border-color: var(--border-accent);
+    }
+
+    /* Main Content */
+    main.content {
+      flex: 1;
+      padding: 48px 48px 100px 48px;
+      max-width: 1100px;
+    }
+    @media (max-width: 900px) {
+      body { flex-direction: column; }
+      aside.sidebar { width: 100%; height: auto; position: static; }
+      main.content { padding: 24px; }
+    }
+
+    .doc-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+    .badge-primary { background: var(--primary-glow); color: var(--primary-light); border: 1px solid rgba(99, 102, 241, 0.3); }
+    .badge-emerald { background: var(--emerald-glow); color: var(--emerald); border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-mono { font-family: var(--font-mono); background: var(--card-bg-elevated); color: var(--text-dim); }
+
+    h1 {
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      margin-bottom: 12px;
+      line-height: 1.25;
+    }
+    .lead-text {
+      font-size: 16px;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+      max-width: 860px;
+    }
+
+    .callout {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--emerald);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin: 28px 0;
+    }
+    .callout-title {
+      font-weight: 700;
+      font-size: 13.5px;
+      color: var(--emerald);
+      margin-bottom: 6px;
+    }
+    .callout p {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    section {
+      margin-bottom: 56px;
+      scroll-margin-top: 32px;
+    }
+    h2.section-heading {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      margin-bottom: 16px;
+      color: var(--text-main);
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h3.sub-heading {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 24px 0 10px 0;
+      color: var(--text-main);
+    }
+    p {
+      font-size: 14.5px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .diagram-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      margin: 24px 0;
+      text-align: center;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin: 20px 0;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .card-title {
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 8px;
+      color: var(--text-main);
+    }
+    .card p {
+      font-size: 13px;
+      margin: 0;
+    }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      background: var(--card-bg-elevated);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--primary-light);
+    }
+    pre {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: #cbd5e1;
+      line-height: 1.5;
+      margin: 16px 0;
+    }
+
+    .table-container {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin: 20px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+      text-align: left;
+    }
+    th {
+      background: var(--card-bg-elevated);
+      color: var(--text-main);
+      padding: 12px 16px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 12px 16px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    tr:last-child td { border-bottom: none; }
+
+    footer.doc-footer {
+      padding-top: 36px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      font-size: 12.5px;
+      color: var(--text-dim);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar Navigation -->
+  <aside class="sidebar">
+    <div class="brand">
+      <img src="../assets/vedha-logo.png" alt="Vedha AI Logo" id="sidebar-logo">
+      <span class="brand-title">Vedha AI LLD</span>
+      <span class="brand-badge">v2.4</span>
+    </div>
+
+    <div class="sub-nav">
+      <a href="index.html">🏛️ Architecture Hub</a>
+      <a href="hld.html">📘 High-Level Design (HLD)</a>
+      <a href="lld.html" class="active">📐 Low-Level Design (LLD)</a>
+      <a href="system-design.html">🌐 System Design & Infra</a>
+      <a href="../adr/index.html">📜 ADR Catalog</a>
+    </div>
+
+    <nav class="toc">
+      <a href="#overview"><span class="sec-num">01</span> LLD Overview</a>
+      <a href="#domain-models"><span class="sec-num">02</span> Domain Models & Entities</a>
+      <a href="#chronology-algo"><span class="sec-num">03</span> Chronology Sorting Engine</a>
+      <a href="#cqrs-handlers"><span class="sec-num">04</span> MediatR CQRS Contracts</a>
+      <a href="#persistence-ef"><span class="sec-num">05</span> EF Core Data Mappings</a>
+      <a href="#orchestrator-rag"><span class="sec-num">06</span> AI Orchestrator & Invariants</a>
+      <a href="#frontend-state"><span class="sec-num">07</span> Frontend Stores (Zustand)</a>
+      <a href="#extension-internals"><span class="sec-num">08</span> Extension Internals</a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button onclick="toggleTheme()" class="theme-btn" id="themeBtn">
+        <span>🌙 Toggle Theme</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="content">
+    <div class="doc-meta">
+      <span class="badge badge-primary">Engineering Specification</span>
+      <span class="badge badge-emerald">Verified In Code</span>
+      <span class="badge badge-mono">ASP.NET Core 10 • Clean Arch</span>
+    </div>
+
+    <h1>Low-Level Design (LLD) & Component Blueprint</h1>
+    <p class="lead-text">
+      This Low-Level Design document specifies the concrete code structures, entity contracts, MediatR CQRS commands, domain sorting algorithms, EF Core JSONB schemas, and state management stores that power Vedha AI.
+    </p>
+
+    <div class="callout">
+      <div class="callout-title">💡 Plain-English Summary: What is LLD?</div>
+      <p>
+        If High-Level Design (HLD) is the strategic city map showing how highways and districts connect, Low-Level Design (LLD) is the precise architectural blueprint for each building. It defines the exact C# classes, database fields, algorithmic sorting rules, and JavaScript state stores so any engineer can modify or debug any feature without guessing.
+      </p>
+    </div>
+
+    <!-- SECTION 1: OVERVIEW -->
+    <section id="overview">
+      <h2 class="section-heading">1. Low-Level Design Overview & Request Pipeline</h2>
+      <p>
+        Vedha AI's backend is structured strictly around Uncle Bob's <strong>Clean Architecture</strong>. Every incoming HTTP request flows through a unified MediatR CQRS pipeline that enforces authentication, input validation, execution, and deterministic data transformation before persisting to PostgreSQL.
+      </p>
+
+      <div class="diagram-box">
+        <svg viewBox="0 0 760 210" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+          <!-- Step 1: Controller -->
+          <rect x="20" y="35" width="130" height="135" rx="8" fill="#161922" stroke="#373d52"/>
+          <text x="35" y="65" fill="#818cf8" font-family="Geist, sans-serif" font-size="12" font-weight="700">1. Controller</text>
+          <text x="35" y="85" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="10">Web API Layer</text>
+          <text x="35" y="110" fill="#646b82" font-family="JetBrains Mono, monospace" font-size="9">ClaimsPrincipal</text>
+          <text x="35" y="126" fill="#646b82" font-family="JetBrains Mono, monospace" font-size="9">_mediator.Send()</text>
+          <text x="35" y="145" fill="#34d399" font-family="JetBrains Mono, monospace" font-size="8.5">HTTP 200/201/400</text>
+
+          <!-- Arrow 1 -->
+          <line x1="150" y1="100" x2="190" y2="100" stroke="#6366f1" stroke-width="2"/>
+          <polygon points="190,100 182,95 182,105" fill="#6366f1"/>
+
+          <!-- Step 2: MediatR Pipeline -->
+          <rect x="190" y="35" width="160" height="135" rx="8" fill="#1e1b4b" stroke="#6366f1"/>
+          <text x="205" y="65" fill="#c7d2fe" font-family="Geist, sans-serif" font-size="12" font-weight="700">2. MediatR Pipeline</text>
+          <text x="205" y="85" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="10">Behaviors Chain</text>
+          <rect x="205" y="98" width="130" height="26" rx="4" fill="#11131a" stroke="#373d52"/>
+          <text x="215" y="115" fill="#cbd5e1" font-family="JetBrains Mono, monospace" font-size="8.5">FluentValidation</text>
+          <rect x="205" y="130" width="130" height="26" rx="4" fill="#11131a" stroke="#373d52"/>
+          <text x="215" y="147" fill="#cbd5e1" font-family="JetBrains Mono, monospace" font-size="8.5">Logging & Metrics</text>
+
+          <!-- Arrow 2 -->
+          <line x1="350" y1="100" x2="390" y2="100" stroke="#6366f1" stroke-width="2"/>
+          <polygon points="390,100 382,95 382,105" fill="#6366f1"/>
+
+          <!-- Step 3: Handler & Domain -->
+          <rect x="390" y="35" width="170" height="135" rx="8" fill="#161922" stroke="#10b981"/>
+          <text x="405" y="65" fill="#10b981" font-family="Geist, sans-serif" font-size="12" font-weight="700">3. Handler & Domain</text>
+          <text x="405" y="85" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="10">Application Layer</text>
+          <rect x="405" y="98" width="140" height="26" rx="4" fill="#11131a" stroke="#373d52"/>
+          <text x="415" y="115" fill="#a7f3d0" font-family="JetBrains Mono, monospace" font-size="8">ChronologySorter</text>
+          <rect x="405" y="130" width="140" height="26" rx="4" fill="#11131a" stroke="#373d52"/>
+          <text x="415" y="147" fill="#a7f3d0" font-family="JetBrains Mono, monospace" font-size="8">Truth Preservation</text>
+
+          <!-- Arrow 3 -->
+          <line x1="560" y1="100" x2="600" y2="100" stroke="#10b981" stroke-width="2"/>
+          <polygon points="600,100 592,95 592,105" fill="#10b981"/>
+
+          <!-- Step 4: Infrastructure -->
+          <rect x="600" y="35" width="140" height="135" rx="8" fill="#161922" stroke="#373d52"/>
+          <text x="615" y="65" fill="#fcd34d" font-family="Geist, sans-serif" font-size="12" font-weight="700">4. Infrastructure</text>
+          <text x="615" y="85" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="10">Persistence / I/O</text>
+          <text x="615" y="110" fill="#646b82" font-family="JetBrains Mono, monospace" font-size="8.5">• EF Core (Postgres)</text>
+          <text x="615" y="126" fill="#646b82" font-family="JetBrains Mono, monospace" font-size="8.5">• Gemini / Claude</text>
+          <text x="615" y="142" fill="#646b82" font-family="JetBrains Mono, monospace" font-size="8.5">• MinIO S3 & NATS</text>
+        </svg>
+      </div>
+    </section>
+
+    <!-- SECTION 2: DOMAIN MODELS -->
+    <section id="domain-models">
+      <h2 class="section-heading">2. Domain Models & Resume Value Objects</h2>
+      <p>
+        The Domain layer has zero dependencies on databases or external frameworks. At its center is <code>ResumeSchema</code>, a strongly typed JSON value object representing a complete candidate resume.
+      </p>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Class / Value Object</th>
+              <th>Location</th>
+              <th>Key Properties & Invariants</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>ResumeSchema</code></td>
+              <td><code>ResumeTailor.Domain/ValueObjects/</code></td>
+              <td>
+                <code>ContactInfo</code>, <code>List&lt;ExperienceItem&gt;</code>, <code>List&lt;EducationItem&gt;</code>, <code>SkillCategories</code>, <code>List&lt;ProjectItem&gt;</code>, <code>List&lt;CertificationItem&gt;</code>. Enforces deterministic sorting via <code>NormalizeAndSortExperience()</code>.
+              </td>
+            </tr>
+            <tr>
+              <td><code>ExperienceItem</code></td>
+              <td><code>ResumeTailor.Domain/ValueObjects/</code></td>
+              <td>
+                <code>Company</code>, <code>Role</code>, <code>Location</code>, <code>StartDate</code>, <code>EndDate</code>, <code>IsCurrent</code>, <code>Bullets (List&lt;string&gt;)</code>, <code>Technologies (List&lt;string&gt;)</code>.
+              </td>
+            </tr>
+            <tr>
+              <td><code>User</code></td>
+              <td><code>ResumeTailor.Domain/Entities/</code></td>
+              <td>
+                <code>Id (Guid)</code>, <code>Email</code>, <code>PasswordHash</code>, <code>FullName</code>, <code>CreatedAt</code>, <code>RefreshTokens (ICollection&lt;RefreshToken&gt;)</code>.
+              </td>
+            </tr>
+            <tr>
+              <td><code>RefreshToken</code></td>
+              <td><code>ResumeTailor.Domain/Entities/</code></td>
+              <td>
+                <code>Id (Guid)</code>, <code>Token</code>, <code>ExpiresAtUtc</code>, <code>RevokedAtUtc</code>, <code>CreatedByIp</code>, <code>UserId (FK)</code>. Prevents replay attacks via cryptographically random strings.
+              </td>
+            </tr>
+            <tr>
+              <td><code>MasterResume</code></td>
+              <td><code>ResumeTailor.Domain/Entities/</code></td>
+              <td>
+                <code>Id (Guid)</code>, <code>UserId (Guid)</code>, <code>Title</code>, <code>Schema (ResumeSchema JSONB)</code>, <code>RawText</code>, <code>CreatedAt</code>, <code>UpdatedAt</code>.
+              </td>
+            </tr>
+            <tr>
+              <td><code>TailoredResume</code></td>
+              <td><code>ResumeTailor.Domain/Entities/</code></td>
+              <td>
+                <code>Id (Guid)</code>, <code>UserId (Guid)</code>, <code>MasterResumeId (Guid)</code>, <code>JobTitle</code>, <code>Company</code>, <code>JobDescription</code>, <code>TailoredSchema</code>, <code>AtsScore (decimal)</code>, <code>ScorecardJson</code>.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SECTION 3: CHRONOLOGY ALGORITHM -->
+    <section id="chronology-algo">
+      <h2 class="section-heading">3. Deterministic Experience Chronology Engine (ADR-003)</h2>
+      <p>
+        Recruiters require that a candidate's current employment always appears first on a resume. Because generative LLMs occasionally violate chronology when chasing keyword density, <code>ExperienceChronologyHelper</code> enforces reverse-chronological order deterministically in code.
+      </p>
+
+      <div class="diagram-box">
+        <svg viewBox="0 0 720 220" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+          <!-- Flowchart Nodes -->
+          <rect x="20" y="80" width="150" height="60" rx="8" fill="#161922" stroke="#373d52"/>
+          <text x="35" y="105" fill="#f1f3f9" font-family="Geist, sans-serif" font-size="11" font-weight="600">Raw Experiences</text>
+          <text x="35" y="124" fill="#9aa1b5" font-family="JetBrains Mono, monospace" font-size="9">From LLM or User</text>
+
+          <line x1="170" y1="110" x2="220" y2="110" stroke="#818cf8" stroke-width="2"/>
+          <polygon points="220,110 212,105 212,115" fill="#818cf8"/>
+
+          <!-- Node 2: IsPresentRole Check -->
+          <polygon points="300,50 370,110 300,170 230,110" fill="#1e1b4b" stroke="#6366f1" stroke-width="1.5"/>
+          <text x="268" y="108" fill="#c7d2fe" font-family="Geist, sans-serif" font-size="10" font-weight="600">IsPresentRole?</text>
+          <text x="260" y="122" fill="#9aa1b5" font-family="JetBrains Mono, monospace" font-size="7.5">isCurrent / "Present"</text>
+
+          <!-- Branch TRUE (Up) -->
+          <line x1="300" y1="50" x2="300" y2="25" stroke="#10b981" stroke-width="2"/>
+          <line x1="300" y1="25" x2="430" y2="25" stroke="#10b981" stroke-width="2"/>
+          <polygon points="430,25 422,20 422,30" fill="#10b981"/>
+
+          <rect x="430" y="5" width="170" height="40" rx="6" fill="#064e3b" stroke="#10b981"/>
+          <text x="440" y="24" fill="#6ee7b7" font-family="Geist, sans-serif" font-size="10.5" font-weight="700">Bucket 1: Present (Rank 1)</text>
+          <text x="440" y="38" fill="#a7f3d0" font-family="JetBrains Mono, monospace" font-size="8">Sort by StartDate Descending</text>
+
+          <!-- Branch FALSE (Down) -->
+          <line x1="300" y1="170" x2="300" y2="195" stroke="#ef4444" stroke-width="2"/>
+          <line x1="300" y1="195" x2="430" y2="195" stroke="#ef4444" stroke-width="2"/>
+          <polygon points="430,195 422,190 422,200" fill="#ef4444"/>
+
+          <rect x="430" y="175" width="170" height="40" rx="6" fill="#11131a" stroke="#ef4444"/>
+          <text x="440" y="194" fill="#f87171" font-family="Geist, sans-serif" font-size="10.5" font-weight="700">Bucket 2: Past (Rank 0)</text>
+          <text x="440" y="208" fill="#9aa1b5" font-family="JetBrains Mono, monospace" font-size="8">Sort by EndDate Descending</text>
+
+          <!-- Convergence -->
+          <line x1="600" y1="25" x2="640" y2="25" stroke="#10b981" stroke-width="2"/>
+          <line x1="640" y1="25" x2="640" y2="90" stroke="#10b981" stroke-width="2"/>
+
+          <line x1="600" y1="195" x2="640" y2="195" stroke="#ef4444" stroke-width="2"/>
+          <line x1="640" y1="195" x2="640" y2="130" stroke="#ef4444" stroke-width="2"/>
+
+          <rect x="610" y="90" width="130" height="40" rx="6" fill="#161922" stroke="#10b981"/>
+          <text x="620" y="108" fill="#10b981" font-family="Geist, sans-serif" font-size="10" font-weight="700">Pinned Top Output</text>
+          <text x="620" y="122" fill="#34d399" font-family="JetBrains Mono, monospace" font-size="7.5">100% Deterministic</text>
+        </svg>
+      </div>
+
+      <pre><code>// Location: backend/src/ResumeTailor.Domain/ValueObjects/ResumeSchema.cs
+public static class ExperienceChronologyHelper
+{
+    public static bool IsPresentRole(ExperienceItem item)
+    {
+        if (item.IsCurrent) return true;
+        if (string.IsNullOrWhiteSpace(item.EndDate)) return false;
+        var end = item.EndDate.Trim().ToLowerInvariant();
+        return end.Contains("present") || end.Contains("current") || 
+               end.Contains("now") || end.Contains("ongoing");
+    }
+
+    public static List&lt;ExperienceItem&gt; SortExperiences(IEnumerable&lt;ExperienceItem&gt; items)
+    {
+        return items
+            .OrderByDescending(x => IsPresentRole(x) ? 1 : 0) // Primary: Present roles unconditionally 1st
+            .ThenByDescending(x => IsPresentRole(x) 
+                ? ParseFlexibleDate(x.StartDate)               // Current: Most recently started current role
+                : ParseFlexibleDate(x.EndDate))                // Past: Most recently ended role first
+            .ThenByDescending(x => ParseFlexibleDate(x.StartDate))
+            .ToList();
+    }
+}</code></pre>
+    </section>
+
+    <!-- SECTION 4: CQRS CONTRACTS -->
+    <section id="cqrs-handlers">
+      <h2 class="section-heading">4. MediatR CQRS Contracts & Commands</h2>
+      <p>
+        The Application layer organizes every use case into isolated Command and Query records handled by MediatR.
+      </p>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Command / Query</th>
+              <th>Input Parameters</th>
+              <th>Return DTO</th>
+              <th>Core Side Effects</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>RegisterCommand</code></td>
+              <td><code>Email, Password, FullName</code></td>
+              <td><code>AuthResultDto (Token, RefreshToken, User)</code></td>
+              <td>Hashes password with salt, generates JWT, saves RefreshToken entity.</td>
+            </tr>
+            <tr>
+              <td><code>LoginCommand</code></td>
+              <td><code>Email, Password</code></td>
+              <td><code>AuthResultDto</code></td>
+              <td>Validates credentials, issues JWT and rotatable refresh token.</td>
+            </tr>
+            <tr>
+              <td><code>RefreshTokenCommand</code></td>
+              <td><code>Token, RefreshToken</code></td>
+              <td><code>AuthResultDto</code></td>
+              <td>Validates token expiry, revokes old refresh token, issues new pair.</td>
+            </tr>
+            <tr>
+              <td><code>TailorResumeCommand</code></td>
+              <td><code>MasterResumeId, JobTitle, Company, JobDescription, TargetRole</code></td>
+              <td><code>TailoredResumeDto</code></td>
+              <td>Invokes Gemini Flash-Lite, checks metric invariants, sorts chronology, calculates ATS score.</td>
+            </tr>
+            <tr>
+              <td><code>CrawlJobPostingCommand</code></td>
+              <td><code>JobUrl</code></td>
+              <td><code>ScrapedJobDto (Markdown, Title, Company, Skills)</code></td>
+              <td>Calls Crawl4AI sidecar on Port 11235, unrolls accordions, parses structured JSON.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SECTION 5: EF CORE PERSISTENCE -->
+    <section id="persistence-ef">
+      <h2 class="section-heading">5. EF Core Persistence & JSONB Mappings</h2>
+      <p>
+        <code>ApplicationDbContext</code> configures PostgreSQL with <code>Npgsql.EntityFrameworkCore.PostgreSQL</code>. The entire <code>ResumeSchema</code> is mapped directly to a native PostgreSQL <code>jsonb</code> column for maximum query performance and schema flexibility.
+      </p>
+
+      <pre><code>// Location: backend/src/ResumeTailor.Infrastructure/Persistence/ApplicationDbContext.cs
+builder.Entity&lt;MasterResume&gt;(b =>
+{
+    b.HasKey(x => x.Id);
+    b.Property(x => x.Title).HasMaxLength(200).IsRequired();
+    // Maps C# value object to PostgreSQL native jsonb
+    b.Property(x => x.Schema).HasColumnType("jsonb").IsRequired();
+    b.HasOne&lt;User&gt;().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+    b.HasIndex(x => x.UserId);
+});
+
+builder.Entity&lt;RefreshToken&gt;(b =>
+{
+    b.HasKey(x => x.Id);
+    b.Property(x => x.Token).HasMaxLength(256).IsRequired();
+    b.HasIndex(x => x.Token).IsUnique();
+    b.HasOne(x => x.User).WithMany(u => u.RefreshTokens).HasForeignKey(x => x.UserId);
+});</code></pre>
+    </section>
+
+    <!-- SECTION 6: AI ORCHESTRATOR & INVARIANTS -->
+    <section id="orchestrator-rag">
+      <h2 class="section-heading">6. AI Orchestrator & Truth Invariant Verifier (ADR-005)</h2>
+      <p>
+        <code>RagResumeGenerator</code> and <code>AtsScoringEngine</code> enforce truth preservation before persisting tailored resumes. The engine extracts quantitative metrics using regular expressions and verifies that no unearned claims exist.
+      </p>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Regex Metric Extractor</div>
+          <p>
+            Scans text with pattern <code>@"(\d+[\.,]?\d*[%$xXkKMmB]|\$\d+)"</code>. Extracts currency figures (<code>$100k</code>), percentages (<code>24%</code>), and scale multipliers (<code>3x</code>). If a tailored bullet contains an unverified metric, it triggers remediation.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-title">Selective Bullet Rollback</div>
+          <p>
+            Instead of aborting generation or failing the user's request, the invariant verifier automatically reverts the single violated bullet point to the candidate's verified master resume version.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 7: FRONTEND STATE -->
+    <section id="frontend-state">
+      <h2 class="section-heading">7. Frontend Architecture & Zustand State Stores</h2>
+      <p>
+        The React SPA manages state with Zustand and React Query:
+      </p>
+      <ul>
+        <li><code>useAuthStore</code>: Stores access tokens in <code>localStorage</code>, tracks authenticated user state, and dispatches <code>window.postMessage('VEDHA_AUTH_TOKEN_SYNC')</code> upon login to notify the Chrome Extension.</li>
+        <li><code>useTailorStore</code>: Tracks multi-step tailoring workflows, stores active job description input, and listens for SignalR streaming progress updates.</li>
+      </ul>
+    </section>
+
+    <!-- SECTION 8: EXTENSION INTERNALS -->
+    <section id="extension-internals">
+      <h2 class="section-heading">8. Chrome Extension Manifest V3 Internals</h2>
+      <p>
+        The extension operates across three decoupled contexts:
+      </p>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Content Script Relay (content.js)</div>
+          <p>
+            Injected into <code>http://localhost:3000/*</code> to listen for authentication postMessages, and into <code>https://*.linkedin.com/*</code> to inspect Easy Apply modals and auto-fill form inputs.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-title">Background Service Worker (background.js)</div>
+          <p>
+            Manages <code>chrome.storage.local</code>, coordinates API requests to the ASP.NET Core backend with JWT bearer headers, and handles sidepanel opening events.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="doc-footer">
+      <div>Vedha AI Low-Level Design • Maintained per <a href="../AGENTS.md" style="color: var(--primary-light);">AGENTS.md</a></div>
+      <div>Strict HTML Visual Standard • 2026</div>
+    </footer>
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = html.classList.toggle('dark');
+      html.classList.toggle('light', !isDark);
+      const btn = document.getElementById('themeBtn');
+      const logo = document.getElementById('sidebar-logo');
+      if (isDark) {
+        btn.innerHTML = '<span>🌙 Toggle Theme</span>';
+        if (logo) logo.src = '../assets/VedhaAI-Dark.png';
+      } else {
+        btn.innerHTML = '<span>☀️ Toggle Theme</span>';
+        if (logo) logo.src = '../assets/vedha-logo.png';
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const isDark = document.documentElement.classList.contains('dark');
+      const logo = document.getElementById('sidebar-logo');
+      if (logo) {
+        logo.src = isDark ? '../assets/VedhaAI-Dark.png' : '../assets/vedha-logo.png';
+      }
+    });
+  </script>
+</body>
+</html>

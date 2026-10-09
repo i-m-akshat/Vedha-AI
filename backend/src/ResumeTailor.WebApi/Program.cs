@@ -192,8 +192,26 @@ using (var scope = app.Services.CreateScope())
                         );
                         CREATE INDEX IF NOT EXISTS ""IX_IdempotentTransactions_ApplicationId"" ON ""IdempotentTransactions"" (""ApplicationId"");
 
+                        CREATE TABLE IF NOT EXISTS ""RefreshTokens"" (
+                            ""Id"" uuid NOT NULL CONSTRAINT ""PK_RefreshTokens"" PRIMARY KEY,
+                            ""UserId"" uuid NOT NULL,
+                            ""Token"" text NOT NULL,
+                            ""ExpiresAtUtc"" timestamp with time zone NOT NULL,
+                            ""CreatedAtUtc"" timestamp with time zone NOT NULL,
+                            ""RevokedAtUtc"" timestamp with time zone NULL,
+                            ""ReplacedByToken"" text NULL,
+                            CONSTRAINT ""FK_RefreshTokens_Users_UserId"" FOREIGN KEY (""UserId"") REFERENCES ""Users"" (""Id"") ON DELETE CASCADE
+                        );
+                        CREATE UNIQUE INDEX IF NOT EXISTS ""IX_RefreshTokens_Token"" ON ""RefreshTokens"" (""Token"");
+                        CREATE INDEX IF NOT EXISTS ""IX_RefreshTokens_UserId"" ON ""RefreshTokens"" (""UserId"");
+
                         ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""CreditsBalance"" integer NOT NULL DEFAULT 50;
                         ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""MasterContextJson"" text NULL;
+                        ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""CustomOpenAiKey"" text NULL;
+                        ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""CustomClaudeKey"" text NULL;
+                        ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""CustomGeminiKey"" text NULL;
+                        ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""PreferredAiProvider"" integer NOT NULL DEFAULT 2;
+                        ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""PreferredModel"" text NULL;
                         ALTER TABLE ""CandidateProfiles"" ADD COLUMN IF NOT EXISTS ""SalaryCurrency"" text NOT NULL DEFAULT 'INR';
                     ");
                 }
@@ -245,6 +263,19 @@ using (var scope = app.Services.CreateScope())
                             CONSTRAINT ""FK_IdempotentTransactions_Users_UserId"" FOREIGN KEY (""UserId"") REFERENCES ""Users"" (""Id"") ON DELETE CASCADE
                         );
                         CREATE INDEX IF NOT EXISTS ""IX_IdempotentTransactions_ApplicationId"" ON ""IdempotentTransactions"" (""ApplicationId"");
+
+                        CREATE TABLE IF NOT EXISTS ""RefreshTokens"" (
+                            ""Id"" TEXT NOT NULL CONSTRAINT ""PK_RefreshTokens"" PRIMARY KEY,
+                            ""UserId"" TEXT NOT NULL,
+                            ""Token"" TEXT NOT NULL,
+                            ""ExpiresAtUtc"" TEXT NOT NULL,
+                            ""CreatedAtUtc"" TEXT NOT NULL,
+                            ""RevokedAtUtc"" TEXT NULL,
+                            ""ReplacedByToken"" TEXT NULL,
+                            CONSTRAINT ""FK_RefreshTokens_Users_UserId"" FOREIGN KEY (""UserId"") REFERENCES ""Users"" (""Id"") ON DELETE CASCADE
+                        );
+                        CREATE UNIQUE INDEX IF NOT EXISTS ""IX_RefreshTokens_Token"" ON ""RefreshTokens"" (""Token"");
+                        CREATE INDEX IF NOT EXISTS ""IX_RefreshTokens_UserId"" ON ""RefreshTokens"" (""UserId"");
                     ");
 
                     var conn = dbContext.Database.GetDbConnection();
@@ -268,6 +299,36 @@ using (var scope = app.Services.CreateScope())
                         {
                             using var addCol = conn.CreateCommand();
                             addCol.CommandText = "ALTER TABLE \"Users\" ADD COLUMN \"MasterContextJson\" TEXT NULL;";
+                            addCol.ExecuteNonQuery();
+                        }
+                        if (!userCols.Contains("CustomOpenAiKey"))
+                        {
+                            using var addCol = conn.CreateCommand();
+                            addCol.CommandText = "ALTER TABLE \"Users\" ADD COLUMN \"CustomOpenAiKey\" TEXT NULL;";
+                            addCol.ExecuteNonQuery();
+                        }
+                        if (!userCols.Contains("CustomClaudeKey"))
+                        {
+                            using var addCol = conn.CreateCommand();
+                            addCol.CommandText = "ALTER TABLE \"Users\" ADD COLUMN \"CustomClaudeKey\" TEXT NULL;";
+                            addCol.ExecuteNonQuery();
+                        }
+                        if (!userCols.Contains("CustomGeminiKey"))
+                        {
+                            using var addCol = conn.CreateCommand();
+                            addCol.CommandText = "ALTER TABLE \"Users\" ADD COLUMN \"CustomGeminiKey\" TEXT NULL;";
+                            addCol.ExecuteNonQuery();
+                        }
+                        if (!userCols.Contains("PreferredAiProvider"))
+                        {
+                            using var addCol = conn.CreateCommand();
+                            addCol.CommandText = "ALTER TABLE \"Users\" ADD COLUMN \"PreferredAiProvider\" INTEGER NOT NULL DEFAULT 2;";
+                            addCol.ExecuteNonQuery();
+                        }
+                        if (!userCols.Contains("PreferredModel"))
+                        {
+                            using var addCol = conn.CreateCommand();
+                            addCol.CommandText = "ALTER TABLE \"Users\" ADD COLUMN \"PreferredModel\" TEXT NULL;";
                             addCol.ExecuteNonQuery();
                         }
                     }
@@ -295,21 +356,34 @@ using (var scope = app.Services.CreateScope())
             }
         }
 
-        // Seed demo user if empty
-        if (!dbContext.Users.Any())
+        // Idempotent Demo User Seeding & Synchronization
+        const string demoEmail = "demo@vedha.ai";
+        var demoUser = dbContext.Users.FirstOrDefault(u => u.Email.ToLower() == demoEmail);
+        if (demoUser == null)
         {
-            var demoUser = new User
+            demoUser = new User
             {
-                Email = "demo@vedha.ai",
+                Email = demoEmail,
                 FullName = "Alex Morgan",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123!"),
                 Role = "User",
+                CreditsBalance = 50,
+                MasterContextJson = "{}",
                 PreferredAiProvider = AiProviderType.Gemini,
                 PreferredModel = "gemini-flash-lite-latest"
             };
             dbContext.Users.Add(demoUser);
+        }
+        else if (app.Environment.IsDevelopment())
+        {
+            demoUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123!");
+            demoUser.FullName = "Alex Morgan";
+            if (demoUser.CreditsBalance < 10) demoUser.CreditsBalance = 50;
+        }
 
-            // Seed default prompts
+        // Seed default prompts if empty
+        if (!dbContext.PromptTemplates.Any())
+        {
             dbContext.PromptTemplates.AddRange(new[]
             {
                 new PromptTemplate
@@ -340,9 +414,9 @@ using (var scope = app.Services.CreateScope())
                     IsDefault = true
                 }
             });
-
-            dbContext.SaveChanges();
         }
+
+        dbContext.SaveChanges();
     }
     catch (Exception ex)
     {

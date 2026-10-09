@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vedha AI — High-Level Design (HLD) & System Architecture</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090a0f;
+      --card-bg: #11131a;
+      --card-bg-elevated: #161922;
+      --border: #212533;
+      --border-accent: #373d52;
+      --text-main: #f1f3f9;
+      --text-muted: #9aa1b5;
+      --text-dim: #646b82;
+      --primary: #6366f1;
+      --primary-light: #818cf8;
+      --primary-glow: rgba(99, 102, 241, 0.15);
+      --emerald: #10b981;
+      --emerald-glow: rgba(16, 185, 129, 0.15);
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --cyan: #06b6d4;
+      --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    html.light {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --card-bg-elevated: #f1f5f9;
+      --border: #e2e8f0;
+      --border-accent: #cbd5e1;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #94a3b8;
+      --primary: #4f46e5;
+      --primary-light: #6366f1;
+      --primary-glow: rgba(79, 70, 229, 0.1);
+      --emerald: #059669;
+      --emerald-glow: rgba(5, 150, 105, 0.1);
+      --amber: #d97706;
+      --rose: #e11d48;
+      --cyan: #0891b2;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+      transition: background-color 0.25s ease, color 0.25s ease;
+    }
+
+    /* Sidebar Navigation */
+    aside.sidebar {
+      width: 320px;
+      height: 100vh;
+      position: sticky;
+      top: 0;
+      background: var(--card-bg);
+      border-right: 1px solid var(--border);
+      padding: 28px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .brand img {
+      height: 34px;
+      width: auto;
+      object-fit: contain;
+    }
+    .brand-title {
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+    }
+    .brand-badge {
+      font-size: 10px;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: var(--primary-glow);
+      color: var(--primary-light);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      font-weight: 600;
+      margin-left: auto;
+    }
+
+    nav.toc {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 13px;
+    }
+    nav.toc a {
+      color: var(--text-muted);
+      text-decoration: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 500;
+      transition: all 0.15s ease;
+    }
+    nav.toc a:hover {
+      background: var(--card-bg-elevated);
+      color: var(--text-main);
+      transform: translateX(3px);
+    }
+    nav.toc a.active {
+      background: var(--primary-glow);
+      color: var(--primary-light);
+      font-weight: 600;
+      border: 1px solid rgba(99, 102, 241, 0.25);
+    }
+    nav.toc .sec-num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      min-width: 20px;
+    }
+
+    /* Main Container */
+    main.content {
+      flex: 1;
+      max-width: 1100px;
+      padding: 48px 56px 100px 56px;
+      overflow-y: auto;
+    }
+
+    /* Header Bar */
+    .doc-header {
+      margin-bottom: 48px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid var(--border);
+    }
+    .doc-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid transparent;
+    }
+    .badge-primary { background: var(--primary-glow); color: var(--primary-light); border-color: rgba(99, 102, 241, 0.3); }
+    .badge-emerald { background: var(--emerald-glow); color: var(--emerald); border-color: rgba(16, 185, 129, 0.3); }
+    .badge-mono { font-family: var(--font-mono); background: var(--card-bg-elevated); color: var(--text-muted); border-color: var(--border); }
+
+    .theme-toggle-btn {
+      margin-left: auto;
+      background: var(--card-bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .theme-toggle-btn:hover {
+      border-color: var(--border-accent);
+      background: var(--card-bg);
+    }
+
+    h1.doc-title {
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin-bottom: 14px;
+      background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    html.light h1.doc-title {
+      background: linear-gradient(135deg, #0f172a 0%, #4338ca 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.doc-subtitle {
+      font-size: 17px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      max-width: 850px;
+    }
+
+    /* Sections */
+    section {
+      margin-bottom: 64px;
+      scroll-margin-top: 40px;
+    }
+    h2.section-heading {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-main);
+    }
+    h2.section-heading::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 22px;
+      background: var(--primary);
+      border-radius: 2px;
+    }
+    h3.sub-heading {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 28px 0 14px 0;
+      color: var(--text-main);
+    }
+
+    p {
+      color: var(--text-muted);
+      font-size: 15px;
+      margin-bottom: 18px;
+      line-height: 1.65;
+    }
+
+    /* Callout Cards */
+    .callout {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--primary);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin: 24px 0;
+    }
+    .callout.callout-plain-words {
+      border-left-color: var(--emerald);
+      background: rgba(16, 185, 129, 0.04);
+    }
+    .callout.callout-warning {
+      border-left-color: var(--amber);
+      background: rgba(245, 158, 11, 0.04);
+    }
+    .callout-title {
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .callout-plain-words .callout-title { color: var(--emerald); }
+    .callout-warning .callout-title { color: var(--amber); }
+    .callout-title { color: var(--primary-light); }
+    .callout p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    /* Grid & Cards */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 20px;
+      margin: 24px 0;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 18px;
+      margin: 24px 0;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px;
+      transition: all 0.2s ease;
+    }
+    .card:hover {
+      border-color: var(--border-accent);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    }
+    .card-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--primary-glow);
+      color: var(--primary-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      margin-bottom: 14px;
+      border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 8px;
+    }
+    .card p {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      margin-bottom: 0;
+    }
+
+    /* Diagrams (SVG & Containers) */
+    .diagram-wrapper {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 30px;
+      margin: 28px 0;
+      overflow-x: auto;
+      text-align: center;
+    }
+    .diagram-caption {
+      font-size: 12px;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      margin-top: 14px;
+      text-align: center;
+    }
+    svg.arch-diagram {
+      max-width: 100%;
+      height: auto;
+      display: inline-block;
+    }
+
+    /* Tables */
+    .table-container {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 24px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+      text-align: left;
+    }
+    th {
+      background: var(--card-bg-elevated);
+      color: var(--text-main);
+      font-weight: 600;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    code {
+      font-family: var(--font-mono);
+      background: var(--card-bg-elevated);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: var(--primary-light);
+      border: 1px solid var(--border);
+    }
+
+    /* Workflow steps */
+    .workflow-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin: 24px 0;
+    }
+    .workflow-step {
+      display: flex;
+      gap: 18px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      align-items: flex-start;
+    }
+    .step-badge {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .step-content { flex: 1; }
+    .step-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 4px;
+    }
+    .step-desc {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    /* Footer */
+    footer.doc-footer {
+      margin-top: 80px;
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    @media (max-width: 900px) {
+      body { flex-direction: column; }
+      aside.sidebar { width: 100%; height: auto; position: static; }
+      main.content { padding: 32px 24px; }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar Navigation -->
+  <aside class="sidebar">
+    <div class="brand">
+      <img src="../assets/vedha-logo.png" alt="Vedha AI Logo" id="sidebar-logo">
+      <span class="brand-title">Vedha AI HLD</span>
+      <span class="brand-badge">v2.4</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--border);">
+      <a href="index.html" style="color: var(--primary-light); text-decoration: none; font-size: 12.5px; font-weight: 600;">🏛️ Architecture Hub</a>
+      <a href="lld.html" style="color: var(--text-muted); text-decoration: none; font-size: 12.5px;">📐 Low-Level Design (LLD)</a>
+      <a href="system-design.html" style="color: var(--text-muted); text-decoration: none; font-size: 12.5px;">🌐 System Design & Infra</a>
+      <a href="../adr/index.html" style="color: var(--text-muted); text-decoration: none; font-size: 12.5px;">📜 ADR Catalog</a>
+    </div>
+
+    <nav class="toc">
+      <a href="#overview"><span class="sec-num">01</span> System Overview</a>
+      <a href="#architecture"><span class="sec-num">02</span> High-Level Architecture</a>
+      <a href="#clean-layers"><span class="sec-num">03</span> Clean Architecture Layers</a>
+      <a href="#frontend"><span class="sec-num">04</span> Frontend React SPA</a>
+      <a href="#extension"><span class="sec-num">05</span> Chrome Extension Copilot</a>
+      <a href="#ats-engine"><span class="sec-num">06</span> Truthful ATS Engine</a>
+      <a href="#scraping"><span class="sec-num">07</span> Anti-Bot Scraping Pipeline</a>
+      <a href="#data-storage"><span class="sec-num">08</span> Database, Vector & S3</a>
+      <a href="#workflows"><span class="sec-num">09</span> End-to-End Workflows</a>
+      <a href="#adrs"><span class="sec-num">10</span> Architecture Decision Log</a>
+      <a href="#security"><span class="sec-num">11</span> Security & Resilience</a>
+    </nav>
+  </aside>
+
+  <!-- Main Content Area -->
+  <main class="content">
+
+    <!-- Document Header -->
+    <header class="doc-header">
+      <div class="doc-meta">
+        <span class="badge badge-primary">High-Level Design (HLD)</span>
+        <span class="badge badge-emerald">Production Verified</span>
+        <span class="badge badge-mono">ASP.NET Core 10 • React 19 • Crawl4AI</span>
+        <button class="theme-toggle-btn" onclick="toggleTheme()" id="themeBtn">
+          <span>🌙 Toggle Theme</span>
+        </button>
+      </div>
+
+      <h1 class="doc-title">Vedha AI — System High-Level Design</h1>
+      <p class="doc-subtitle">
+        A complete, intuitive, and production-grade architectural blueprint of Vedha AI: explaining how the React SPA, Chrome Extension, ASP.NET Core 10 backend, Crawl4AI scraping sidecar, and truth-preserving ATS engine work together seamlessly.
+      </p>
+    </header>
+
+    <!-- SECTION 1: SYSTEM OVERVIEW -->
+    <section id="overview">
+      <h2 class="section-heading">01. System Overview & The Core Problem</h2>
+      
+      <p>
+        <strong>Vedha AI</strong> is an enterprise AI Career Operating System. In today’s competitive job market, candidates face two major challenges:
+      </p>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-icon">📄</div>
+          <div class="card-title">Problem 1: ATS Screening Black Boxes</div>
+          <p>
+            Applicant Tracking Systems (Workday, Greenhouse, Taleo) automatically reject up to 75% of qualified resumes because candidate achievements lack exact semantic keywords or use multi-column formatting that ATS parsers fail to read.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🤖</div>
+          <div class="card-title">Problem 2: Hallucinating AI Tools</div>
+          <p>
+            Existing AI resume tailors frequently invent fake employers, fabricate false metrics (turning a $50K project into a $5M claim), or corrupt work experience dates, putting candidates at risk of failing background verification checks.
+          </p>
+        </div>
+      </div>
+
+      <div class="callout callout-plain-words">
+        <div class="callout-title">💡 Human-First Explanation: What Does Vedha AI Actually Do?</div>
+        <p>
+          Think of Vedha AI like a senior executive recruiter and fact-checker working for you. You upload your genuine <strong>Master Resume</strong> once. When you find an exciting job on LinkedIn or any website, Vedha AI reads the job requirements, aligns your real achievements to match the exact vocabulary the ATS wants, checks that not a single fake fact or number was invented, and formats it into a 95%+ ATS-compatible resume. Meanwhile, the <strong>Chrome Extension</strong> stays right beside you on job portals, auto-filling repetitive forms and drafting personalized cover letters with a single click.
+        </p>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-title">1. Single Source of Truth</div>
+          <p>Candidate uploads a master resume (PDF/DOCX/MD). All skills, metrics, and roles are extracted and protected.</p>
+        </div>
+        <div class="card">
+          <div class="card-title">2. Truth-Preserved Tailoring</div>
+          <p>The AI tunes bullets to match the target job description while strictly enforcing quantitative metric invariants.</p>
+        </div>
+        <div class="card">
+          <div class="card-title">3. Autonomous Copilot</div>
+          <p>Manifest V3 browser extension bridges authentication, performs LinkedIn auto-applies, and matches requirements live.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: HIGH-LEVEL ARCHITECTURE -->
+    <section id="architecture">
+      <h2 class="section-heading">02. High-Level Architecture (C4 Container Map)</h2>
+      
+      <p>
+        Vedha AI uses an asynchronous, containerized micro-topology connected over a private bridge network (<code>infra_vedha-network</code>). All client interactions flow through Nginx or the ASP.NET Core 10 Web API.
+      </p>
+
+      <!-- SVG Visual Architecture Diagram -->
+      <div class="diagram-wrapper">
+        <svg class="arch-diagram" viewBox="0 0 920 480" width="920" height="480" xmlns="http://www.w3.org/2000/svg">
+          <!-- Background Defs -->
+          <defs>
+            <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#4f46e5"/>
+              <stop offset="100%" stop-color="#6366f1"/>
+            </linearGradient>
+            <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#059669"/>
+              <stop offset="100%" stop-color="#10b981"/>
+            </linearGradient>
+            <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#0891b2"/>
+              <stop offset="100%" stop-color="#06b6d4"/>
+            </linearGradient>
+            <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%">
+              <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.35"/>
+            </filter>
+          </defs>
+
+          <!-- Outer Box: Clients -->
+          <rect x="20" y="20" width="880" height="90" rx="12" fill="#11131a" stroke="#212533" stroke-width="1.5" />
+          <text x="35" y="44" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="12" font-weight="600">CLIENT LAYER</text>
+
+          <!-- Client Box: Web App -->
+          <rect x="50" y="52" width="250" height="46" rx="8" fill="#161922" stroke="#373d52" filter="url(#shadow)"/>
+          <text x="70" y="80" fill="#f1f3f9" font-family="Geist, sans-serif" font-size="13" font-weight="600">React 19 SPA (Vite / Tailwind)</text>
+
+          <!-- Client Box: Extension -->
+          <rect x="330" y="52" width="260" height="46" rx="8" fill="#161922" stroke="#373d52" filter="url(#shadow)"/>
+          <text x="345" y="80" fill="#f1f3f9" font-family="Geist, sans-serif" font-size="13" font-weight="600">Chrome Extension Copilot (MV3)</text>
+
+          <!-- Client Box: LinkedIn / Web -->
+          <rect x="620" y="52" width="250" height="46" rx="8" fill="#161922" stroke="#373d52" filter="url(#shadow)"/>
+          <text x="640" y="80" fill="#f1f3f9" font-family="Geist, sans-serif" font-size="13" font-weight="600">Target Job Boards (LinkedIn/ATS)</text>
+
+          <!-- Connection Arrows to API -->
+          <path d="M 175 98 L 175 145 L 430 145 L 430 170" fill="none" stroke="#6366f1" stroke-width="2" stroke-dasharray="4"/>
+          <path d="M 460 98 L 460 170" fill="none" stroke="#6366f1" stroke-width="2"/>
+          <path d="M 745 98 L 745 145 L 490 145 L 490 170" fill="none" stroke="#06b6d4" stroke-width="2" stroke-dasharray="4"/>
+
+          <!-- Core Backend Container -->
+          <rect x="180" y="170" width="560" height="95" rx="14" fill="url(#primaryGrad)" filter="url(#shadow)"/>
+          <text x="210" y="202" fill="#ffffff" font-family="Geist, sans-serif" font-size="16" font-weight="700">ASP.NET Core 10 Web API (vedha-backend :5000)</text>
+          <text x="210" y="224" fill="#e0e7ff" font-family="Geist, sans-serif" font-size="12">Clean Architecture • CQRS & MediatR • SignalR Hubs • JWT Auth • Truth Preservation Engine</text>
+          <text x="210" y="244" fill="#c7d2fe" font-family="JetBrains Mono, monospace" font-size="11">Ports: 5000 (Host) -> 8080 (Container) • Network: infra_vedha-network</text>
+
+          <!-- Downward Lines from Backend -->
+          <line x1="240" y1="265" x2="110" y2="330" stroke="#6366f1" stroke-width="2"/>
+          <line x1="380" y1="265" x2="280" y2="330" stroke="#6366f1" stroke-width="2"/>
+          <line x1="540" y1="265" x2="460" y2="330" stroke="#6366f1" stroke-width="2"/>
+          <line x1="680" y1="265" x2="640" y2="330" stroke="#6366f1" stroke-width="2"/>
+          <line x1="720" y1="265" x2="810" y2="330" stroke="#06b6d4" stroke-width="2"/>
+
+          <!-- Service 1: PostgreSQL 16 + pgvector -->
+          <rect x="40" y="330" width="150" height="110" rx="10" fill="#11131a" stroke="#212533" filter="url(#shadow)"/>
+          <rect x="40" y="330" width="150" height="28" rx="8" fill="#1e2230"/>
+          <text x="52" y="348" fill="#a5b4fc" font-family="Geist, sans-serif" font-size="11" font-weight="700">vedha-postgres</text>
+          <text x="52" y="378" fill="#f1f3f9" font-family="Geist, sans-serif" font-size="12" font-weight="600">PostgreSQL 16</text>
+          <text x="52" y="396" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="11">+ pgvector extension</text>
+          <text x="52" y="422" fill="#646b82" font-family="JetBrains Mono, monospace" font-size="10">Port 5432</text>
+
+          <!-- Service 2: Redis 7 -->
+          <rect x="210" y="330" width="140" height="110" rx="10" fill="#11131a" stroke="#212533" filter="url(#shadow)"/>
+          <rect x="210" y="330" width="140" height="28" rx="8" fill="#1e2230"/>
+          <text x="222" y="348" fill="#f43f5e" font-family="Geist, sans-serif" font-size="11" font-weight="700">vedha-redis</text>
+          <text x="222" y="378" fill="#f1f3f9" font-family="Geist, sans-serif" font-size="12" font-weight="600">Redis 7 Alpine</text>
+          <text x="222" y="396" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="11">Locks & Cache</text>
+          <text x="222" y="422" fill="#646b82" font-family="JetBrains Mono, monospace" font-size="10">Port 6379</text>
+
+          <!-- Service 3: MinIO S3 -->
+          <rect x="370" y="330" width="150" height="110" rx="10" fill="#11131a" stroke="#212533" filter="url(#shadow)"/>
+          <rect x="370" y="330" width="150" height="28" rx="8" fill="#1e2230"/>
+          <text x="382" y="348" fill="#f59e0b" font-family="Geist, sans-serif" font-size="11" font-weight="700">vedha-minio</text>
+          <text x="382" y="378" fill="#f1f3f9" font-family="Geist, sans-serif" font-size="12" font-weight="600">MinIO S3 Store</text>
+          <text x="382" y="396" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="11">PDF/Docx storage</text>
+          <text x="382" y="422" fill="#646b82" font-family="JetBrains Mono, monospace" font-size="10">Ports 9000/9001</text>
+
+          <!-- Service 4: NATS JetStream -->
+          <rect x="540" y="330" width="160" height="110" rx="10" fill="#11131a" stroke="#212533" filter="url(#shadow)"/>
+          <rect x="540" y="330" width="160" height="28" rx="8" fill="#1e2230"/>
+          <text x="552" y="348" fill="#10b981" font-family="Geist, sans-serif" font-size="11" font-weight="700">vedha-nats</text>
+          <text x="552" y="378" fill="#f1f3f9" font-family="Geist, sans-serif" font-size="12" font-weight="600">NATS JetStream</text>
+          <text x="552" y="396" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="11">Event message bus</text>
+          <text x="552" y="422" fill="#646b82" font-family="JetBrains Mono, monospace" font-size="10">Ports 4222/8222</text>
+
+          <!-- Service 5: Crawl4AI -->
+          <rect x="720" y="330" width="165" height="110" rx="10" fill="#11131a" stroke="#212533" filter="url(#shadow)"/>
+          <rect x="720" y="330" width="165" height="28" rx="8" fill="#1e2230"/>
+          <text x="732" y="348" fill="#06b6d4" font-family="Geist, sans-serif" font-size="11" font-weight="700">vedha-crawler</text>
+          <text x="732" y="378" fill="#f1f3f9" font-family="Geist, sans-serif" font-size="12" font-weight="600">Crawl4AI Sidecar</text>
+          <text x="732" y="396" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="11">Anti-bot Playwright</text>
+          <text x="732" y="422" fill="#646b82" font-family="JetBrains Mono, monospace" font-size="10">Port 11235</text>
+        </svg>
+        <div class="diagram-caption">Figure 1: High-Level Container Topology & Traffic Flow across vedha-network</div>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Service / Container</th>
+              <th>Host Port</th>
+              <th>Technology Stack</th>
+              <th>Core Responsibility</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>vedha-frontend</code></td>
+              <td>3000</td>
+              <td>Nginx Alpine + React 19</td>
+              <td>Delivers SPA static assets and proxies <code>/api/*</code> to backend without CORS locks.</td>
+            </tr>
+            <tr>
+              <td><code>vedha-backend</code></td>
+              <td>5000</td>
+              <td>ASP.NET Core 10 (C# 13)</td>
+              <td>Core REST API, CQRS MediatR pipeline, RAG orchestrator, and ATS scoring.</td>
+            </tr>
+            <tr>
+              <td><code>vedha-postgres</code></td>
+              <td>5432</td>
+              <td>PostgreSQL 16 + pgvector</td>
+              <td>Stores master resumes, job descriptions, ATS analyses, and embedding vectors.</td>
+            </tr>
+            <tr>
+              <td><code>vedha-redis</code></td>
+              <td>6379</td>
+              <td>Redis 7 Alpine</td>
+              <td>Fast memory cache, session management, and distributed lock synchronization.</td>
+            </tr>
+            <tr>
+              <td><code>vedha-nats</code></td>
+              <td>4222, 8222</td>
+              <td>NATS JetStream</td>
+              <td>Asynchronous messaging broker decoupling worker jobs and notification events.</td>
+            </tr>
+            <tr>
+              <td><code>vedha-minio</code></td>
+              <td>9000, 9001</td>
+              <td>MinIO S3 Compatible</td>
+              <td>Stores rendered PDF, DOCX, and raw resume files with SigV4 pre-signed URLs.</td>
+            </tr>
+            <tr>
+              <td><code>vedha-crawler</code></td>
+              <td>11235</td>
+              <td>Crawl4AI (Python 3.11)</td>
+              <td>Headless browser sidecar bypassing Cloudflare to scrape job postings to clean Markdown.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SECTION 3: CLEAN ARCHITECTURE LAYERS -->
+    <section id="clean-layers">
+      <h2 class="section-heading">03. Software Architecture (Clean Architecture & CQRS)</h2>
+      
+      <p>
+        The backend is strictly organized into four concentric Clean Architecture layers. Business rules never depend on external databases or UI frameworks; dependencies always point inward.
+      </p>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-icon">🎯</div>
+          <div class="card-title">1. Domain Layer (`ResumeTailor.Domain`)</div>
+          <p>
+            The innermost core. Contains pure C# domain entities (<code>User</code>, <code>MasterResume</code>, <code>GeneratedResume</code>, <code>JobDescription</code>), Value Objects (<code>ResumeSchema</code>, <code>WorkExperienceItem</code>), and the deterministic <code>ExperienceChronologyHelper</code>. Zero NuGet dependencies.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-icon">⚡</div>
+          <div class="card-title">2. Application Layer (`ResumeTailor.Application`)</div>
+          <p>
+            Coordinates business use cases using <strong>CQRS and MediatR</strong>. Handlers execute distinct workflows (e.g. <code>GenerateTailoredResumeCommand</code>, <code>ParseRawJobDescriptionCommand</code>). Defines application interfaces without knowing their concrete implementations.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔌</div>
+          <div class="card-title">3. Infrastructure Layer (`ResumeTailor.Infrastructure`)</div>
+          <p>
+            Implements the application contracts: Entity Framework Core DbContext with PostgreSQL, S3 storage client, QuestPDF document generator, AtsScoringEngine, and AI providers (Gemini, Claude, OpenAI).
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🌐</div>
+          <div class="card-title">4. Web API Layer (`ResumeTailor.WebApi`)</div>
+          <p>
+            ASP.NET Core 10 Web API. Handles HTTP routing, JWT token extraction, SignalR real-time hubs (<code>TailoringProgressHub</code>), and global RFC 7807 exception translation.
+          </p>
+        </div>
+      </div>
+
+      <div class="callout callout-plain-words">
+        <div class="callout-title">💡 Human-First Explanation: Why Clean Architecture?</div>
+        <p>
+          Imagine building a high-performance sports car where the engine, wheels, and navigation screen can be replaced without rewriting the chassis. In Vedha AI, if we want to switch the database from PostgreSQL to another system, or change from Gemini to Claude, we only change a single class in the Infrastructure layer. The core resume-tailoring logic and ATS rules never break.
+        </p>
+      </div>
+    </section>
+
+    <!-- SECTION 4: FRONTEND SPA -->
+    <section id="frontend">
+      <h2 class="section-heading">04. Frontend Architecture & Minimalist Design System</h2>
+      
+      <p>
+        The web frontend is a single-page application built with <strong>React 19, TypeScript, and Tailwind CSS</strong>, bundled via Vite.
+      </p>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-title">Minimalist & Aesthetic</div>
+          <p>Replaced futuristic, overwhelming dashboard clutter with a refined, human-first visual style inspired by Linear, Stripe, and Apple.</p>
+        </div>
+        <div class="card">
+          <div class="card-title">Single-Logo System</div>
+          <p>Light mode uses <code>vedha-logo.png</code>. Dark mode uses <code>VedhaAI-Dark.png</code>. Clean, uncluttered header with no redundant title text.</p>
+        </div>
+        <div class="card">
+          <div class="card-title">Zustand State Stores</div>
+          <p>Lightweight reactive state stores (<code>useTailorStore</code>, <code>useAuthStore</code>) managing session state, tailored diffs, and live progress.</p>
+        </div>
+      </div>
+
+      <h3 class="sub-heading">Key Pages & User Studios</h3>
+      <ul>
+        <li><strong>Master Resume Studio (<code>MasterResumePage.tsx</code>)</strong>: Upload documents, auto-parse into structured fields, toggle current employment, and edit STAR bullet points.</li>
+        <li><strong>Tailor Studio (<code>TailorStudioPage.tsx</code>)</strong>: Input job posting URLs or text, preview real-time progress, and view side-by-side bullet diffs highlighting matching keywords.</li>
+        <li><strong>Result & Export Studio (<code>ResultStudioPage.tsx</code>)</strong>: Review ATS scorecards, recruiter feedback, and download ATS-compliant PDF, Word, or Markdown files.</li>
+        <li><strong>Application Tracker (<code>TrackerPage.tsx</code>)</strong>: Kanban board tracking saved, applied, interviewing, and offer states.</li>
+      </ul>
+    </section>
+
+    <!-- SECTION 5: CHROME EXTENSION COPILOT -->
+    <section id="extension">
+      <h2 class="section-heading">05. Chrome Extension Copilot & Token Bridging</h2>
+      
+      <p>
+        The Chrome Extension (Manifest V3) acts as the candidate’s autonomous browser copilot directly on job platforms like LinkedIn, Greenhouse, and Lever.
+      </p>
+
+      <div class="callout callout-plain-words">
+        <div class="callout-title">💡 Cross-Context Authentication Bridge</div>
+        <p>
+          Normally, browser extensions cannot read <code>localStorage</code> from websites. When you log in on <code>http://localhost:3000</code>, our web app emits a secure <code>VEDHA_AUTH_TOKEN_SYNC</code> event. The Vedha content script catches this event and transfers the token into <code>chrome.storage.local</code>. You log in once, and your extension is immediately unlocked!
+        </p>
+      </div>
+
+      <div class="workflow-list">
+        <div class="workflow-step">
+          <div class="step-badge">1</div>
+          <div class="step-content">
+            <div class="step-title">AI Job Matcher</div>
+            <p class="step-desc">Extracts the open LinkedIn job posting live, compares it to your Master Resume, and provides a match percentage with missing skills within 2 seconds.</p>
+          </div>
+        </div>
+        <div class="workflow-step">
+          <div class="step-badge">2</div>
+          <div class="step-content">
+            <div class="step-title">Quick Cover Letter Generator</div>
+            <p class="step-desc">Generates a tailored 3-paragraph cover letter highlighting your exact overlapping achievements, ready to paste into the application form.</p>
+          </div>
+        </div>
+        <div class="workflow-step">
+          <div class="step-badge">3</div>
+          <div class="step-content">
+            <div class="step-title">Autonomous Auto-Fill</div>
+            <p class="step-desc">Inspects complex modal dialogs on LinkedIn, detects questions (phone number, years of experience, work authorization), and auto-populates fields safely.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 6: TRUTHFUL ATS ENGINE -->
+    <section id="ats-engine">
+      <h2 class="section-heading">06. Truth-Preserving ATS Optimization Engine</h2>
+      
+      <p>
+        The ATS engine solves the critical problem of AI hallucination through rigorous mathematical and programmatic invariants implemented in <code>AtsScoringEngine.cs</code>.
+      </p>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">1. Quantitative Metric Invariant</div>
+          <p>
+            A regex extraction engine parses all numbers, percentages (<code>%</code>), dollar amounts (<code>$</code>), and multipliers (<code>3x</code>). Any tailored bullet claiming a metric not present in the master resume triggers an immediate truth violation.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-title">2. Entity Verification Check</div>
+          <p>
+            The engine checks that every company name, university, and certification in the generated resume exists in the verified master resume. Unauthorized entities cause automatic rollback.
+          </p>
+        </div>
+      </div>
+
+      <h3 class="sub-heading">Experience Chronology Rule (Present Employment Always First)</h3>
+      <p>
+        Under <a href="../adr/ADR-003-deterministic-chronology-and-experience-sorting.html">ADR-003</a>, the engine deterministically ensures that <strong>Present / Current Employment</strong> (where <code>isCurrent == true</code> or <code>endDate</code> is "Present") is ALWAYS placed at the top of the experience list. Older roles can never overtake current employment based on keyword density.
+      </p>
+    </section>
+
+    <!-- SECTION 7: ANTI-BOT SCRAPING -->
+    <section id="scraping">
+      <h2 class="section-heading">07. Anti-Bot Resilient Web Scraping Pipeline</h2>
+      
+      <p>
+        Modern job boards aggressively block standard HTTP requests with Cloudflare challenges and render content using dynamic JavaScript. Vedha AI solves this using a multi-tiered scraping pipeline:
+      </p>
+
+      <div class="diagram-wrapper">
+        <svg class="arch-diagram" viewBox="0 0 860 160" width="860" height="160" xmlns="http://www.w3.org/2000/svg">
+          <!-- Step 1 -->
+          <rect x="20" y="40" width="160" height="70" rx="10" fill="#161922" stroke="#373d52"/>
+          <text x="35" y="70" fill="#a5b4fc" font-family="Geist, sans-serif" font-size="12" font-weight="700">1. Job URL Input</text>
+          <text x="35" y="92" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="11">Candidate pastes URL</text>
+
+          <line x1="180" y1="75" x2="230" y2="75" stroke="#6366f1" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <!-- Step 2 -->
+          <rect x="230" y="40" width="190" height="70" rx="10" fill="#161922" stroke="#06b6d4"/>
+          <text x="245" y="70" fill="#06b6d4" font-family="Geist, sans-serif" font-size="12" font-weight="700">2. Crawl4AI Sidecar</text>
+          <text x="245" y="92" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="11">Bypasses Cloudflare & JS</text>
+
+          <line x1="420" y1="75" x2="470" y2="75" stroke="#6366f1" stroke-width="2"/>
+
+          <!-- Step 3 -->
+          <rect x="470" y="40" width="180" height="70" rx="10" fill="#161922" stroke="#373d52"/>
+          <text x="485" y="70" fill="#10b981" font-family="Geist, sans-serif" font-size="12" font-weight="700">3. Markdown Extract</text>
+          <text x="485" y="92" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="11">Clean text without ads</text>
+
+          <line x1="650" y1="75" x2="700" y2="75" stroke="#6366f1" stroke-width="2"/>
+
+          <!-- Step 4 -->
+          <rect x="700" y="40" width="140" height="70" rx="10" fill="#4f46e5" stroke="#6366f1"/>
+          <text x="715" y="70" fill="#ffffff" font-family="Geist, sans-serif" font-size="12" font-weight="700">4. LLM Schema</text>
+          <text x="715" y="92" fill="#e0e7ff" font-family="Geist, sans-serif" font-size="11">JSON Job Schema</text>
+        </svg>
+        <div class="diagram-caption">Figure 2: Scraping & Markdown Extraction Pipeline</div>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-title">Crawl4AI Sidecar</div>
+          <p>Stealth browser container simulating real user fingerprints, executing accordion-expansion scripts automatically.</p>
+        </div>
+        <div class="card">
+          <div class="card-title">Playwright Worker Fallback</div>
+          <p>If Crawl4AI sidecar is unavailable, asynchronous Playwright worker executes headless session via NATS queue.</p>
+        </div>
+        <div class="card">
+          <div class="card-title">AngleSharp Static Parse</div>
+          <p>Ultra-fast HTML parser fallback for lightweight, static career portals.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 8: DATA STORAGE & VECTOR TOPOLOGY -->
+    <section id="data-storage">
+      <h2 class="section-heading">08. Database, Vector Embeddings & Object Storage</h2>
+      
+      <p>
+        Vedha AI separates structured metadata, vector embeddings, high-speed caches, and large document binaries into dedicated storage engines:
+      </p>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-icon">🗄️</div>
+          <div class="card-title">PostgreSQL 16 + pgvector</div>
+          <p>
+            Stores transactional entities (<code>Users</code>, <code>MasterResumes</code>, <code>GeneratedResumes</code>, <code>Applications</code>). Uses <code>pgvector</code> to store high-dimensional embeddings of candidate achievements and job responsibilities for sub-second semantic retrieval.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-icon">📦</div>
+          <div class="card-title">MinIO S3 Object Store</div>
+          <p>
+            Self-hosted S3-compatible storage. Houses rendered PDF resumes, DOCX files, and raw uploaded master documents. Downloads are served via secure time-limited SigV4 pre-signed URLs.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 9: END-TO-END WORKFLOWS -->
+    <section id="workflows">
+      <h2 class="section-heading">09. End-to-End User Journeys & Sequence Flows</h2>
+      
+      <div class="workflow-list">
+        <div class="workflow-step">
+          <div class="step-badge">A</div>
+          <div class="step-content">
+            <div class="step-title">Master Resume Onboarding</div>
+            <p class="step-desc">Candidate uploads PDF/Word document -> Local text extractors (PdfPig/OpenXml) or Multimodal AI parse structure -> Normalizes dates and sorts present employment first -> Persists in PostgreSQL and creates Version 1 snapshot.</p>
+          </div>
+        </div>
+        <div class="workflow-step">
+          <div class="step-badge">B</div>
+          <div class="step-content">
+            <div class="step-title">Target Job Tailoring</div>
+            <p class="step-desc">Candidate pastes Job URL -> Crawl4AI scrapes clean Markdown -> LLM extracts structured JD schema -> Tailoring engine optimizes bullets, retaining 80%+ quantitative metrics -> ATS scoring engine verifies truthfulness -> Candidate downloads PDF.</p>
+          </div>
+        </div>
+        <div class="workflow-step">
+          <div class="step-badge">C</div>
+          <div class="step-content">
+            <div class="step-title">Chrome Extension Quick Apply</div>
+            <p class="step-desc">Candidate opens LinkedIn job -> Extension grabs page DOM -> Calls <code>/api/orchestrator/quick-match</code> -> Live Match Scorecard displays in sidepanel -> Generates tailored cover letter with one click.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 10: ARCHITECTURE DECISION RECORDS -->
+    <section id="adrs">
+      <h2 class="section-heading">10. Architecture Decision Records (ADR) Summary</h2>
+      
+      <p>
+        Major engineering decisions are recorded as self-contained HTML documents in the <a href="../adr/index.html"><code>docs/adr/</code></a> directory:
+      </p>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>ADR ID</th>
+              <th>Title</th>
+              <th>Status</th>
+              <th>Core Rationale</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><a href="../adr/ADR-001-clean-architecture-dotnet10.html">ADR-001</a></td>
+              <td>Clean Architecture with CQRS & ASP.NET Core 10</td>
+              <td><span class="badge badge-emerald">Accepted</span></td>
+              <td>Enforces layer isolation, high testability, and zero domain framework coupling.</td>
+            </tr>
+            <tr>
+              <td><a href="../adr/ADR-002-dual-layer-auth-and-extension-sync.html">ADR-002</a></td>
+              <td>Dual-Layer Auth & Extension Token Bridging</td>
+              <td><span class="badge badge-emerald">Accepted</span></td>
+              <td>Enables single login on web app to instantly authenticate Chrome Extension.</td>
+            </tr>
+            <tr>
+              <td><a href="../adr/ADR-003-deterministic-chronology-and-experience-sorting.html">ADR-003</a></td>
+              <td>Deterministic Experience Sorting (Present Employment First)</td>
+              <td><span class="badge badge-emerald">Accepted</span></td>
+              <td>Guarantees candidate's current role appears first regardless of LLM keyword bias.</td>
+            </tr>
+            <tr>
+              <td><a href="../adr/ADR-004-anti-bot-resilient-job-scraping-crawl4ai.html">ADR-004</a></td>
+              <td>Hybrid Anti-Bot Scraping via Crawl4AI Sidecar</td>
+              <td><span class="badge badge-emerald">Accepted</span></td>
+              <td>Overcomes Cloudflare blocks, dynamic JS rendering, and collapsed accordions.</td>
+            </tr>
+            <tr>
+              <td><a href="../adr/ADR-005-truth-preserving-ats-optimization-engine.html">ADR-005</a></td>
+              <td>Truth-Preserving ATS Optimization Engine</td>
+              <td><span class="badge badge-emerald">Accepted</span></td>
+              <td>Prevents LLM hallucinations and validates quantitative metric invariants.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SECTION 11: SECURITY & RESILIENCE -->
+    <section id="security">
+      <h2 class="section-heading">11. Security, Privacy & Operational Resilience</h2>
+      
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-icon">🛡️</div>
+          <div class="card-title">Token Security & Zero Secret Leaks</div>
+          <p>
+            JWT secrets and API keys are stored strictly in environment variables. <code>.env</code> files are ignored by git. S3 buckets use least-privilege policies.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔄</div>
+          <div class="card-title">Self-Healing & Local Fallbacks</div>
+          <p>
+            If AI provider keys fail, local extraction (PdfPig/OpenXml) continues to function. If Crawl4AI times out, AngleSharp and direct paste ensure zero user blockers.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Document Footer -->
+    <footer class="doc-footer">
+      <div>Vedha AI Architecture Team • Production Release 2026</div>
+      <div>Maintained per <a href="../AGENTS.md" style="color: var(--primary-light);">AGENTS.md</a> Engineering Constitution</div>
+    </footer>
+
+  </main>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = html.classList.toggle('dark');
+      html.classList.toggle('light', !isDark);
+      const btn = document.getElementById('themeBtn');
+      const logo = document.getElementById('sidebar-logo');
+      if (isDark) {
+        btn.innerHTML = '<span>🌙 Toggle Theme</span>';
+        if (logo) logo.src = '../assets/VedhaAI-Dark.png';
+      } else {
+        btn.innerHTML = '<span>☀️ Toggle Theme</span>';
+        if (logo) logo.src = '../assets/vedha-logo.png';
+      }
+    }
+
+    // Set initial logo according to theme
+    window.addEventListener('DOMContentLoaded', () => {
+      const isDark = document.documentElement.classList.contains('dark');
+      const logo = document.getElementById('sidebar-logo');
+      if (logo) {
+        logo.src = isDark ? '../assets/VedhaAI-Dark.png' : '../assets/vedha-logo.png';
+      }
+    });
+  </script>
+</body>
+</html>

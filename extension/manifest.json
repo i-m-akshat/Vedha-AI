@@ -48,5 +48,12 @@
       ],
       "js": ["content.js"]
     }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["vedha-logo.png", "VedhaAI-Dark.png"],
+      "matches": ["*://*/*"]
+    }
   ]
 }
+

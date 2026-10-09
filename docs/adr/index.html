@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vedha AI — Architecture Decision Records (ADR) Catalog</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090a0f;
+      --card-bg: #11131a;
+      --card-bg-elevated: #161922;
+      --border: #212533;
+      --border-accent: #373d52;
+      --text-main: #f1f3f9;
+      --text-muted: #9aa1b5;
+      --text-dim: #646b82;
+      --primary: #6366f1;
+      --primary-light: #818cf8;
+      --primary-glow: rgba(99, 102, 241, 0.15);
+      --emerald: #10b981;
+      --emerald-glow: rgba(16, 185, 129, 0.15);
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --cyan: #06b6d4;
+      --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+    html.light {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --card-bg-elevated: #f1f5f9;
+      --border: #e2e8f0;
+      --border-accent: #cbd5e1;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #94a3b8;
+      --primary: #4f46e5;
+      --primary-light: #6366f1;
+      --primary-glow: rgba(79, 70, 229, 0.1);
+      --emerald: #059669;
+      --emerald-glow: rgba(5, 150, 105, 0.1);
+      --amber: #d97706;
+      --rose: #e11d48;
+      --cyan: #0891b2;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      min-height: 100vh;
+      padding: 40px 24px 80px 24px;
+      transition: background-color 0.2s, color 0.2s;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 32px;
+    }
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .brand-group img {
+      height: 36px;
+      width: auto;
+    }
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .badge-primary { background: var(--primary-glow); color: var(--primary-light); border: 1px solid rgba(99, 102, 241, 0.3); }
+    .badge-emerald { background: var(--emerald-glow); color: var(--emerald); border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-mono { font-family: var(--font-mono); background: var(--card-bg-elevated); color: var(--text-muted); border: 1px solid var(--border); }
+    
+    .btn {
+      background: var(--card-bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn:hover {
+      border-color: var(--border-accent);
+      background: var(--card-bg);
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    p.lead {
+      font-size: 16px;
+      color: var(--text-muted);
+      margin-bottom: 36px;
+    }
+
+    .adr-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .adr-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 26px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+    .adr-card:hover {
+      border-color: var(--primary-light);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    }
+    .adr-id {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--primary-light);
+      padding: 6px 12px;
+      background: var(--primary-glow);
+      border-radius: 8px;
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      flex-shrink: 0;
+    }
+    .adr-details {
+      flex: 1;
+    }
+    .adr-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 4px;
+    }
+    .adr-summary {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+    .adr-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .adr-date {
+      font-size: 11px;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+    }
+
+    .callout {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--emerald);
+      border-radius: 12px;
+      padding: 18px 22px;
+      margin-top: 36px;
+    }
+    .callout-title {
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--emerald);
+      margin-bottom: 4px;
+    }
+    .callout p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="brand-group">
+        <img src="../assets/vedha-logo.png" alt="Vedha AI" id="logoImg">
+        <div>
+          <span style="font-weight: 700; font-size: 16px;">Vedha AI</span>
+          <span class="badge badge-mono" style="margin-left: 8px;">Architecture Catalog</span>
+        </div>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <a href="../architecture/index.html" class="btn">🏛️ Architecture Hub</a>
+        <a href="../architecture/hld.html" class="btn">📘 High-Level Design (HLD)</a>
+        <button onclick="toggleTheme()" class="btn" id="themeBtn">🌙 Toggle</button>
+      </div>
+    </div>
+
+    <h1>Architecture Decision Records (ADRs)</h1>
+    <p class="lead">
+      Documented engineering decisions, architectural context, tradeoffs, and system invariants for Vedha AI.
+    </p>
+
+    <div class="adr-grid">
+      <!-- ADR 001 -->
+      <a href="ADR-001-clean-architecture-dotnet10.html" class="adr-card">
+        <div class="adr-id">ADR-001</div>
+        <div class="adr-details">
+          <div class="adr-title">Clean Architecture with CQRS & ASP.NET Core 10</div>
+          <div class="adr-summary">Adoption of Uncle Bob's Clean Architecture, MediatR CQRS handlers, and domain-centric layer boundaries.</div>
+        </div>
+        <div class="adr-meta">
+          <span class="badge badge-emerald">ACCEPTED</span>
+          <span class="adr-date">2026-09-12</span>
+        </div>
+      </a>
+
+      <!-- ADR 002 -->
+      <a href="ADR-002-dual-layer-auth-and-extension-sync.html" class="adr-card">
+        <div class="adr-id">ADR-002</div>
+        <div class="adr-details">
+          <div class="adr-title">Dual-Layer Auth & Cross-Context Extension Token Bridging</div>
+          <div class="adr-summary">Unified login between React SPA and Manifest V3 Chrome Extension via postMessage event handshake.</div>
+        </div>
+        <div class="adr-meta">
+          <span class="badge badge-emerald">ACCEPTED</span>
+          <span class="adr-date">2026-10-09</span>
+        </div>
+      </a>
+
+      <!-- ADR 003 -->
+      <a href="ADR-003-deterministic-chronology-and-experience-sorting.html" class="adr-card">
+        <div class="adr-id">ADR-003</div>
+        <div class="adr-details">
+          <div class="adr-title">Deterministic Work Experience Sorting (Present Employment First)</div>
+          <div class="adr-summary">Domain-level deterministic chronology sorter ensuring current role always appears first in all views and exports.</div>
+        </div>
+        <div class="adr-meta">
+          <span class="badge badge-emerald">ACCEPTED</span>
+          <span class="adr-date">2026-10-10</span>
+        </div>
+      </a>
+
+      <!-- ADR 004 -->
+      <a href="ADR-004-anti-bot-resilient-job-scraping-crawl4ai.html" class="adr-card">
+        <div class="adr-id">ADR-004</div>
+        <div class="adr-details">
+          <div class="adr-title">Hybrid Anti-Bot Scraping via Crawl4AI Sidecar & Playwright</div>
+          <div class="adr-summary">Stealth headless browser container bypassing Cloudflare blocks and dynamic JS accordions on job sites.</div>
+        </div>
+        <div class="adr-meta">
+          <span class="badge badge-emerald">ACCEPTED</span>
+          <span class="adr-date">2026-09-20</span>
+        </div>
+      </a>
+
+      <!-- ADR 005 -->
+      <a href="ADR-005-truth-preserving-ats-optimization-engine.html" class="adr-card">
+        <div class="adr-id">ADR-005</div>
+        <div class="adr-details">
+          <div class="adr-title">Truth-Preserving ATS Optimization Engine</div>
+          <div class="adr-summary">Multi-stage hallucination prevention checking quantitative metric invariants and authentic employer history.</div>
+        </div>
+        <div class="adr-meta">
+          <span class="badge badge-emerald">ACCEPTED</span>
+          <span class="adr-date">2026-09-15</span>
+        </div>
+      </a>
+    </div>
+
+    <div class="callout">
+      <div class="callout-title">💡 Why Are ADRs Authored as Visual HTML?</div>
+      <p>
+        Per project rules defined in <code>AGENTS.md</code>, all Architecture Decision Records and System Designs are created as self-contained, beautifully styled HTML documents with diagrams and plain-English explanations so engineers, product owners, and stakeholders can effortlessly understand every architectural choice.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      document.documentElement.classList.toggle('light', !isDark);
+      const btn = document.getElementById('themeBtn');
+      const logo = document.getElementById('logoImg');
+      if (isDark) {
+        btn.textContent = '🌙 Toggle';
+        if (logo) logo.src = '../assets/VedhaAI-Dark.png';
+      } else {
+        btn.textContent = '☀️ Toggle';
+        if (logo) logo.src = '../assets/vedha-logo.png';
+      }
+    }
+  </script>
+</body>
+</html>

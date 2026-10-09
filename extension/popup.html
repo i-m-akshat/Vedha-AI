@@ -1,230 +1,305 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <title>Vedha AI Copilot</title>
+  <title>Vedha AI Copilot &amp; Orchestrator</title>
   <style>
+    :root, [data-theme="dark"] {
+      --bg-app: #090a0f;
+      --bg-surface: #111218;
+      --bg-card: #14151c;
+      --bg-card-hover: #1a1c24;
+      --bg-input: #181920;
+      --border: #1e2029;
+      --border-hover: #2b2e3b;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --text-dim: #6b7280;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --accent-dim: rgba(99, 102, 241, 0.12);
+      --accent-text: #c7d2fe;
+      --success: #34d399;
+      --success-border: rgba(16, 185, 129, 0.3);
+      --success-dim: rgba(16, 185, 129, 0.12);
+      --warning: #fbbf24;
+      --warning-border: rgba(245, 158, 11, 0.3);
+      --warning-dim: rgba(245, 158, 11, 0.12);
+      --danger: #ef4444;
+      --danger-dim: rgba(239, 68, 68, 0.12);
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+      --scrollbar-thumb: #23252f;
+    }
+
+    [data-theme="light"] {
+      --bg-app: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-card: #ffffff;
+      --bg-card-hover: #f1f5f9;
+      --bg-input: #f8fafc;
+      --border: #e2e8f0;
+      --border-hover: #cbd5e1;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #94a3b8;
+      --accent: #4f46e5;
+      --accent-hover: #4338ca;
+      --accent-dim: rgba(79, 70, 229, 0.08);
+      --accent-text: #4338ca;
+      --success: #059669;
+      --success-border: rgba(5, 150, 105, 0.25);
+      --success-dim: rgba(5, 150, 105, 0.08);
+      --warning: #d97706;
+      --warning-border: rgba(217, 119, 6, 0.25);
+      --warning-dim: rgba(217, 119, 6, 0.08);
+      --danger: #dc2626;
+      --danger-dim: rgba(220, 38, 38, 0.08);
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      --scrollbar-thumb: #cbd5e1;
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
     }
-    html {
-      box-sizing: border-box;
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      padding: 0;
-    }
 
     body {
-      width: 390px;
+      width: 384px;
       min-height: 540px;
-      max-height: 620px;
-      background: #09090b;
-      color: #fafafa;
+      background: var(--bg-app);
+      color: var(--text-main);
       display: flex;
       flex-direction: column;
-      overflow-x: hidden;
-      overflow-y: auto;
       font-size: 12px;
       margin: 0;
       padding: 0;
-    }
-
-    /* Responsive Adaptation for Chrome Side Panel Mode */
-    @media screen and (min-height: 621px), screen and (min-width: 395px) {
-      html, body {
-        width: 100%;
-        min-height: 100vh;
-        max-height: 100vh;
-        height: 100vh;
-        overflow-y: auto;
-      }
-    }
-
-    /* Explicit Side Panel Mode Toggled by Context Detection */
-    html.sidepanel-mode,
-    body.sidepanel-mode {
-      width: 100% !important;
-      min-height: 100vh !important;
-      max-height: 100vh !important;
-      height: 100vh !important;
-      overflow-y: auto !important;
-    }
-
-    body.sidepanel-mode #openSidePanelBtn {
-      display: none !important;
+      overflow-x: hidden;
+      overflow-y: auto;
+      transition: background-color 0.2s ease, color 0.2s ease;
     }
 
     /* Scrollbar */
-    body::-webkit-scrollbar { width: 5px; }
-    body::-webkit-scrollbar-track { background: #09090b; }
-    body::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
-    body::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+    body::-webkit-scrollbar { width: 4px; }
+    body::-webkit-scrollbar-track { background: var(--bg-app); }
+    body::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
 
-    /* Sticky Glass Header */
+    /* Header */
     .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 12px 16px;
-      background: rgba(18, 18, 22, 0.95);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 10px 14px;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border);
       position: sticky;
       top: 0;
       z-index: 50;
+      transition: background-color 0.2s ease, border-color 0.2s ease;
     }
     .logo-wrapper {
       display: flex;
       align-items: center;
-      gap: 9px;
     }
-    .logo-img {
-      width: 24px;
-      height: 24px;
-      border-radius: 6px;
+    .header-logo {
+      height: 28px;
+      max-width: 135px;
       object-fit: contain;
-      box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+      display: block;
+      transition: opacity 0.15s ease;
     }
-    .brand-title {
-      font-size: 13px;
-      font-weight: 800;
-      background: linear-gradient(135deg, #c7d2fe, #818cf8);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      letter-spacing: -0.02em;
-    }
-    .header-badges {
+    .header-actions {
       display: flex;
       align-items: center;
-      gap: 7px;
-    }
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #10b981;
-      box-shadow: 0 0 10px #10b981;
-      transition: all 0.3s ease;
-    }
-    .quota-badge {
-      font-size: 10px;
-      background: rgba(16, 185, 129, 0.1);
-      color: #34d399;
-      border: 1px solid rgba(16, 185, 129, 0.25);
-      padding: 3px 8px;
-      font-weight: 600;
-      border-radius: 9999px;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    /* Segmented Navigation Tabs (Simplify & Linear Style) */
-    .nav-tabs {
-      display: flex;
-      background: #121216;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      padding: 6px 10px;
       gap: 5px;
     }
-    .tab-btn {
-      flex: 1;
-      background: transparent;
-      border: none;
-      color: #a1a1aa;
-      padding: 7px 4px;
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 9999px;
+      background: var(--success-dim);
+      border: 1px solid var(--success-border);
+      color: var(--success);
+      transition: all 0.2s ease;
+    }
+    .status-pill.offline {
+      background: var(--warning-dim);
+      border-color: var(--warning-border);
+      color: var(--warning);
+    }
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .btn-icon {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 4px 7px;
+      border-radius: 6px;
+      cursor: pointer;
       font-size: 11px;
       font-weight: 600;
-      border-radius: 7px;
-      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 5px;
-      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+      gap: 3px;
+      transition: all 0.15s ease;
     }
-    .tab-btn:hover {
-      background: rgba(255, 255, 255, 0.05);
-      color: #fafafa;
-    }
-    .tab-btn.active {
-      background: #27272a;
-      color: #a5b4fc;
-      font-weight: 700;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+    .btn-icon:hover {
+      background: var(--bg-card-hover);
+      color: var(--text-main);
+      border-color: var(--border-hover);
     }
 
-    /* Main Container */
+    /* Container */
     .container {
-      padding: 14px 16px;
+      padding: 12px 14px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
       flex: 1;
     }
 
-    /* Tab Panels */
-    .tab-panel {
-      display: none;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .tab-panel.active {
+    /* Card */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
       display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: var(--shadow);
+      transition: background-color 0.2s ease, border-color 0.2s ease;
     }
 
-    /* Job Card (Simplify Style) */
-    .job-card {
-      background: #141418;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 11px;
-      padding: 12px 14px;
-      position: relative;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-    }
-    .job-card-header {
+    /* Login View */
+    .login-view {
       display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 8px;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 24px 12px;
+      gap: 16px;
     }
+    .login-logo {
+      height: 48px;
+      max-width: 180px;
+      object-fit: contain;
+      margin-bottom: 4px;
+      transition: opacity 0.15s ease;
+    }
+    .login-heading {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .login-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      max-width: 280px;
+    }
+    .input-group {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      text-align: left;
+    }
+    .input-field {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      color: var(--text-main);
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.15s ease, background-color 0.2s ease;
+    }
+    .input-field:focus {
+      border-color: var(--accent);
+    }
+    .input-field::placeholder {
+      color: var(--text-dim);
+    }
+
+    /* Navigation Tabs */
+    .nav-tabs {
+      display: flex;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border);
+      padding: 5px 8px;
+      gap: 3px;
+      overflow-x: auto;
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+    .nav-tabs::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      flex: 1;
+      white-space: nowrap;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 6px 6px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+    }
+    .tab-btn:hover {
+      color: var(--text-main);
+    }
+    .tab-btn.active {
+      background: var(--bg-card);
+      border-color: var(--border);
+      color: var(--text-main);
+    }
+
+    /* Job Card */
     .job-title {
       font-size: 13px;
       font-weight: 700;
-      color: #ffffff;
+      color: var(--text-main);
       line-height: 1.3;
-      margin-bottom: 2px;
     }
     .job-company {
       font-size: 11px;
-      color: #a1a1aa;
-      display: flex;
-      align-items: center;
-      gap: 5px;
+      color: var(--text-muted);
+      margin-top: 2px;
     }
-    .source-tag {
-      font-size: 9px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: #38bdf8;
-      background: rgba(56, 189, 248, 0.12);
-      border: 1px solid rgba(56, 189, 248, 0.25);
+    .tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
       padding: 2px 7px;
       border-radius: 9999px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      align-self: flex-start;
       white-space: nowrap;
     }
 
-    /* Multi-Step Stepper Progress Bar (Simplify Style) */
+    /* Stepper */
     .stepper-container {
-      background: #141418;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 11px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
       padding: 10px 12px;
       display: flex;
       flex-direction: column;
@@ -233,12 +308,11 @@
     .stepper-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
       font-size: 10px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.04em;
-      color: #a1a1aa;
+      color: var(--text-dim);
     }
     .stepper-track {
       display: flex;
@@ -249,686 +323,694 @@
     .stepper-track::before {
       content: "";
       position: absolute;
-      top: 50%;
+      top: 11px;
       left: 14px;
       right: 14px;
       height: 2px;
-      background: #27272a;
-      transform: translateY(-50%);
+      background: var(--border);
       z-index: 1;
     }
     .step-node {
-      position: relative;
-      z-index: 2;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 4px;
+      z-index: 2;
     }
     .step-circle {
       width: 22px;
       height: 22px;
       border-radius: 50%;
-      background: #18181b;
-      border: 1.5px solid #3f3f46;
-      color: #a1a1aa;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
       font-size: 10px;
       font-weight: 700;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.25s ease;
+      transition: all 0.2s ease;
     }
     .step-node.active .step-circle {
-      background: #6366f1;
-      border-color: #818cf8;
+      background: var(--accent);
+      border-color: var(--accent);
       color: #ffffff;
-      box-shadow: 0 0 12px rgba(99, 102, 241, 0.6);
-      animation: pulseGlow 1.8s infinite;
+      box-shadow: 0 0 10px var(--accent-dim);
     }
     .step-node.completed .step-circle {
-      background: #10b981;
-      border-color: #34d399;
+      background: var(--success);
+      border-color: var(--success);
       color: #ffffff;
-      box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
     }
     .step-label {
       font-size: 9px;
-      color: #71717a;
+      color: var(--text-dim);
       font-weight: 600;
-      white-space: nowrap;
     }
     .step-node.active .step-label {
-      color: #a5b4fc;
+      color: var(--text-main);
       font-weight: 700;
     }
-    .step-node.completed .step-label {
-      color: #34d399;
-    }
 
-    /* Agent Live Telemetry HUD */
-    .agent-telemetry-card {
-      display: none;
-      background: rgba(99, 102, 241, 0.08);
-      border: 1px solid rgba(99, 102, 241, 0.3);
+    /* Telemetry Card */
+    .telemetry-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
       border-radius: 10px;
       padding: 10px 12px;
+      display: flex;
       flex-direction: column;
       gap: 8px;
-      animation: fadeIn 0.2s ease;
     }
-    .agent-telemetry-header {
+    .telemetry-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
-    .agent-radar {
+    .radar-indicator {
       display: flex;
       align-items: center;
       gap: 6px;
       font-size: 11px;
-      font-weight: 700;
-      color: #c7d2fe;
+      font-weight: 600;
+      color: var(--text-main);
     }
     .radar-dot {
       width: 7px;
       height: 7px;
       border-radius: 50%;
-      background: #818cf8;
-      box-shadow: 0 0 8px #818cf8;
-      animation: pulseGlow 1.2s infinite;
+      background: var(--accent);
+      animation: pulse-ring 1.8s infinite;
     }
-    .agent-status-text {
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 1; }
+      50% { transform: scale(1.3); opacity: 0.5; }
+      100% { transform: scale(0.95); opacity: 1; }
+    }
+    .telemetry-status {
       font-size: 11px;
-      color: #e2e8f0;
+      color: var(--text-muted);
       line-height: 1.4;
     }
-    .agent-progress-bar-wrap {
+    .telemetry-bar-wrap {
       width: 100%;
       height: 4px;
-      background: #27272a;
+      background: var(--bg-input);
       border-radius: 9999px;
       overflow: hidden;
     }
-    .agent-progress-bar-fill {
+    .telemetry-bar-fill {
+      width: 0%;
       height: 100%;
-      width: 25%;
-      background: linear-gradient(90deg, #6366f1, #38bdf8);
+      background: var(--accent);
       border-radius: 9999px;
       transition: width 0.3s ease;
     }
 
-    /* Action Buttons */
-    .btn-group {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
+    /* Buttons */
     .btn {
       width: 100%;
-      border: none;
-      padding: 11px 14px;
-      border-radius: 9px;
+      padding: 9px 14px;
+      border-radius: 8px;
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 600;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+      gap: 6px;
+      border: none;
+      transition: all 0.15s ease;
     }
-    .btn:active { transform: scale(0.98); }
-
-    .btn-hero {
-      background: linear-gradient(135deg, #6366f1, #4f46e5);
+    .btn-primary {
+      background: var(--accent);
       color: #ffffff;
-      box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     }
-    .btn-hero:hover {
-      background: linear-gradient(135deg, #818cf8, #6366f1);
-      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.55);
+    .btn-primary:hover {
+      background: var(--accent-hover);
     }
-
-    .btn-easyapply {
-      background: linear-gradient(135deg, #0284c7, #0369a1);
-      color: #ffffff;
-      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
-    .btn-easyapply:hover {
-      background: linear-gradient(135deg, #0ea5e9, #0284c7);
-      box-shadow: 0 6px 16px rgba(2, 132, 199, 0.45);
-    }
-
-    .btn-emerald {
-      background: linear-gradient(135deg, #059669, #047857);
-      color: #ffffff;
-    }
-    .btn-emerald:hover {
-      background: linear-gradient(135deg, #10b981, #059669);
-    }
-
     .btn-secondary {
-      background: #18181b;
-      color: #e4e4e7;
-      border: 1px solid #3f3f46;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
     }
     .btn-secondary:hover {
-      background: #27272a;
-      border-color: #52525b;
-      color: #ffffff;
+      background: var(--bg-card-hover);
+      border-color: var(--border-hover);
     }
-
     .btn-abort {
-      background: rgba(239, 68, 68, 0.15);
+      background: var(--danger-dim);
       border: 1px solid rgba(239, 68, 68, 0.3);
-      color: #f87171;
-      padding: 5px 9px;
+      color: var(--danger);
       font-size: 10px;
-      border-radius: 6px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 5px;
       cursor: pointer;
     }
     .btn-abort:hover {
-      background: rgba(239, 68, 68, 0.25);
+      background: var(--danger);
+      color: #ffffff;
     }
 
-    /* Mode Toggle Switch Card */
-    .mode-switch-card {
-      background: #141418;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 9px;
-      padding: 9px 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .mode-switch-label {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-    .mode-switch-title {
-      font-size: 11px;
-      font-weight: 700;
-      color: #e4e4e7;
-    }
-    .mode-switch-desc {
-      font-size: 9px;
-      color: #71717a;
-    }
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 34px;
-      height: 18px;
-    }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background-color: #27272a;
-      transition: .2s;
-      border-radius: 34px;
-      border: 1px solid #3f3f46;
-    }
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 12px;
-      width: 12px;
-      left: 2px;
-      bottom: 2px;
-      background-color: white;
-      transition: .2s;
-      border-radius: 50%;
-    }
-    input:checked + .slider {
-      background-color: #4f46e5;
-      border-color: #6366f1;
-    }
-    input:checked + .slider:before {
-      transform: translateX(16px);
-    }
-
-    /* Status Messages */
-    .status-banner {
-      font-size: 11px;
-      padding: 9px 12px;
-      border-radius: 8px;
-      line-height: 1.4;
-      display: none;
-      animation: fadeIn 0.2s ease;
-    }
-    .status-banner.info {
-      background: rgba(99, 102, 241, 0.12);
-      border: 1px solid rgba(99, 102, 241, 0.3);
-      color: #c7d2fe;
-    }
-    .status-banner.success {
-      background: rgba(16, 185, 129, 0.12);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      color: #6ee7b7;
-    }
-    .status-banner.warning {
-      background: rgba(245, 158, 11, 0.12);
-      border: 1px solid rgba(245, 158, 11, 0.3);
-      color: #fcd34d;
-    }
-
-    /* ATS Score Card */
-    .ats-gauge-card {
-      background: #141418;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 11px;
-      padding: 16px;
+    /* ATS Score Gauge Card */
+    .ats-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
       display: flex;
       flex-direction: column;
       align-items: center;
       text-align: center;
       gap: 10px;
+      box-shadow: var(--shadow);
     }
     .ats-circle {
-      width: 76px;
-      height: 76px;
+      width: 60px;
+      height: 60px;
       border-radius: 50%;
+      background: var(--bg-input);
+      border: 3px solid var(--accent);
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-size: 22px;
+      font-size: 18px;
       font-weight: 800;
-      border: 4px solid #10b981;
-      box-shadow: 0 0 16px rgba(16, 185, 129, 0.3);
-      color: #ffffff;
+      color: var(--text-main);
+      box-shadow: 0 0 14px var(--accent-dim);
+      transition: all 0.3s ease;
     }
-    .ats-metric-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      width: 100%;
-      gap: 8px;
-      margin-top: 4px;
-    }
-    .ats-metric-box {
-      background: #27272a;
-      padding: 8px 6px;
-      border-radius: 6px;
-      font-size: 10px;
-      text-align: center;
-    }
-    .ats-metric-val {
+    .ats-verdict {
       font-size: 13px;
       font-weight: 700;
-      color: #818cf8;
+      color: var(--text-main);
+    }
+    .ats-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+      max-width: 290px;
+    }
+    .ats-metrics-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      width: 100%;
+    }
+    .ats-metric-tile {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 4px;
+      text-align: center;
+    }
+    .ats-metric-label {
+      font-size: 9px;
+      color: var(--text-dim);
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .ats-metric-val {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-main);
       margin-top: 2px;
     }
-    .skills-section {
+
+    /* Pills Container */
+    .pills-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
       display: flex;
       flex-direction: column;
       gap: 6px;
     }
-    .skills-header {
-      font-size: 11px;
+    .pills-title {
+      font-size: 10px;
       font-weight: 700;
-      color: #a1a1aa;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-dim);
     }
     .pills-container {
       display: flex;
       flex-wrap: wrap;
       gap: 5px;
-      max-height: 110px;
-      overflow-y: auto;
     }
     .pill {
       font-size: 10px;
-      padding: 3px 8px;
-      border-radius: 4px;
       font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 9999px;
     }
     .pill-green {
-      background: rgba(16, 185, 129, 0.15);
-      color: #34d399;
-      border: 1px solid rgba(16, 185, 129, 0.3);
+      background: var(--success-dim);
+      border: 1px solid var(--success-border);
+      color: var(--success);
     }
     .pill-amber {
-      background: rgba(245, 158, 11, 0.15);
-      color: #fbbf24;
-      border: 1px solid rgba(245, 158, 11, 0.3);
+      background: var(--warning-dim);
+      border: 1px solid var(--warning-border);
+      color: var(--warning);
     }
 
-    /* Cover Letter Tab */
+    /* Select & Textarea */
+    .select-dropdown {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: var(--text-main);
+      font-size: 11px;
+      outline: none;
+      cursor: pointer;
+    }
     .textarea-box {
       width: 100%;
-      height: 180px;
-      background: #141418;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      height: 125px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 10px 12px;
-      color: #e4e4e7;
+      padding: 9px 10px;
+      color: var(--text-main);
       font-size: 11px;
-      line-height: 1.5;
+      line-height: 1.45;
+      outline: none;
       resize: vertical;
       font-family: inherit;
     }
     .textarea-box:focus {
-      outline: none;
-      border-color: #6366f1;
+      border-color: var(--accent);
     }
-    .input-row {
+
+    /* Status Banner */
+    .status-banner {
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+      line-height: 1.4;
+      display: none;
+    }
+    .status-banner.info {
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      color: var(--accent-text);
+    }
+    .status-banner.success {
+      background: var(--success-dim);
+      border: 1px solid var(--success-border);
+      color: var(--success);
+    }
+    .status-banner.warning {
+      background: var(--warning-dim);
+      border: 1px solid var(--warning-border);
+      color: var(--warning);
+    }
+
+    /* Checkbox Row */
+    .checkbox-row {
       display: flex;
       align-items: center;
       gap: 8px;
-    }
-    .select-dropdown {
-      flex: 1;
-      background: #141418;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      color: #e4e4e7;
-      padding: 8px 10px;
-      border-radius: 6px;
       font-size: 11px;
-      outline: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+    .checkbox-row input {
+      accent-color: var(--accent);
+      cursor: pointer;
     }
 
-    /* Profile Quick-Copy Drawer */
+    /* Profile List */
     .profile-list {
       display: flex;
       flex-direction: column;
       gap: 6px;
-      max-height: 380px;
+      max-height: 320px;
       overflow-y: auto;
     }
     .profile-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: #141418;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      padding: 8px 10px;
-      border-radius: 6px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 7px 10px;
+      border-radius: 8px;
+      transition: all 0.15s ease;
     }
     .profile-meta {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 1px;
       overflow: hidden;
     }
     .profile-key {
       font-size: 9px;
-      color: #71717a;
+      color: var(--text-dim);
+      font-weight: 600;
       text-transform: uppercase;
-      font-weight: 700;
     }
     .profile-val {
       font-size: 11px;
-      color: #f4f4f5;
+      color: var(--text-main);
       font-weight: 500;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 250px;
+      max-width: 230px;
     }
     .copy-btn {
-      background: #27272a;
-      border: 1px solid #3f3f46;
-      color: #a1a1aa;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
       font-size: 10px;
       font-weight: 600;
-      padding: 4px 8px;
-      border-radius: 4px;
+      padding: 3px 7px;
+      border-radius: 5px;
       cursor: pointer;
       transition: all 0.15s ease;
       white-space: nowrap;
     }
     .copy-btn:hover {
-      background: #3f3f46;
-      color: #ffffff;
+      background: var(--bg-card-hover);
+      color: var(--text-main);
+      border-color: var(--border-hover);
     }
     .copy-btn.copied {
-      background: #059669;
-      color: #ffffff;
-      border-color: #10b981;
+      background: var(--success-dim);
+      color: var(--success);
+      border-color: var(--success-border);
     }
 
     /* Footer */
     .footer {
       font-size: 10px;
-      color: #71717a;
-      padding: 10px 16px;
-      background: rgba(18, 18, 22, 0.95);
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-dim);
+      padding: 9px 14px;
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-top: auto;
+      transition: background-color 0.2s ease, border-color 0.2s ease;
     }
     .footer-link {
-      color: #818cf8;
+      color: var(--accent);
       text-decoration: none;
       font-weight: 600;
       cursor: pointer;
     }
     .footer-link:hover { text-decoration: underline; }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes pulseGlow {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.55; }
-    }
   </style>
 </head>
 <body>
-  <!-- Sticky Glass Header -->
+
+  <!-- Sticky Header -->
   <div class="header">
     <div class="logo-wrapper">
-      <img src="vedha-logo.png" alt="Vedha AI" class="logo-img" />
-      <span class="brand-title">Vedha AI Copilot</span>
+      <img id="headerLogo" src="VedhaAI-Dark.png" alt="Vedha AI" class="header-logo" />
     </div>
-    <div class="header-badges">
-      <button id="pinToScreenBtn" title="Pin floating Copilot directly over page & modals" style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); color: #6ee7b7; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s;">
+    <div class="header-actions">
+      <!-- Theme Toggler -->
+      <button id="themeToggleBtn" class="btn-icon" title="Toggle Light / Dark Theme" aria-label="Toggle theme">
+        <span id="themeToggleIcon">☀️</span>
+      </button>
+      <!-- Pin Button -->
+      <button id="pinToScreenBtn" class="btn-icon" title="Pin floating Copilot directly over page">
         <span>📌</span><span>Pin</span>
       </button>
-      <button id="openSidePanelBtn" title="Open as permanent Chrome Side Panel" style="background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.35); color: #c7d2fe; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s;">
-        <span>◨</span><span>Panel</span>
+      <!-- Connection Status Pill -->
+      <div class="status-pill" id="connectionPill">
+        <span class="dot"></span>
+        <span id="connectionText">Connected</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW 1: LOGIN (Shown when user is unauthenticated) -->
+  <div id="view-login" class="container login-view" style="display: none;">
+    <img id="loginLogo" src="VedhaAI-Dark.png" alt="Vedha AI" class="login-logo" />
+    <div>
+      <h2 class="login-heading">Sign In to Vedha AI</h2>
+      <p class="login-desc">Connect your account to auto-fill jobs with your verified Master Resume and real profile data.</p>
+    </div>
+
+    <form id="loginForm" class="input-group">
+      <div id="loginError" class="status-banner warning" style="margin-bottom: 4px;"></div>
+      <input type="email" id="loginEmail" class="input-field" placeholder="Email Address" required />
+      <input type="password" id="loginPassword" class="input-field" placeholder="Password" required />
+      <button type="submit" id="loginSubmitBtn" class="btn btn-primary" style="margin-top: 4px;">
+        Sign In &amp; Connect
       </button>
-      <div class="status-dot" id="connectionDot" title="Engine Connected"></div>
+      <button type="button" id="loginDemoBtn" class="btn btn-secondary">
+        Quick Demo Account (1-Click)
+      </button>
+    </form>
+
+    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+      Don't have an account? <a id="openRegisterLink" class="footer-link">Open Vedha AI Web App</a>
     </div>
   </div>
 
-  <!-- Segmented Navigation Tabs (Simplify Style) -->
-  <div class="nav-tabs">
-    <button class="tab-btn active" data-tab="tab-copilot">⚡ Copilot</button>
-    <button class="tab-btn" data-tab="tab-ats">🎯 ATS Fit</button>
-    <button class="tab-btn" data-tab="tab-coverletter">📝 Cover Letter</button>
-    <button class="tab-btn" data-tab="tab-profile">👤 Profile</button>
-  </div>
+  <!-- VIEW 2: AUTHENTICATED COPILOT -->
+  <div id="view-copilot" style="display: flex; flex-direction: column; flex: 1;">
+    <!-- Navigation Tabs -->
+    <div class="nav-tabs">
+      <button class="tab-btn active" data-tab="tab-copilot">⚡ Copilot</button>
+      <button class="tab-btn" data-tab="tab-ats">🎯 AI Match</button>
+      <button class="tab-btn" data-tab="tab-coverletter">📝 Cover Letter</button>
+      <button class="tab-btn" data-tab="tab-profile">👤 Profile</button>
+      <button class="tab-btn" data-tab="tab-settings">⚙️ Settings</button>
+    </div>
 
-  <!-- Main Content Container -->
-  <div class="container">
-    <!-- Active Status Banner -->
-    <div id="fillStatus" class="status-banner info"></div>
+    <div class="container">
+      <!-- Status Banner -->
+      <div id="fillStatus" class="status-banner info"></div>
 
-    <!-- TAB 1: COPILOT (Multi-Step Autonomous Agent) -->
-    <div id="tab-copilot" class="tab-panel active">
-      <!-- Target Job Context Card -->
-      <div class="job-card">
-        <div class="job-card-header">
-          <div>
-            <div class="job-title" id="jobTitle">Generic Careers Mode</div>
-            <div class="job-company" id="jobCompany">Active on all application portals</div>
-          </div>
-          <div class="source-tag" id="jobSource">Universal Web</div>
+      <!-- TAB 1: COPILOT & AUTONOMOUS PIPELINE -->
+      <div id="tab-copilot" class="tab-panel" style="display: flex; flex-direction: column; gap: 10px;">
+        <!-- User Status Badge -->
+        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--text-muted); padding: 0 2px;">
+          <span id="userNameGreeting">Signed in to Vedha AI</span>
+          <span id="masterResumeBadge" style="color: var(--success); font-weight: 600;">● Resume Ready</span>
         </div>
-      </div>
 
-      <!-- Multi-Step Progress Stepper (Simplify Style) -->
-      <div class="stepper-container" id="stepperContainer">
-        <div class="stepper-header">
-          <span>Application Journey</span>
-          <span id="stepperStepCount">Step 1 of 4</span>
-        </div>
-        <div class="stepper-track">
-          <div class="step-node active" id="stepNode1">
-            <div class="step-circle">1</div>
-            <span class="step-label">Contact</span>
-          </div>
-          <div class="step-node" id="stepNode2">
-            <div class="step-circle">2</div>
-            <span class="step-label">Experience</span>
-          </div>
-          <div class="step-node" id="stepNode3">
-            <div class="step-circle">3</div>
-            <span class="step-label">Screening</span>
-          </div>
-          <div class="step-node" id="stepNode4">
-            <div class="step-circle">4</div>
-            <span class="step-label">Review</span>
+        <!-- Target Job Card -->
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+            <div style="overflow: hidden;">
+              <div class="job-title" id="jobTitle">Detecting target job...</div>
+              <div class="job-company" id="jobCompany">Open any career page or job listing</div>
+            </div>
+            <span class="tag" id="jobSource">Universal Web</span>
           </div>
         </div>
-      </div>
 
-      <!-- Live Agent Telemetry Card (When active) -->
-      <div class="agent-telemetry-card" id="agentTelemetryCard">
-        <div class="agent-telemetry-header">
-          <div class="agent-radar">
-            <div class="radar-dot"></div>
-            <span id="agentActivityTitle">AI Agent Autonomous Loop</span>
+        <!-- Application Journey Stepper -->
+        <div class="stepper-container" id="stepperContainer">
+          <div class="stepper-header">
+            <span>Application Journey</span>
+            <span id="stepperStepCount" style="color: var(--accent);">Ready</span>
           </div>
-          <button class="btn-abort" id="abortAgentBtn">✕ Stop Agent</button>
+          <div class="stepper-track">
+            <div class="step-node active" id="stepNode1">
+              <div class="step-circle">1</div>
+              <span class="step-label">Contact</span>
+            </div>
+            <div class="step-node" id="stepNode2">
+              <div class="step-circle">2</div>
+              <span class="step-label">Experience</span>
+            </div>
+            <div class="step-node" id="stepNode3">
+              <div class="step-circle">3</div>
+              <span class="step-label">Screening</span>
+            </div>
+            <div class="step-node" id="stepNode4">
+              <div class="step-circle">4</div>
+              <span class="step-label">Review</span>
+            </div>
+          </div>
         </div>
-        <div class="agent-status-text" id="agentStatusDetail">
-          Scanning DOM inputs and calculating progression path...
-        </div>
-        <div class="agent-progress-bar-wrap">
-          <div class="agent-progress-bar-fill" id="agentProgressBar"></div>
-        </div>
-      </div>
 
-      <!-- Mode Switch Toggle: Review Gateway -->
-      <div class="mode-switch-card">
-        <div class="mode-switch-label">
-          <span class="mode-switch-title">🛡️ Review Gateway Guardrail</span>
-          <span class="mode-switch-desc">Pause at final review screen before submitting</span>
+        <!-- Live Telemetry Card (Visible during execution) -->
+        <div class="telemetry-card" id="agentTelemetryCard" style="display: none;">
+          <div class="telemetry-header">
+            <div class="radar-indicator">
+              <div class="radar-dot"></div>
+              <span id="agentActivityTitle">Autonomous Copilot Active</span>
+            </div>
+            <button class="btn-abort" id="abortAgentBtn">✕ Stop Agent</button>
+          </div>
+          <div class="telemetry-status" id="agentStatusDetail">
+            Analyzing DOM inputs and executing safe biometric fill...
+          </div>
+          <div class="telemetry-bar-wrap">
+            <div class="telemetry-bar-fill" id="agentProgressBar"></div>
+          </div>
         </div>
-        <label class="switch">
-          <input type="checkbox" id="reviewGatewayToggle" checked>
-          <span class="slider"></span>
+
+        <!-- Review Gateway Preference -->
+        <label class="checkbox-row">
+          <input type="checkbox" id="reviewGatewayToggle" checked />
+          <span>Pause at final review screen before submitting (recommended)</span>
         </label>
-      </div>
 
-      <!-- Primary Action Suite -->
-      <div class="btn-group">
-        <!-- Main Autonomous Loop Button -->
-        <button class="btn btn-hero" id="autoAdvanceBtn">
-          <span>⚡</span>
-          <span>Autonomous Auto-Fill & Next Step</span>
-        </button>
-        <!-- LinkedIn Easy Apply Copilot -->
-        <button class="btn btn-easyapply" id="autoApplyLinkedInBtn">
-          <span>💼</span>
-          <span>LinkedIn Easy Apply Copilot</span>
-        </button>
-        <!-- Single Page Safe Fill -->
-        <button class="btn btn-emerald" id="autoFillBtn">
-          <span>🤖</span>
-          <span>Single-Page Safe Biometric Fill</span>
-        </button>
-        <!-- Stage in Studio -->
-        <button class="btn btn-secondary" id="sendBtn">
-          <span>✨</span>
-          <span>Stage in Vedha AI Studio</span>
-        </button>
-      </div>
+        <!-- Primary Action Suite -->
+        <div style="display: flex; flex-direction: column; gap: 7px; margin-top: 2px;">
+          <!-- Primary Autofill Button -->
+          <button class="btn btn-primary" id="autoFillPrimaryBtn">
+            <span>⚡</span>
+            <span id="autoFillBtnLabel">Auto-Fill Application</span>
+          </button>
 
-      <!-- Quick Feature Highlights -->
-      <div style="font-size: 10px; color: #71717a; text-align: center; margin-top: 4px;">
-        🛡️ Human keystroke jitter &nbsp;•&nbsp; Gemini Grounding &nbsp;•&nbsp; Anti-Ban Safe
-      </div>
-    </div>
+          <!-- 1-Click Package Pipeline Action -->
+          <button class="btn btn-secondary" id="preparePackageBtn">
+            <span>🚀</span>
+            <span id="preparePackageBtnLabel">Queue Full Application Package</span>
+          </button>
 
-    <!-- TAB 2: ATS FIT ANALYSIS -->
-    <div id="tab-ats" class="tab-panel">
-      <div class="ats-gauge-card">
-        <div class="ats-circle" id="atsScoreCircle">--%</div>
-        <div style="font-weight: 700; font-size: 13px;" id="atsVerdict">Awaiting Analysis</div>
-        <div style="font-size: 11px; color: #a1a1aa;" id="atsRecommendation">Click below to compare current job against your Master Resume.</div>
-
-        <div class="ats-metric-grid">
-          <div class="ats-metric-box">
-            <div>Keywords</div>
-            <div class="ats-metric-val" id="atsKeywordScore">--%</div>
-          </div>
-          <div class="ats-metric-box">
-            <div>Hard Skills</div>
-            <div class="ats-metric-val" id="atsSkillsScore">--%</div>
-          </div>
-          <div class="ats-metric-box">
-            <div>Relevance</div>
-            <div class="ats-metric-val" id="atsRelevanceScore">--%</div>
-          </div>
+          <!-- Stage in Studio -->
+          <button class="btn btn-secondary" id="sendBtn">
+            <span>✨</span>
+            <span>Open in Full Vedha Studio</span>
+          </button>
         </div>
       </div>
 
-      <div class="skills-section">
-        <div class="skills-header">✅ Matching Core Skills:</div>
-        <div class="pills-container" id="matchedSkillsPills">
-          <span class="pill pill-green">None analyzed</span>
+      <!-- TAB 2: AI MATCH & ATS GAP ANALYZER -->
+      <div id="tab-ats" class="tab-panel" style="display: none; flex-direction: column; gap: 10px;">
+        <div class="ats-card">
+          <div class="ats-circle" id="atsScoreCircle">--%</div>
+          <div class="ats-verdict" id="atsVerdict">Awaiting Analysis</div>
+          <div class="ats-desc" id="atsRecommendation">
+            Click below to analyze alignment between this job listing and your Master Resume.
+          </div>
+
+          <div class="ats-metrics-row">
+            <div class="ats-metric-tile">
+              <div class="ats-metric-label">Keywords</div>
+              <div class="ats-metric-val" id="atsKeywordScore">--%</div>
+            </div>
+            <div class="ats-metric-tile">
+              <div class="ats-metric-label">Hard Skills</div>
+              <div class="ats-metric-val" id="atsSkillsScore">--%</div>
+            </div>
+            <div class="ats-metric-tile">
+              <div class="ats-metric-label">Relevance</div>
+              <div class="ats-metric-val" id="atsRelevanceScore">--%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Matched Skills -->
+        <div class="pills-box">
+          <div class="pills-title">✅ Matched Core Skills</div>
+          <div class="pills-container" id="matchedSkillsPills">
+            <span class="pill pill-green">Awaiting match check</span>
+          </div>
+        </div>
+
+        <!-- Missing Skills -->
+        <div class="pills-box">
+          <div class="pills-title">⚠️ Missing Keywords &amp; Requirements</div>
+          <div class="pills-container" id="missingSkillsPills">
+            <span class="pill pill-amber">Awaiting match check</span>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="runAtsAnalysisBtn">
+          <span>🎯</span><span>Run Full ATS Alignment Check</span>
+        </button>
+        <button class="btn btn-secondary" id="openTailorFromAtsBtn">
+          <span>✨</span><span>Tailor Resume for this Job</span>
+        </button>
+      </div>
+
+      <!-- TAB 3: COVER LETTER GENERATOR -->
+      <div id="tab-coverletter" class="tab-panel" style="display: none; flex-direction: column; gap: 10px;">
+        <div>
+          <label style="font-size: 11px; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 4px;">
+            Letter Voice &amp; Tone:
+          </label>
+          <div style="display: flex; gap: 6px;">
+            <select id="coverLetterTone" class="select-dropdown">
+              <option value="Professional and confident">Professional &amp; Confident</option>
+              <option value="Technical and metrics-driven">Technical &amp; Metrics-Driven</option>
+              <option value="Executive and visionary">Executive &amp; Visionary</option>
+              <option value="Direct and concise">Direct &amp; Concise</option>
+              <option value="Enthusiastic and startup-ready">Enthusiastic &amp; Startup-Ready</option>
+            </select>
+            <button class="btn btn-primary" id="generateCoverLetterBtn" style="width: auto; padding: 7px 12px; white-space: nowrap;">
+              ⚡ Draft
+            </button>
+          </div>
+        </div>
+
+        <textarea id="coverLetterText" class="textarea-box" placeholder="Your tailored, ATS-grounded cover letter will appear here... Click Draft to create one instantly using Gemini AI and your Master Resume."></textarea>
+
+        <div style="display: flex; gap: 6px;">
+          <button class="btn btn-secondary" id="copyCoverLetterBtn" style="flex: 1;">
+            <span>📋</span><span>Copy</span>
+          </button>
+          <button class="btn btn-secondary" id="downloadCoverLetterBtn" style="flex: 1;">
+            <span>📥</span><span>Download</span>
+          </button>
         </div>
       </div>
 
-      <div class="skills-section">
-        <div class="skills-header">⚠️ Missing Keywords &amp; Requirements:</div>
-        <div class="pills-container" id="missingSkillsPills">
-          <span class="pill pill-amber">None analyzed</span>
+      <!-- TAB 4: PROFILE DETAILS (1-Click Copy) -->
+      <div id="tab-profile" class="tab-panel" style="display: none; flex-direction: column; gap: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 11px; color: var(--text-muted); font-weight: 600;">Your Verified Application Data</span>
+          <button id="refreshProfileBtn" class="copy-btn">↻ Refresh</button>
         </div>
+        <div class="profile-list" id="profileList">
+          <!-- Populated dynamically with candidate fields -->
+        </div>
+        <button class="btn btn-secondary" id="openProfileStudioBtn">
+          <span>✏️</span><span>Edit Profile in Vedha Studio</span>
+        </button>
       </div>
 
-      <button class="btn btn-hero" id="runAtsAnalysisBtn">🎯 Run Full ATS Match Check</button>
-      <button class="btn btn-secondary" id="openTailorFromAtsBtn">✨ Tailor Resume to Fill Gaps</button>
-    </div>
+      <!-- TAB 5: SETTINGS & ACCOUNT -->
+      <div id="tab-settings" class="tab-panel" style="display: none; flex-direction: column; gap: 10px;">
+        <div class="card">
+          <div style="font-size: 12px; font-weight: 700; color: var(--text-main);">Account Information</div>
+          <div style="font-size: 11px; color: var(--text-muted);">
+            Email: <strong id="settingsUserEmail" style="color: var(--text-main);">demo@vedha.ai</strong>
+          </div>
+          <div style="font-size: 11px; color: var(--text-muted);" id="dailyPacingText">
+            Daily Safety Limit: 0 / 25 applications today
+          </div>
+        </div>
 
-    <!-- TAB 3: COVER LETTER GENERATOR -->
-    <div id="tab-coverletter" class="tab-panel">
-      <div class="input-row">
-        <select id="coverLetterTone" class="select-dropdown">
-          <option value="Professional and confident">Professional &amp; Confident</option>
-          <option value="Enthusiastic and energetic">Enthusiastic &amp; Energetic</option>
-          <option value="Direct and concise">Direct &amp; Minimalist</option>
-          <option value="Executive and visionary">Executive &amp; Visionary</option>
-        </select>
-        <button class="btn btn-emerald" id="generateCoverLetterBtn" style="width: auto; padding: 8px 14px;">⚡ Generate</button>
+        <button class="btn btn-secondary" id="openWebStudioBtn">
+          <span>🖥️</span><span>Open Web Dashboard (localhost:3000)</span>
+        </button>
+
+        <button class="btn btn-secondary" id="signOutBtn" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.25);">
+          <span>🚪</span><span>Sign Out / Disconnect</span>
+        </button>
       </div>
-
-      <textarea id="coverLetterText" class="textarea-box" placeholder="Your tailored, ATS-aligned cover letter will appear here... Click Generate to create one instantly grounded on your Master Resume."></textarea>
-
-      <div style="display: flex; gap: 8px;">
-        <button class="btn btn-secondary" id="copyCoverLetterBtn" style="flex: 1;">📋 Copy to Clipboard</button>
-        <button class="btn btn-secondary" id="downloadCoverLetterBtn" style="flex: 1;">📥 Download .txt</button>
-      </div>
-    </div>
-
-    <!-- TAB 4: CANDIDATE PROFILE & QUICK COPY -->
-    <div id="tab-profile" class="tab-panel">
-      <div style="font-size: 11px; color: #a1a1aa; margin-bottom: 2px;">
-        1-Click copy verified candidate fields into any application form:
-      </div>
-
-      <div class="profile-list" id="profileList">
-        <div style="text-align: center; color: #71717a; padding: 20px;">Loading profile details...</div>
-      </div>
-
-      <button class="btn btn-secondary" id="openProfileStudioBtn">✏️ Edit Profile in Vedha Studio</button>
     </div>
   </div>
 
-  <!-- Global Footer -->
+  <!-- Footer -->
   <div class="footer">
-    <span id="footerGuardrailText">🛡️ Review Gateway Active</span>
-    <a class="footer-link" id="openStudioLink">Open Vedha Studio ↗</a>
+    <span>Vedha AI Copilot</span>
+    <a id="footerStudioLink" class="footer-link">localhost:3000</a>
   </div>
 
   <script src="popup.js"></script>
