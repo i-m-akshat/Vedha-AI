@@ -372,11 +372,49 @@ Verify:
 
 # Documentation & Artifact Storage Conventions
 
-Whenever generating specifications, implementation plans, or bug fix documents:
+Whenever generating specifications, implementation plans, bug fix documents, architecture decision records, or system designs:
 
-- **Feature Specifications**: Save to `docs/specs/<feature-name>.md`
-- **Implementation Plans**: Save to `docs/plan/<feature-name>.md`
-- **Bug Fix Plans / Root Cause**: Save to `docs/bugfixes/<bug-name>.md`
+- **Feature Specifications**: Save to `docs/specs/<feature-name>.md` (strictly Markdown `.md`)
+- **Implementation Plans**: Save to `docs/plan/<feature-name>.md` (strictly Markdown `.md`)
+- **Bug Fix Plans / Root Cause**: Save to `docs/bugfixes/<bug-name>.md` (strictly Markdown `.md`)
+- **Architecture Decision Records (ADR)**: Save to `docs/adr/<adr-id>-<title>.html` (strictly HTML `.html`, NO markdown files permitted in `docs/adr/`)
+- **Architecture & System Design Documentation (HLD, LLD, System Design)**: Save to `docs/architecture/<document-name>.html` (strictly HTML `.html`):
+  - `docs/architecture/index.html` (Architecture Hub & Overview)
+  - `docs/architecture/hld.html` (High-Level Design)
+  - `docs/architecture/lld.html` (Low-Level Design)
+  - `docs/architecture/system-design.html` (System Design, Infrastructure & Distributed Flow)
+
+# Mandatory Visual HTML Documentation Rule for Architecture & ADRs (`docs/architecture/*.html` & `docs/adr/*.html`)
+
+For all Architecture documents (HLD, LLD, System Design in `docs/architecture/`) and Architecture Decision Records (`docs/adr/`):
+
+1. **Strict HTML Format for Architecture & ADRs**:
+   - Specifications (`docs/specs/`), implementation plans (`docs/plan/`), and bug fix plans (`docs/bugfixes/`) are always authored as Markdown (`.md`).
+   - In contrast, all Architecture documentation (`docs/architecture/*.html`) and Architecture Decision Records (`docs/adr/*.html`) MUST be authored as rich, beautifully styled, self-contained **HTML files** (`.html`).
+   - In `docs/adr/`, we have ONLY HTML files related to any architecture decision being taken. No `.md` files are allowed in `docs/adr/`.
+
+2. **Mandatory Continuous Architecture Synchronization for ALL Models & Agents**:
+   - Every time ANY agent or model (regardless of whether Claude, Gemini, OpenAI, DeepSeek, or any other model) makes ANY changes to the codebase, they **MUST update and keep updated** the corresponding architecture documents (`docs/architecture/*.html`) and ADRs (`docs/adr/*.html`).
+   - Architecture documents must NEVER become stale or out of sync with the running code.
+
+3. **Exhaustive Detail from Basic to Advanced ("Human-First + Deep Engineering")**:
+   - Every HTML document MUST cover every detail from basic to advanced:
+     - **Basic (Human-First)**: Plain-English summaries, intuitive analogies, and clear descriptions so that anyone (user, product manager, junior developer) immediately understands what is planned or built.
+     - **Advanced (Deep Engineering)**: Exhaustive technical depth including C4 models, component boundaries, sequence interactions, CQRS commands/queries, EF Core schemas, database indexes, NATS streaming queues, error recovery, security threat models, and container topologies.
+
+4. **Diagrams Required in Every HTML Document**:
+   - Each HTML document MUST visually explain concepts, workflows, component interactions, and data flow using rich visual diagrams (SVG diagrams, CSS flowcharts, sequence diagrams, container maps, architecture boxes).
+
+5. **Exhaustive Walkthrough**:
+   - Cover every single detail:
+     - Exact problem being solved & architectural context
+     - Visual architecture & flow diagrams
+     - Class, entity, and interface hierarchy (for LLD)
+     - Distributed system message flow, storage, and networking (for System Design)
+     - Alternatives evaluated and concrete trade-offs
+     - Step-by-step technical walkthrough
+     - Files affected with clickable references
+     - Database schema, API contracts, state transitions, security, and verification results
 
 # Infrastructure & Environment Configuration Rules
 

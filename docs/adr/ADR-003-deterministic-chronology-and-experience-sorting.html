@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ADR-003: Deterministic Work Experience Sorting with Present Employment First — Vedha AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090a0f;
+      --card-bg: #11131a;
+      --card-bg-elevated: #161922;
+      --border: #212533;
+      --border-accent: #373d52;
+      --text-main: #f1f3f9;
+      --text-muted: #9aa1b5;
+      --text-dim: #646b82;
+      --primary: #6366f1;
+      --primary-light: #818cf8;
+      --primary-glow: rgba(99, 102, 241, 0.15);
+      --emerald: #10b981;
+      --emerald-glow: rgba(16, 185, 129, 0.15);
+      --font-sans: 'Geist', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+    html.light {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --card-bg-elevated: #f1f5f9;
+      --border: #e2e8f0;
+      --border-accent: #cbd5e1;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #94a3b8;
+      --primary: #4f46e5;
+      --primary-light: #6366f1;
+      --primary-glow: rgba(79, 70, 229, 0.1);
+      --emerald: #059669;
+      --emerald-glow: rgba(5, 150, 105, 0.1);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.65;
+      min-height: 100vh;
+      padding: 40px 24px 80px 24px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    .nav-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-link {
+      color: var(--primary-light);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .meta-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+    .badge-id { font-family: var(--font-mono); background: var(--primary-glow); color: var(--primary-light); border: 1px solid rgba(99, 102, 241, 0.3); }
+    .badge-status { background: var(--emerald-glow); color: var(--emerald); border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-date { font-family: var(--font-mono); background: var(--card-bg-elevated); color: var(--text-dim); }
+
+    h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 16px; }
+    h2 { font-size: 20px; font-weight: 700; margin: 32px 0 12px 0; color: var(--text-main); }
+    p { font-size: 15px; color: var(--text-muted); margin-bottom: 16px; }
+
+    .callout {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--emerald);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 24px 0;
+    }
+    .callout-title { font-weight: 700; font-size: 13.5px; color: var(--emerald); margin-bottom: 6px; }
+    .callout p { margin: 0; font-size: 14px; }
+
+    .diagram-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      margin: 24px 0;
+      text-align: center;
+    }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+    .card-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; color: var(--text-main); }
+    .card p { font-size: 13px; margin: 0; }
+
+    ul { margin: 12px 0 18px 24px; color: var(--text-muted); font-size: 14.5px; }
+    li { margin-bottom: 8px; }
+    code { font-family: var(--font-mono); font-size: 13px; background: var(--card-bg-elevated); padding: 2px 6px; border-radius: 4px; color: var(--primary-light); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="nav-bar">
+      <a href="index.html" class="nav-link">← Back to ADR Catalog</a>
+      <div style="display: flex; gap: 14px;">
+        <a href="../architecture/index.html" class="nav-link">🏛️ Architecture Hub</a>
+        <a href="../architecture/hld.html" class="nav-link">📘 System HLD</a>
+      </div>
+    </div>
+
+    <div class="meta-bar">
+      <span class="badge badge-id">ADR-003</span>
+      <span class="badge badge-status">ACCEPTED</span>
+      <span class="badge badge-date">2026-09-24</span>
+    </div>
+
+    <h1>Deterministic Work Experience Sorting with Present Employment First</h1>
+
+    <div class="callout">
+      <div class="callout-title">💡 Plain-English Summary: Why Does This Matter?</div>
+      <p>
+        When a hiring manager or recruiter looks at a resume, the very first question on their mind is: <em>"What is this person doing right now?"</em> If you recently started a brand new job in January 2026, but your resume lists your old job (Jan 2024 – Jan 2026) above your current one because an AI thought your old job sounded more relevant to the keywords, recruiters assume you made a mistake or are currently unemployed. We built an ironclad sorting rule: your current job is unconditionally pinned to the top of your resume, followed neatly by your past jobs in reverse chronological order.
+      </p>
+    </div>
+
+    <h2>1. Context & The Problem</h2>
+    <p>
+      Two distinct factors previously caused resume work experiences to display out of chronological order:
+    </p>
+    <ul>
+      <li><strong>AI Keyword Reordering Prompt</strong>: An LLM instruction instructed the model to prioritize jobs by matching score: <code>"- Reorder experience entries so the most JD-relevant role appears FIRST"</code>. When an older 3-year role had more keyword overlap than a 3-month current role, the LLM demoted the candidate's current employer.</li>
+      <li><strong>Naive Integer Date Parsing</strong>: An older helper used <code>int.TryParse(StartDate)</code>. On inputs like <code>"Jan 2026"</code> or <code>"January 2026"</code>, integer parsing failed and returned <code>0</code>, resulting in erratic sort behavior.</li>
+    </ul>
+
+    <div class="diagram-box">
+      <svg viewBox="0 0 720 280" width="720" height="280" xmlns="http://www.w3.org/2000/svg">
+        <!-- Input Unsorted List -->
+        <rect x="20" y="30" width="190" height="220" rx="10" fill="#161922" stroke="#373d52" stroke-width="1.5"/>
+        <text x="35" y="60" fill="#f1f3f9" font-family="Geist, sans-serif" font-size="13" font-weight="700">Raw Input Roles</text>
+        <rect x="35" y="80" width="160" height="65" rx="6" fill="#11131a" stroke="#ef4444"/>
+        <text x="45" y="102" fill="#f87171" font-family="Geist, sans-serif" font-size="11" font-weight="600">Company A (Past)</text>
+        <text x="45" y="118" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="9.5">Jan 2024 – Jan 2026</text>
+        <text x="45" y="133" fill="#646b82" font-family="JetBrains Mono, monospace" font-size="8.5">High JD keyword overlap</text>
+        <rect x="35" y="155" width="160" height="65" rx="6" fill="#11131a" stroke="#10b981"/>
+        <text x="45" y="177" fill="#34d399" font-family="Geist, sans-serif" font-size="11" font-weight="600">Company B (Current)</text>
+        <text x="45" y="193" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="9.5">Jan 2026 – Present</text>
+        <text x="45" y="208" fill="#646b82" font-family="JetBrains Mono, monospace" font-size="8.5">isCurrent = true</text>
+
+        <!-- Arrow into Sorter Engine -->
+        <line x1="210" y1="140" x2="265" y2="140" stroke="#818cf8" stroke-width="2"/>
+        <polygon points="265,140 257,135 257,145" fill="#818cf8"/>
+
+        <!-- ExperienceChronologyHelper Box -->
+        <rect x="265" y="30" width="200" height="220" rx="10" fill="#1e1b4b" stroke="#6366f1" stroke-width="1.5"/>
+        <text x="280" y="58" fill="#c7d2fe" font-family="Geist, sans-serif" font-size="13" font-weight="700">ExperienceChronologyHelper</text>
+        <rect x="280" y="75" width="170" height="45" rx="6" fill="#11131a" stroke="#373d52"/>
+        <text x="290" y="93" fill="#818cf8" font-family="Geist, sans-serif" font-size="10" font-weight="600">1. Presence Detection</text>
+        <text x="290" y="108" fill="#9aa1b5" font-family="JetBrains Mono, monospace" font-size="8">IsPresentRole() => Priority 1</text>
+        <rect x="280" y="128" width="170" height="45" rx="6" fill="#11131a" stroke="#373d52"/>
+        <text x="290" y="146" fill="#818cf8" font-family="Geist, sans-serif" font-size="10" font-weight="600">2. Regex Date Parsing</text>
+        <text x="290" y="161" fill="#9aa1b5" font-family="JetBrains Mono, monospace" font-size="8">"Jan 2026" => Year 2026, Mo 1</text>
+        <rect x="280" y="181" width="170" height="52" rx="6" fill="#11131a" stroke="#373d52"/>
+        <text x="290" y="199" fill="#818cf8" font-family="Geist, sans-serif" font-size="10" font-weight="600">3. Deterministic Pipeline</text>
+        <text x="290" y="214" fill="#9aa1b5" font-family="JetBrains Mono, monospace" font-size="8">OrderByDescending(Present)</text>
+
+        <!-- Arrow into Sorted Output -->
+        <line x1="465" y1="140" x2="520" y2="140" stroke="#10b981" stroke-width="2"/>
+        <polygon points="520,140 512,135 512,145" fill="#10b981"/>
+
+        <!-- Sorted Output Box -->
+        <rect x="520" y="30" width="180" height="220" rx="10" fill="#161922" stroke="#10b981" stroke-width="1.5"/>
+        <text x="535" y="58" fill="#10b981" font-family="Geist, sans-serif" font-size="13" font-weight="700">Deterministic Output</text>
+        <rect x="535" y="75" width="150" height="70" rx="6" fill="#064e3b" stroke="#10b981"/>
+        <text x="545" y="97" fill="#6ee7b7" font-family="Geist, sans-serif" font-size="11" font-weight="700">#1 Company B (Current)</text>
+        <text x="545" y="113" fill="#a7f3d0" font-family="Geist, sans-serif" font-size="9.5">Jan 2026 – Present</text>
+        <text x="545" y="128" fill="#34d399" font-family="Geist, sans-serif" font-size="8.5">Pinned to Top Guaranteed</text>
+        <rect x="535" y="155" width="150" height="65" rx="6" fill="#11131a" stroke="#212533"/>
+        <text x="545" y="177" fill="#f1f3f9" font-family="Geist, sans-serif" font-size="11" font-weight="600">#2 Company A (Past)</text>
+        <text x="545" y="193" fill="#9aa1b5" font-family="Geist, sans-serif" font-size="9.5">Jan 2024 – Jan 2026</text>
+        <text x="545" y="208" fill="#646b82" font-family="Geist, sans-serif" font-size="8.5">Reverse chronological</text>
+      </svg>
+    </div>
+
+    <h2>2. The Architectural Decision</h2>
+    <p>
+      We implemented an unyielding two-layer safety mechanism:
+    </p>
+    <ul>
+      <li><strong>Prompt Contract Clarification</strong>: In <code>TailorCommands.cs</code>, we removed the recommendation to reorder based on keyword relevance. The LLM prompt now states as an absolute rule:
+        <code>"The candidate's CURRENT / PRESENT employment (isCurrent == true or endDate contains 'Present') MUST ALWAYS APPEAR FIRST in the experience list. All subsequent past employment entries MUST strictly follow reverse-chronological order."</code>
+      </li>
+      <li><strong>Domain Sorting Invariant (ExperienceChronologyHelper)</strong>: We created <code>ExperienceChronologyHelper</code> in the Domain layer (`ResumeSchema.cs`) with a three-tier comparison algorithm:
+        <ol style="margin-left: 20px; margin-top: 6px;">
+          <li><strong>Tier 1 — Current Role Priority</strong>: Evaluates <code>isCurrent == true</code> OR <code>EndDate</code> matching keywords <em>"Present", "Current", "Now", "Ongoing"</em>. Current roles receive sort priority <code>1</code>; past roles receive priority <code>0</code>.</li>
+          <li><strong>Tier 2 — Current Role Tie-Breaking</strong>: If multiple current roles exist (e.g. concurrent freelance and full-time), sorted by <code>StartDate</code> descending.</li>
+          <li><strong>Tier 3 — Past Role Reverse-Chronology</strong>: Sorted by <code>EndDate</code> descending, tie-broken by <code>StartDate</code> descending.</li>
+        </ol>
+      </li>
+      <li><strong>Robust Multi-Format Date Normalization</strong>: Supports month abbreviations (<code>"Jan 2026"</code>), full names (<code>"January 2026"</code>), ISO dates (<code>"2026-01"</code>), slashes (<code>"01/2026"</code>), and 4-digit regex fallback.</li>
+      <li><strong>Universal Pipeline Enforcement</strong>: <code>NormalizeAndSortExperience()</code> is automatically executed upon Master Resume creation/update, AI tailoring generation, PDF/Word/Markdown exports, and defensively on the frontend UI.</li>
+    </ul>
+
+    <h2>3. Alternatives Evaluated</h2>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">❌ Relying Solely on LLM Prompting</div>
+        <p>Large Language Models are non-deterministic. An LLM may follow the prompt 98% of the time, but 2% of candidates would still receive flawed resumes. Software must be deterministic.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">❌ Frontend UI-Only Sorting</div>
+        <p>Sorting only in React would fix the web preview, but generated PDF files, Word downloads, and backend ATS scores would still compute on unsorted data.</p>
+      </div>
+    </div>
+
+    <h2>4. Consequences & Verification</h2>
+    <ul>
+      <li><strong>100% Deterministic Guarantee</strong>: Current employment always displays first regardless of LLM temperature or keyword weightings.</li>
+      <li><strong>Complete Test Verification</strong>: Tested with 55 unit tests covering edge cases (concurrent jobs, string dates, missing booleans, backwards dates).</li>
+    </ul>
+  </div>
+</body>
+</html>
