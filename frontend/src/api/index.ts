@@ -40,6 +40,16 @@ export const authApi = {
   getCurrentUser: () =>
     apiClient.get<UserDto>("/auth/me").then((res) => res.data),
 
+  refreshToken: (accessToken: string, refreshToken: string) =>
+    apiClient
+      .post<AuthResponseDto>("/auth/refresh", { accessToken, refreshToken })
+      .then((res) => res.data),
+
+  revokeToken: (refreshToken: string) =>
+    apiClient
+      .post<{ success: boolean; message: string }>("/auth/revoke", { refreshToken })
+      .then((res) => res.data),
+
   updateKeys: (data: {
     preferredProvider: AiProviderType;
     preferredModel?: string;

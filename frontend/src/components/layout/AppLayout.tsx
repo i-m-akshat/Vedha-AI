@@ -1,24 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
+  LayoutDashboard, 
   FileText, 
   Sparkles, 
-  Columns, 
+  Send, 
+  Code, 
+  UserCheck, 
+  Sliders, 
+  BarChart3, 
   Kanban, 
   History, 
-  BarChart3, 
   Settings, 
-  Sliders, 
   LogOut, 
-  Sun, 
-  Moon, 
-  Layers,
-  ChevronRight,
-  UserCheck,
-  Bot,
-  Activity
+  Bell, 
+  Plus, 
+  CheckCircle2,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useAuthStore, useThemeStore } from '../../stores/useAuthStore';
-import { Button, LivePulse, CornerBrackets, FuturisticCanvas3D } from '../ui';
 
 export type ActivePage = 
   | 'dashboard' 
@@ -42,70 +42,169 @@ interface AppShellProps {
 export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, children }) => {
   const { user, logout } = useAuthStore();
   const { isDark, toggleTheme } = useThemeStore();
-  const [spatial3dEnabled, setSpatial3dEnabled] = React.useState(true);
+  const [notificationActive, setNotificationActive] = useState(true);
 
-  const navItems: { id: ActivePage; index: string; label: string; icon: React.ReactNode; badge?: string }[] = [
-    { id: 'dashboard', index: '01', label: 'Dashboard', icon: <Layers className="w-3.5 h-3.5" /> },
-    { id: 'master-resume', index: '02', label: 'Master Resume', icon: <FileText className="w-3.5 h-3.5" /> },
-    { id: 'candidate-profile', index: '03', label: 'Candidate Memory', icon: <UserCheck className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" /> },
-    { id: 'tailor-studio', index: '04', label: 'Resume Studio', icon: <Sparkles className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" /> },
-    { id: 'result-studio', index: '05', label: 'Inspection Studio', icon: <Columns className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" /> },
-    { id: 'orchestrator', index: '06', label: 'Copilot Pipelines', icon: <Bot className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />, badge: 'Active' },
-    { id: 'tracker', index: '07', label: 'Job Tracker', icon: <Kanban className="w-3.5 h-3.5" /> },
-    { id: 'history', index: '08', label: 'Resume History', icon: <History className="w-3.5 h-3.5" /> },
-    { id: 'analytics', index: '09', label: 'Analytics & ATS', icon: <BarChart3 className="w-3.5 h-3.5" /> },
-    { id: 'prompts', index: '10', label: 'Prompt Studio', icon: <Sliders className="w-3.5 h-3.5" /> },
-    { id: 'settings', index: '11', label: 'System Settings', icon: <Settings className="w-3.5 h-3.5" /> },
+  const mainTabs: { id: ActivePage; label: string }[] = [
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'tailor-studio', label: 'Tailor Resume' },
+    { id: 'result-studio', label: 'Resume Preview' },
+    { id: 'orchestrator', label: 'Auto-Apply' },
+    { id: 'tracker', label: 'Job Tracker' },
   ];
 
-  const currentNav = navItems.find((n) => n.id === activePage);
+  const sideNavItems: { id: ActivePage; label: string; icon: React.ReactNode; badge?: string }[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
+    { id: 'tailor-studio', label: 'Tailor Resume', icon: <FileText className="w-4 h-4" /> },
+    { id: 'result-studio', label: 'Resume Preview', icon: <Sparkles className="w-4 h-4" /> },
+    { id: 'orchestrator', label: 'Auto-Apply Queue', icon: <Send className="w-4 h-4" />, badge: 'Active' },
+    { id: 'tracker', label: 'Job Tracker', icon: <Kanban className="w-4 h-4" /> },
+    { id: 'master-resume', label: 'Master Resume', icon: <Code className="w-4 h-4" /> },
+    { id: 'candidate-profile', label: 'Candidate Profile', icon: <UserCheck className="w-4 h-4" /> },
+    { id: 'history', label: 'Version History', icon: <History className="w-4 h-4" /> },
+    { id: 'analytics', label: 'Analytics', icon: <BarChart3 className="w-4 h-4" /> },
+    { id: 'prompts', label: 'AI Prompts', icon: <Sliders className="w-4 h-4" /> },
+    { id: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
+  ];
+
+  const userInitial = user?.fullName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U';
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 text-slate-900 dark:bg-[#050508] dark:text-zinc-100 font-sans transition-colors duration-200">
-      {/* Sidebar */}
-      <aside className="w-64 border-r border-slate-200/90 bg-white/70 dark:border-white/[0.08] dark:bg-zinc-950/60 flex flex-col justify-between p-4 shrink-0 backdrop-blur-2xl">
-        <div className="space-y-6">
-          {/* Logo & Studio Header */}
-          <div className="relative p-2.5 rounded-xl border border-slate-200/80 dark:border-white/20 bg-white dark:bg-white shadow-sm flex items-center justify-center overflow-hidden">
-            <CornerBrackets size="w-1.5 h-1.5" />
-            <img 
-              src="/vedha-logo.png" 
-              alt="Vedha AI" 
-              className="w-full h-14 sm:h-16 object-contain rounded-lg bg-white transition-transform duration-300 hover:scale-[1.02]" 
-            />
+    <div className="bg-[#0b0c0e] min-h-screen text-[#e2e4e9] font-sans antialiased">
+      {/* Top Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#111216]/95 backdrop-blur-md border-b border-[#23252b]">
+        <div className="h-16 w-full px-4 sm:px-6 flex items-center justify-between gap-4">
+          {/* Left Brand - Single Theme Logo (No Title Text) */}
+          <div className="flex items-center gap-6">
+            <div 
+              className="flex items-center cursor-pointer select-none py-1"
+              onClick={() => setActivePage('dashboard')}
+            >
+              {isDark ? (
+                <img 
+                  src="/VedhaAI-Dark.png" 
+                  alt="Vedha AI" 
+                  className="h-8 max-h-8 w-auto max-w-[140px] object-contain transition-all" 
+                />
+              ) : (
+                <img 
+                  src="/vedha-logo.png" 
+                  alt="Vedha AI" 
+                  className="h-9 max-h-9 w-auto max-w-[110px] object-contain transition-all" 
+                />
+              )}
+            </div>
+
+            <div className="hidden xl:flex items-center gap-2 rounded-full border border-[#2b2d35] bg-[#16181e] px-3 py-1 text-xs text-[#a0a4b0]">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>3 Applications in Progress</span>
+            </div>
           </div>
 
-          {/* Navigation Links */}
-          <nav className="space-y-1">
-            <div className="px-2 pb-1.5 text-[9px] font-mono tracking-wider uppercase text-slate-400 dark:text-zinc-600">
-              NAVIGATION // CORE
+          {/* Center Navigation Tabs */}
+          <nav className="hidden lg:flex items-center gap-1 bg-[#16181e] p-1 rounded-xl border border-[#23252b] text-xs">
+            {mainTabs.map((tab) => {
+              const isActive = activePage === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActivePage(tab.id)}
+                  className={`px-3.5 py-1.5 rounded-lg font-medium transition-all ${
+                    isActive
+                      ? 'bg-white text-zinc-950 shadow-sm font-semibold'
+                      : 'text-[#8e929b] hover:text-white hover:bg-[#20222a]'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Right Metrics & Actions */}
+          <div className="flex items-center gap-3">
+            <div className="hidden md:flex items-center rounded-xl border border-[#23252b] bg-[#16181e] px-3.5 py-1.5 text-xs gap-3.5 text-[#a0a4b0]">
+              <div>
+                <span className="text-[#6c707d]">Applied: </span>
+                <strong className="text-white font-semibold">412</strong>
+              </div>
+              <div className="w-px h-3 bg-[#2a2d36]"></div>
+              <div>
+                <span className="text-[#6c707d]">Avg Match: </span>
+                <strong className="text-emerald-400 font-semibold">95%</strong>
+              </div>
             </div>
-            {navItems.map((item) => {
+
+            <button
+              onClick={() => setActivePage('tailor-studio')}
+              className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Tailor New Job</span>
+            </button>
+
+            {/* Theme Toggler */}
+            <button
+              onClick={toggleTheme}
+              className="rounded-lg border border-[#23252b] bg-[#16181e] p-2 text-[#8e929b] hover:text-white hover:border-[#333742] transition-colors"
+              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              aria-label="Toggle theme"
+            >
+              {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
+            </button>
+
+            <button
+              onClick={() => setNotificationActive(!notificationActive)}
+              className="rounded-lg border border-[#23252b] bg-[#16181e] p-2 text-[#8e929b] hover:text-white hover:border-[#333742] transition-colors relative"
+              title="Notifications"
+            >
+              <Bell className="w-4 h-4" />
+              {notificationActive && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-indigo-400"></span>}
+            </button>
+
+            {/* Profile Menu Trigger */}
+            <div 
+              onClick={() => setActivePage('settings')}
+              className="w-8 h-8 rounded-lg bg-[#20222a] border border-[#2e313c] hover:border-indigo-400 cursor-pointer flex items-center justify-center text-xs font-bold text-white transition-colors"
+              title={user?.email || 'User Profile'}
+            >
+              {userInitial}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Left Sidebar Navigation */}
+      <aside className="fixed left-0 top-16 bottom-0 w-60 bg-[#111216] border-r border-[#23252b] z-40 flex flex-col justify-between py-4 text-xs overflow-y-auto">
+        <div className="flex flex-col gap-2">
+          <div className="px-5 py-2">
+            <span className="text-[11px] font-semibold text-[#6c707d] uppercase tracking-wider block">
+              Menu
+            </span>
+          </div>
+
+          <nav className="flex flex-col px-3 gap-1">
+            {sideNavItems.map((item) => {
               const isActive = activePage === item.id;
               return (
                 <button
                   key={item.id}
                   onClick={() => setActivePage(item.id)}
-                  className={`w-full group flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200 select-none ${
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                     isActive
-                      ? 'bg-zinc-900 text-white shadow-sm dark:bg-white/[0.08] dark:text-white dark:border dark:border-white/[0.14]'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-white/[0.04]'
+                      ? 'bg-indigo-600 text-white font-semibold shadow-sm'
+                      : 'text-[#8e929b] hover:text-white hover:bg-[#1a1c23]'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className={`text-[10px] font-mono tracking-wider ${isActive ? 'text-indigo-400 dark:text-indigo-300 font-semibold' : 'text-slate-400 dark:text-zinc-600 group-hover:text-slate-500 dark:group-hover:text-zinc-400'}`}>
-                      {item.index}
-                    </span>
-                    <div className="shrink-0">{item.icon}</div>
-                    <span className="truncate tracking-tight">{item.label}</span>
+                  <div className="flex items-center gap-3">
+                    {item.icon}
+                    <span>{item.label}</span>
                   </div>
                   {item.badge && (
-                    <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                    }`}>
                       {item.badge}
                     </span>
-                  )}
-                  {isActive && !item.badge && (
-                    <ChevronRight className="w-3 h-3 text-slate-400 dark:text-zinc-400 shrink-0" />
                   )}
                 </button>
               );
@@ -113,94 +212,40 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
           </nav>
         </div>
 
-        {/* User Card & Controls */}
-        <div className="border-t border-slate-200/90 dark:border-white/[0.08] pt-4 space-y-3">
-          <div className="flex items-center justify-between px-2">
-            <div className="flex items-center gap-2.5 overflow-hidden">
-              <div className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-white/[0.1] flex items-center justify-center font-mono font-bold text-xs text-indigo-600 dark:text-indigo-400 shrink-0">
-                {user?.fullName?.charAt(0) || 'U'}
-              </div>
-              <div className="overflow-hidden">
-                <div className="text-xs font-semibold text-slate-800 dark:text-zinc-200 truncate">{user?.fullName || 'User'}</div>
-                <div className="text-[10px] font-mono text-slate-400 dark:text-zinc-500 truncate">{user?.email || 'user@vedha.ai'}</div>
-              </div>
+        {/* System Health Status & Logout */}
+        <div className="px-3 flex flex-col gap-3">
+          <div className="p-3 rounded-xl bg-[#16181e] border border-[#23252b] flex flex-col gap-2 text-xs">
+            <div className="flex items-center justify-between text-[#8e929b]">
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span>System Status</span>
+              </span>
+              <span className="text-white font-medium">Healthy</span>
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-[#6c707d]">
+              <span>Latency</span>
+              <span className="text-white font-mono">14ms</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 pt-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleTheme}
-              className="flex-1 text-[11px] h-8 justify-center gap-1.5 rounded-lg"
-            >
-              {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-              <span>{isDark ? 'Light' : 'Dark'}</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={logout}
-              className="text-[11px] h-8 text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 border-slate-300 dark:border-white/[0.1] rounded-lg"
-              title="Logout"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-            </Button>
-          </div>
+          <button
+            onClick={logout}
+            className="w-full rounded-lg border border-[#23252b] hover:border-rose-500/40 hover:bg-rose-500/10 text-[#8e929b] hover:text-rose-300 py-2 px-3 flex items-center justify-center gap-2 text-xs font-medium transition-colors"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Sign Out</span>
+          </button>
         </div>
       </aside>
 
-      {/* Main Content Area with Futuristic 3D Immersion */}
-      <main className="relative flex-1 flex flex-col min-w-0 overflow-y-auto bg-slate-50/90 dark:bg-[#050508]/90">
-        {spatial3dEnabled && <FuturisticCanvas3D />}
-
-        <header className="h-14 border-b border-slate-200/90 dark:border-white/[0.08] px-6 flex items-center justify-between shrink-0 bg-white/75 dark:bg-[#050508]/80 backdrop-blur-2xl sticky top-0 z-20 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="text-[10px] font-mono tracking-widest uppercase text-slate-400 dark:text-zinc-500 flex items-center gap-2">
-              <span>WORKSPACE</span>
-              <span className="opacity-40">/</span>
-              <span className="text-indigo-600 dark:text-indigo-400 font-bold">{currentNav?.label || 'DASHBOARD'}</span>
-              <span className="text-slate-400 dark:text-zinc-600">[{currentNav?.index || '01'}]</span>
-            </div>
+      {/* Main Content Area */}
+      <div className="pl-60">
+        <main className="relative w-full pt-16 bg-[#0b0c0e] min-h-screen">
+          <div className="flex flex-col w-full p-6 sm:p-8 max-w-7xl mx-auto">
+            {children}
           </div>
-
-          <div className="flex items-center gap-2.5">
-            {/* 3D Spatial Visualizer Toggle */}
-            <button
-              onClick={() => setSpatial3dEnabled(!spatial3dEnabled)}
-              className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-mono tracking-wider uppercase transition-all duration-300 ${
-                spatial3dEnabled
-                  ? 'border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shadow-[0_0_12px_rgba(99,102,241,0.2)]'
-                  : 'border-slate-300 dark:border-zinc-800 bg-slate-100 dark:bg-zinc-900 text-slate-500 dark:text-zinc-500'
-              }`}
-              title="Toggle 3D Neural Spatial Atmosphere"
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${spatial3dEnabled ? 'bg-indigo-500 animate-ping' : 'bg-zinc-500'}`} />
-              <span>{spatial3dEnabled ? '3D SPATIAL // ON' : '3D SPATIAL // OFF'}</span>
-            </button>
-
-            {/* Cyber Telemetry */}
-            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-200 dark:border-white/[0.06] bg-slate-100/60 dark:bg-zinc-950/60 text-[10px] font-mono text-slate-500 dark:text-zinc-400 backdrop-blur-md">
-              <Activity className="w-3 h-3 text-emerald-500" />
-              <span>SYNAPSE // 14ms</span>
-            </div>
-
-            <LivePulse active={true} label="CORE // ACTIVE" />
-
-            <div className="text-xs text-slate-600 dark:text-zinc-400 bg-slate-100/90 dark:bg-zinc-950/80 border border-slate-200 dark:border-white/[0.08] px-3 py-1 rounded-full flex items-center gap-2 backdrop-blur-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="font-mono text-[11px]">
-                <strong className="text-slate-800 dark:text-zinc-200">{user?.preferredModel || 'gemini-flash-lite-latest'}</strong>
-              </span>
-            </div>
-          </div>
-        </header>
-
-        <div className="relative z-10 flex-1 p-6 max-w-7xl w-full mx-auto">
-          {children}
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 };
-

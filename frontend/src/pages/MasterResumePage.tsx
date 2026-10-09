@@ -194,7 +194,18 @@ export const MasterResumePage: React.FC = () => {
   const updateExperience = (idx: number, field: keyof WorkExperienceItem, val: any) => {
     if (!schema) return;
     const exps = [...schema.experience];
-    exps[idx] = { ...exps[idx], [field]: val };
+    const updated = { ...exps[idx], [field]: val };
+    if (field === 'endDate') {
+      const lower = String(val).toLowerCase().trim();
+      if (lower === 'present' || lower === 'current' || lower === 'now' || lower.includes('present')) {
+        updated.isCurrent = true;
+      }
+    } else if (field === 'isCurrent') {
+      if (val === true && (!updated.endDate || updated.endDate.trim() === '')) {
+        updated.endDate = 'Present';
+      }
+    }
+    exps[idx] = updated;
     setSchema({ ...schema, experience: exps });
   };
 
@@ -682,15 +693,32 @@ export const MasterResumePage: React.FC = () => {
                             onChange={(e) => updateExperience(idx, 'company', e.target.value)}
                           />
                           <Input
-                            placeholder="Start Date"
+                            placeholder="Start Date (e.g. Jan 2026)"
                             value={exp.startDate}
                             onChange={(e) => updateExperience(idx, 'startDate', e.target.value)}
                           />
-                          <Input
-                            placeholder="End Date"
-                            value={exp.endDate}
-                            onChange={(e) => updateExperience(idx, 'endDate', e.target.value)}
-                          />
+                          <div className="space-y-1">
+                            <Input
+                              placeholder="End Date (e.g. Present)"
+                              value={exp.endDate}
+                              onChange={(e) => updateExperience(idx, 'endDate', e.target.value)}
+                            />
+                            <label className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-zinc-400 cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                checked={exp.isCurrent || (Boolean(exp.endDate) && /present|current/i.test(exp.endDate))}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  updateExperience(idx, 'isCurrent', checked);
+                                  if (checked) {
+                                    updateExperience(idx, 'endDate', 'Present');
+                                  }
+                                }}
+                                className="rounded text-indigo-600 focus:ring-indigo-500 w-3 h-3"
+                              />
+                              <span>Current Role (Present)</span>
+                            </label>
+                          </div>
                         </div>
                         <Button
                           variant="ghost"

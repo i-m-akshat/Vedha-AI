@@ -28,7 +28,7 @@ export const CornerBrackets: React.FC<{ className?: string; size?: string }> = (
  */
 export const LivePulse: React.FC<{ active?: boolean; label?: string; className?: string }> = ({
   active = true,
-  label = 'ENGINE // ACTIVE',
+  label = 'System Active',
   className,
 }) => (
   <div className={cn('inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-slate-200 dark:border-white/[0.08] bg-slate-100/80 dark:bg-zinc-950/60 backdrop-blur-md text-[10px] font-mono tracking-wider uppercase text-slate-700 dark:text-zinc-300', className)}>
@@ -226,12 +226,8 @@ export const Modal: React.FC<{
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
       <div className={cn('relative w-full rounded-2xl border border-slate-200/90 bg-white/95 text-slate-900 p-6 shadow-2xl dark:border-white/[0.12] dark:bg-zinc-950/95 dark:text-white', maxWidth)}>
-        <CornerBrackets size="w-3 h-3" />
         <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-white/[0.08] mb-4">
           <div>
-            <div className="text-[10px] font-mono tracking-wider uppercase text-slate-500 dark:text-zinc-400 mb-0.5">
-              DIALOG // OVERLAY
-            </div>
             <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">{title}</h3>
             {description && <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">{description}</p>}
           </div>
