@@ -83,3 +83,5 @@ flowchart TD
 ## Changelog
 - **2026-10-05T21:15:00+05:30**: Initial feature specification created for LinkedIn Easy Apply AI Q&A auto-fill, autonomous pipeline worker orchestration, MinIO S3 SDK integration, and root `context.md`.
 - **2026-10-05T21:40:00+05:30**: Verified full end-to-end implementation: Playwright worker container built and running with NATS JetStream connectivity, MinIO S3 native SigV4 upload/download verified, extension AI Q&A with biometric typing verified, and all 7 services healthy.
+- **2026-10-10T18:20:00+05:30**: Safe auto-fill extracts each Easy Apply control from its own legend, label, or combobox shell and answers only from profile, resume evidence, approved answers, or high-confidence `generate-answers` results. Skill-specific years, city-specific commute, and named visas are no longer filled with generic defaults. Low-confidence fields show a “Please review” badge.
+- **Impacted components**: `extension/content.js`, `extension/popup.js`, extension e2e harness.

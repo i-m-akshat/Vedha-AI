@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADR-008 — Ground LinkedIn Screening Answers, Never Guess</title>
+<style>
+  :root { --bg:#0b0d12; --card:#14161d; --line:#262932; --txt:#e6e8ee; --mut:#9aa0ae; --sky:#38bdf8; --grn:#34d399; --amb:#fbbf24; --rose:#fb7185; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; line-height:1.65; }
+  .wrap { max-width:960px; margin:0 auto; padding:40px 24px 80px; }
+  .crumb { color:var(--mut); font-size:13px; margin-bottom:12px; }
+  .crumb a { color:var(--sky); text-decoration:none; }
+  h1 { font-size:32px; margin:0 0 6px; letter-spacing:-.5px; }
+  .meta { display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 28px; }
+  .badge { font-size:12px; font-weight:700; padding:4px 12px; border-radius:999px; border:1px solid; }
+  .b-grn { color:var(--grn); border-color:#34d39955; background:#34d39914; }
+  .b-sky { color:var(--sky); border-color:#38bdf855; background:#38bdf814; }
+  .b-mut { color:var(--mut); border-color:#9aa0ae44; background:#9aa0ae14; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:24px; margin:20px 0; }
+  .card h2 { margin:0 0 12px; font-size:20px; }
+  .card h3 { margin:18px 0 8px; font-size:15px; color:var(--sky); }
+  p, li { color:#c9cdd8; font-size:15px; }
+  code { background:#0e1015; border:1px solid var(--line); border-radius:6px; padding:1px 7px; font-size:13.5px; color:var(--amb); }
+  table { width:100%; border-collapse:collapse; font-size:14px; margin-top:10px; }
+  th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--mut); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.06em; }
+  .human { background:#0e1420; border-left:3px solid var(--sky); padding:14px 18px; border-radius:0 12px 12px 0; margin:16px 0; }
+  svg.flow { width:100%; height:auto; background:#0e1015; border:1px solid var(--line); border-radius:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="crumb"><a href="index.html">Architecture decisions</a> · ADR-008</div>
+  <h1>Ground LinkedIn screening answers, never guess</h1>
+  <div class="meta">
+    <span class="badge b-grn">ACCEPTED</span>
+    <span class="badge b-sky">Extension</span>
+    <span class="badge b-mut">2026-10-10</span>
+  </div>
+
+  <div class="human">
+    Easy Apply contact fields and employer quizzes are different. Name and email come from the profile. “Years with PostgreSQL”, “commute to Bangalore”, and “valid B1 visa” must come from a fact the candidate already verified. If that fact is missing, the field is highlighted for the candidate. The extension does not invent 5 years, a salary, or a visa answer to get past Next.
+  </div>
+
+  <div class="card">
+    <h2>Context</h2>
+    <p>
+      LinkedIn renders screening prompts inside <code>.fb-dash-form-element</code>, <code>fieldset</code> legends, and <code>div[role="combobox"]</code>, not as <code>name="email"</code> inputs. The previous filler matched broad substrings (“years”, “name”, any combobox) and backfilled constants when the profile was blank. That both blocked submission and filed inaccurate applications.
+    </p>
+    <svg class="flow" viewBox="0 0 880 160" role="img" aria-label="Decision between fill and review">
+      <rect x="20" y="56" width="160" height="48" rx="10" fill="#14161d" stroke="#38bdf8"/>
+      <text x="100" y="85" text-anchor="middle" fill="#e6e8ee" font-size="13">Question shell</text>
+      <rect x="230" y="56" width="180" height="48" rx="10" fill="#14161d" stroke="#34d399"/>
+      <text x="320" y="85" text-anchor="middle" fill="#e6e8ee" font-size="13">Grounded fact?</text>
+      <rect x="470" y="20" width="170" height="44" rx="10" fill="#052e1c" stroke="#34d399"/>
+      <text x="555" y="47" text-anchor="middle" fill="#34d399" font-size="13">Type or select</text>
+      <rect x="470" y="96" width="170" height="44" rx="10" fill="#2a1d07" stroke="#fbbf24"/>
+      <text x="555" y="123" text-anchor="middle" fill="#fbbf24" font-size="13">Please review</text>
+      <path d="M180 80 H230 M410 72 L470 42 M410 88 L470 118" fill="none" stroke="#64748b" stroke-width="1.5"/>
+    </svg>
+  </div>
+
+  <div class="card">
+    <h2>Decision</h2>
+    <ol>
+      <li>Extract one question per control from the nearest shell that holds a single input or one radio group. Prefer legend and label spans over option labels.</li>
+      <li>Resolve locally from approved answers, explicit profile booleans, skill-year maps, and resume roles whose text names the skill and whose dates yield a duration.</li>
+      <li>Send only unresolved, non-identity questions to <code>POST /api/orchestrator/generate-answers</code>, including options and <code>masterResumeId</code>.</li>
+      <li>Auto-fill only when confidence is at least 0.8 and, for radios and selects, the answer equals an option. Otherwise badge the control “Please review”.</li>
+      <li>Keep human typing jitter (15–35ms) and pointer movement. Safe fill does not click Next.</li>
+    </ol>
+    <h3>Alternatives</h3>
+    <table>
+      <thead><tr><th>Option</th><th>Why it lost</th></tr></thead>
+      <tbody>
+        <tr><td>Keep total years as the fallback for every “years” prompt</td><td>Files the candidate’s whole career against a single tool and fails truth checks.</td></tr>
+        <tr><td>Always call the model first</td><td>Adds latency and a hallucination path for facts the profile already states exactly.</td></tr>
+        <tr><td>Leave blanks with no badge</td><td>The candidate cannot see why Next is disabled.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Consequences</h2>
+    <ul>
+      <li>Safe auto-fill can pause on a step until the candidate confirms an unknown visa or commute city. That is intentional.</li>
+      <li>Skill years summed across roles can over-count overlapping jobs. The number is still derived from dated resume text, not a constant.</li>
+      <li>EEO questions (gender, race, veteran, disability) stay on the review path and are not sent to the model.</li>
+    </ul>
+    <p>Implemented in <code>extension/content.js</code> (<code>extractFormQuestions</code>, <code>resolveScreeningAnswer</code>, <code>fillModalInputs</code>) and covered by <code>tests/e2e/screening_questions.test.js</code>.</p>
+  </div>
+</div>
+</body>
+</html>

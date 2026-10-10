@@ -161,6 +161,8 @@ global.assert = assert;
 // Load Test Files
 const testFiles = [
   { tier: 1, file: path.join(__dirname, 'tier1_features.test.js') },
+  { tier: 1, file: path.join(__dirname, 'screening_questions.test.js') },
+  { tier: 1, file: path.join(__dirname, 'easy_apply_detection.test.js') },
   { tier: 2, file: path.join(__dirname, 'tier2_boundaries.test.js') },
   { tier: 3, file: path.join(__dirname, 'tier3_pairwise.test.js') },
   { tier: 4, file: path.join(__dirname, 'tier4_realworld.test.js') }

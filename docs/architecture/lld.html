@@ -733,6 +733,8 @@ builder.Entity&lt;RefreshToken&gt;(b =>
           <div class="card-title">Content Script Relay (content.js)</div>
           <p>
             Injected into <code>http://localhost:3000/*</code> to listen for authentication postMessages, and into <code>https://*.linkedin.com/*</code> to inspect Easy Apply modals and auto-fill form inputs.
+            On LinkedIn it polls the details pane for 2.5 seconds, ignores messaging overlays without treating form messages as chat, and clicks Easy Apply with a pointer event sequence. An already-open Easy Apply dialog is used immediately.
+            Safe auto-fill calls <code>extractFormQuestions</code> so each control is paired with its own legend or label, then <code>resolveScreeningAnswer</code> before <code>POST /api/orchestrator/generate-answers</code>.
           </p>
         </div>
         <div class="card">
@@ -742,6 +744,24 @@ builder.Entity&lt;RefreshToken&gt;(b =>
           </p>
         </div>
       </div>
+      <h3>LinkedIn screening question flow</h3>
+      <p>
+        Employer questions such as “years with PostgreSQL”, “commute to Bangalore”, and “valid B1 visa” are not contact fields. The filler walks up to the nearest shell that contains a single control (or one radio group), reads the legend or <code>.artdeco-text-input--label</code>, and never reuses the first label on the step. Answers at confidence 0.8 or higher are typed with 15–35ms keystroke jitter or selected with pointer movement. Lower confidence draws an amber outline and a “Please review” badge. Invented defaults (5 years, 30 days, 140000 salary, sponsorship “No”) are not inserted.
+      </p>
+      <svg class="seq" viewBox="0 0 860 120" role="img" aria-label="Screening question resolution flow">
+        <rect x="8" y="36" width="140" height="48" rx="8" fill="#0e1420" stroke="#38bdf8"/>
+        <text x="78" y="64" text-anchor="middle" fill="#e6e8ee" font-size="12">Extract question</text>
+        <rect x="188" y="36" width="150" height="48" rx="8" fill="#0e1420" stroke="#34d399"/>
+        <text x="263" y="64" text-anchor="middle" fill="#e6e8ee" font-size="12">Profile / resume</text>
+        <rect x="378" y="36" width="160" height="48" rx="8" fill="#0e1420" stroke="#38bdf8"/>
+        <text x="458" y="64" text-anchor="middle" fill="#e6e8ee" font-size="12">generate-answers</text>
+        <rect x="578" y="18" width="130" height="36" rx="8" fill="#052e1c" stroke="#34d399"/>
+        <text x="643" y="41" text-anchor="middle" fill="#34d399" font-size="12">Fill if ≥ 0.8</text>
+        <rect x="578" y="66" width="130" height="36" rx="8" fill="#2a1d07" stroke="#fbbf24"/>
+        <text x="643" y="89" text-anchor="middle" fill="#fbbf24" font-size="12">Please review</text>
+        <path d="M148 60 H188 M338 60 H378 M538 60 H578" stroke="#64748b" marker-end="url(#arr)"/>
+        <defs><marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 Z" fill="#64748b"/></marker></defs>
+      </svg>
     </section>
 
     <!-- SECTION 9: AKSH AGENT HARNESS -->

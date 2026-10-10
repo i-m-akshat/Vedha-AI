@@ -73,44 +73,12 @@ public class JobScraperService : IJobScraperService
                     if (crawlResult.IsSuccess && !string.IsNullOrWhiteSpace(crawlResult.Value.Markdown) && crawlResult.Value.Markdown.Length >= 50)
                     {
                         var cleanedMarkdown = crawlResult.Value.Markdown;
-                        var title = crawlResult.Value.Title;
-                        string? company = null;
-
-                        if (!string.IsNullOrWhiteSpace(title))
-                        {
-                            var atIdx = title.IndexOf(" at ", StringComparison.OrdinalIgnoreCase);
-                            var dashIdx = title.IndexOf(" — ", StringComparison.OrdinalIgnoreCase);
-                            if (dashIdx == -1) dashIdx = title.IndexOf(" - ", StringComparison.OrdinalIgnoreCase);
-
-                            if (atIdx > 0)
-                            {
-                                var parsedTitle = title.Substring(0, atIdx).Trim();
-                                var rest = title.Substring(atIdx + 4).Trim();
-                                var restDash = rest.IndexOf(" — ", StringComparison.OrdinalIgnoreCase);
-                                if (restDash == -1) restDash = rest.IndexOf(" - ", StringComparison.OrdinalIgnoreCase);
-                                company = restDash > 0 ? rest.Substring(0, restDash).Trim() : rest;
-                                title = parsedTitle;
-                            }
-                            else if (dashIdx > 0)
-                            {
-                                var part1 = title.Substring(0, dashIdx).Trim();
-                                var part2 = title.Substring(dashIdx + 3).Trim();
-                                title = part1;
-                                company = part2;
-                            }
-                        }
-
-                        if (string.IsNullOrWhiteSpace(company))
-                        {
-                            var postedByMatch = Regex.Match(cleanedMarkdown, @"(?:Posted by|Company:)\s*\[?([^\]\r\n\(\)]+)", RegexOptions.IgnoreCase);
-                            if (postedByMatch.Success)
-                            {
-                                company = postedByMatch.Groups[1].Value.Trim();
-                            }
-                        }
+                        // Page <title> on career sites is often "Company | motto".
+                        // Keep that string out of Target Role and recover the real heading.
+                        var identity = JobPostingTitleParser.Resolve(crawlResult.Value.Title, cleanedMarkdown);
 
                         _logger.LogInformation("Successfully ingested {Length} chars via Crawl4AI for {Url}", cleanedMarkdown.Length, url);
-                        return Result<(string, string?, string?, JobSource)>.Success((cleanedMarkdown, company, title, source));
+                        return Result<(string, string?, string?, JobSource)>.Success((cleanedMarkdown, identity.Company, identity.Title, source));
                     }
                 }
                 catch (Exception crawlEx)
@@ -285,6 +253,15 @@ public class JobScraperService : IJobScraperService
                 extractedText = CleanElementText(document.Body);
             }
 
+            var refined = JobPostingTitleParser.Refine(
+                detectedTitle,
+                detectedCompany,
+                document.Title,
+                ExtractHeadingTexts(document),
+                extractedText);
+            detectedTitle = refined.Title;
+            detectedCompany = refined.Company;
+
             if (string.IsNullOrWhiteSpace(extractedText))
             {
                 return Result<(string, string?, string?, JobSource)>.Failure("Unable to extract text from the provided URL. Please paste the job description directly.");
@@ -356,6 +333,15 @@ public class JobScraperService : IJobScraperService
         {
             _logger.LogDebug(ex, "Workday CXS API parse attempt was not applicable or failed");
             return null;
+        }
+    }
+
+    private static IEnumerable<string> ExtractHeadingTexts(IDocument document)
+    {
+        foreach (var heading in document.QuerySelectorAll("h1, h2, h3"))
+        {
+            var text = heading.TextContent?.Trim();
+            if (!string.IsNullOrWhiteSpace(text)) yield return text;
         }
     }
 

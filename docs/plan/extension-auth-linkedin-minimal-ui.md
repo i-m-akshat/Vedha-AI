@@ -86,6 +86,11 @@ Implement two-way shared authentication between the web app (`http://localhost:3
 - Verify container and web app health.
 
 ## 3. Changelog
+### 2026-10-10T13:10:00Z — Easy Apply locator: chat false positives, split-view polling, pointer click
+- **Changes**: `isMsgOrChatElement` matches only messaging containers. `findEasyApplyButton` requires an Easy Apply label, skips the results list, and polls for 2.5 seconds. `clickElementNaturally` sends pointer and mouse events before one native click. An already-open Easy Apply modal binds immediately.
+- **Rationale**: Issue #3. Auto-Apply reported that it could not find the button or the modal the user had opened.
+- **Impacted Components**: `extension/content.js`, `tests/e2e/easy_apply_detection.test.js`.
+
 ### 2026-10-09T23:44:00+05:30 — Unified Web App & Extension Single-Logo Sizing & Theme Toggler System
 - **Changes**: Enforced single-logo display across BOTH Web App (`AppLayout.tsx`, `AuthPages.tsx`) and Extension (`popup.html`, `popup.js`), completely removing redundant title text. Calibrated proportional sizing for `VedhaAI-Dark.png` (3:1 aspect ratio) and `vedha-logo.png` (1.5:1 aspect ratio). Integrated working Theme Toggler (`Sun` / `Moon`) into both applications.
 - **Rationale**: User clarification to strictly render only the logo without title text on both dark and light modes, calibrating for differing aspect ratios and providing seamless theme toggling.
