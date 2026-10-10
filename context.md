@@ -679,6 +679,11 @@ A:\AIProjects\Resumebuilder\
   - `node.exe -c extension/content.js`: 0 syntax errors.
   - `git diff extension/content.js`: Auto-apply changes cleanly reverted; token sync intact.
 
+### 2026-10-10T18:20:00+05:30 — LinkedIn screening questions are grounded or reviewed
+- **Change**: Safe auto-fill extracts each Easy Apply question from its own legend, label, select, or combobox. Skill years come from `skillYears` or dated resume roles that name the skill. Commute and named-visa answers require an explicit profile fact. Confidence below 0.8 leaves an amber “Please review” badge. Popup no longer sends notice `30`, salary `140000`, or sponsorship `false` as stand-ins.
+- **Why**: Employer prompts were skipped or filled with contact-field defaults, which blocked Next and risked inaccurate applications.
+- **Verification**: `node tests/e2e/runner.js` — 142 passed. See `docs/bugfixes/linkedin-screening-question-autofill.md` and ADR-008.
+
 ### 2026-10-09T23:44:00+05:30 — Unified Web App & Extension Single-Logo Calibration & Theme Toggler Integration
 - **Architectural Enhancements**:
   1. **Strict Single-Logo Enforcement (No Text/Title)**:

@@ -70,3 +70,6 @@ This plan coordinates the changes across the Chrome Extension, Backend WebApi, I
 ## 5. Changelog
 - **2026-10-05T21:16:00+05:30**: Initial implementation plan drafted.
 - **2026-10-05T21:40:00+05:30**: All steps completed: S3 client integrated with AWSSDK.S3, backend QuestionItems support deployed, extension DOM question extractor with Gemini answers implemented, MinIO Chainguard container deployed, Playwright worker container built & verified with NATS, root context.md created, all 30 unit tests passing, all 7 containers running healthy.
+- **2026-10-10T18:20:00+05:30**: Replaced attribute-only screening fill with `extractFormQuestions` + `resolveScreeningAnswer`. Confidence below 0.8 escalates. Removed popup defaults of 30 days notice, 140000 salary, and `requiresVisaSponsorship: false`.
+- **Why**: LinkedIn Easy Apply steps were skipping employer questions or filing total years, notice, and salary into unrelated prompts.
+- **Impacted components**: extension content script, popup payload, e2e tests, LLD, ADR-008.
