@@ -191,6 +191,67 @@ public class JobScraperTests
     }
 
     [Fact]
+    public async Task ScrapeAsync_WhenCrawlTitleIsCompanyMotto_UsesRoleHeadingInstead()
+    {
+        const string mockMarkdown = """
+            # Stripe
+            Financial infrastructure for the internet
+
+            ## Software Engineer, Payments
+            ## About the role
+            Build billing systems used by millions of businesses. You will design APIs, mentor engineers, and ship reliable payment products.
+            """;
+        var mockCrawlResult = ResumeTailor.Domain.Common.Result<ResumeTailor.Application.Common.Interfaces.Crawl4AiResultDto>.Success(
+            new ResumeTailor.Application.Common.Interfaces.Crawl4AiResultDto(
+                true,
+                mockMarkdown,
+                "Stripe | Financial infrastructure for the internet",
+                null));
+
+        var mockCrawl4Ai = new Moq.Mock<ResumeTailor.Application.Common.Interfaces.ICrawl4AiService>();
+        mockCrawl4Ai
+            .Setup(c => c.CrawlAsync(Moq.It.IsAny<string>(), Moq.It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockCrawlResult);
+
+        var scraper = new JobScraperService(new HttpClient(), NullLogger<JobScraperService>.Instance, mockCrawl4Ai.Object);
+
+        var result = await scraper.ScrapeAsync("https://www.linkedin.com/jobs/view/123456789/");
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Title.Should().Be("Software Engineer, Payments");
+        result.Value.Company.Should().Be("Stripe");
+        result.Value.Title.Should().NotContain("Financial infrastructure");
+    }
+
+    [Fact]
+    public async Task ScrapeAsync_CompanyCareerPage_ShouldNotUseHeroMottoAsRole()
+    {
+        const string html = """
+            <html>
+              <head>
+                <title>Acme | We help teams ship faster</title>
+              </head>
+              <body>
+                <h1>Acme — We help teams ship faster</h1>
+                <h2>Senior Backend Engineer</h2>
+                <main>
+                  <p>Design APIs and mentor engineers on the platform team. Requirements include C# and PostgreSQL experience across production services.</p>
+                </main>
+              </body>
+            </html>
+            """;
+        using var httpClient = new HttpClient(new StaticResponseHandler(html));
+        var scraper = new JobScraperService(httpClient, NullLogger<JobScraperService>.Instance);
+
+        var result = await scraper.ScrapeAsync("https://www.example.com/jobs/senior-backend-engineer");
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Source.Should().Be(JobSource.CompanyCareers);
+        result.Value.Title.Should().Be("Senior Backend Engineer");
+        result.Value.Company.Should().Be("Acme");
+    }
+
+    [Fact]
     public async Task Crawl4AiService_HandlesV094Response_ShouldExtractMarkdownAndTitle()
     {
         // Arrange

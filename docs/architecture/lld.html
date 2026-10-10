@@ -733,6 +733,7 @@ builder.Entity&lt;RefreshToken&gt;(b =>
           <div class="card-title">Content Script Relay (content.js)</div>
           <p>
             Injected into <code>http://localhost:3000/*</code> to listen for authentication postMessages, and into <code>https://*.linkedin.com/*</code> to inspect Easy Apply modals and auto-fill form inputs.
+            On LinkedIn it polls the details pane for 2.5 seconds, ignores messaging overlays without treating form messages as chat, and clicks Easy Apply with a pointer event sequence. An already-open Easy Apply dialog is used immediately.
           </p>
         </div>
         <div class="card">

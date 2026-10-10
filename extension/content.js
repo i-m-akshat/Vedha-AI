@@ -579,17 +579,36 @@
   }
 
   // 7. Multi-Strategy LinkedIn Modal & Button Locators
+  const EASY_APPLY_DOM_WAIT_MS = 2500;
+  const SEARCH_LIST_ROOT = ".jobs-search-results-list, .scaffold-layout__list, ul.jobs-search__results-list";
+
+  function normalizeLabel(value) {
+    return String(value || "")
+      .replace(/[\u200B-\u200D\uFEFF]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  }
+
   function isMsgOrChatElement(el) {
-    if (!el) return false;
-    // Strictly target LinkedIn's docked messaging overlay, chat trays, and floating chat bubbles
-    if (el.closest("aside.msg-overlay-container, .msg-overlay-list-bubble, .msg-overlay-container, #msg-overlay, .msg-convo-wrapper, .feed-shared-messaging-overlay")) {
-      return true;
-    }
-    const aria = (el.getAttribute("aria-label") || "").toLowerCase();
-    if (aria === "messaging" || aria === "chat" || aria.includes("messaging overlay")) {
-      return true;
-    }
-    return false;
+    if (!el || typeof el.closest !== "function") return false;
+    // Only real LinkedIn messaging surfaces. Substrings such as "msg" match
+    // ordinary form copy (artdeco-inline-feedback__message, form-group__message,
+    // msg-warning) and must not hide an open Easy Apply dialog.
+    const chatRoot = el.closest([
+      "aside.msg-overlay-container",
+      "aside.msg-overlay-list-bubble",
+      "#msg-overlay",
+      ".msg-overlay-container",
+      ".msg-overlay-list-bubble",
+      ".msg-overlay-conversation-bubble",
+      ".msg-convo-wrapper",
+      ".feed-shared-messaging-overlay",
+      "[data-view-name='messaging-overlay']"
+    ].join(", "));
+    if (chatRoot) return true;
+    const aria = normalizeLabel(el.getAttribute("aria-label"));
+    return aria === "messaging" || aria === "chat" || aria.includes("messaging overlay");
   }
 
   function getTopLevelModal(el) {
@@ -599,15 +618,21 @@
   }
 
   function findEasyApplyModal() {
-    // Strategy 1: Direct explicit LinkedIn Easy Apply modal and content containers
+    // Strategy 1: Explicit Easy Apply containers. Do not treat every
+    // #artdeco-modal-outlet child or [data-test-modal] as the application;
+    // those nodes also host share sheets and empty overlays.
     const explicitContainers = [
       ".jobs-easy-apply-modal",
       ".jobs-easy-apply-content",
       "form.jobs-easy-apply-form",
+      ".jobs-easy-apply-footer",
+      "[data-test-modal-id='easy-apply-modal']",
+      "[data-test-modal-id='easy-apply']",
       "div[data-view-name*='easy-apply-modal']",
       "div[data-view-name*='easy-apply']",
-      "#artdeco-modal-outlet > div",
-      "[data-test-modal]"
+      "[data-sdui-component*='EasyApply']",
+      "[data-sdui-component*='easy-apply']",
+      "#jobs-apply-header"
     ];
 
     for (const sel of explicitContainers) {
@@ -640,8 +665,8 @@
                aria.includes("next") || aria.includes("review") || aria.includes("submit");
       });
 
-      const text = (d.innerText || d.textContent || "").toLowerCase();
-      const hasKeywords = text.includes("apply") || text.includes("contact info") || text.includes("resume") || text.includes("screening");
+      const text = normalizeLabel(d.innerText || d.textContent);
+      const hasKeywords = text.includes("easy apply") || text.includes("apply to") || text.includes("contact info") || text.includes("resume") || text.includes("screening");
 
       if ((hasInputs && hasActionBtn) || (hasActionBtn && hasKeywords) || (hasInputs && hasKeywords)) {
         const top = getTopLevelModal(d);
@@ -749,110 +774,127 @@
     return null;
   }
 
+  function isEasyApplyControl(el) {
+    if (!el || !isElementVisible(el) || isMsgOrChatElement(el)) return false;
+    if (typeof el.closest === "function" && el.closest(SEARCH_LIST_ROOT)) return false;
+    if (el.disabled || el.getAttribute("aria-disabled") === "true") return false;
+
+    const text = normalizeLabel(el.innerText || el.textContent);
+    const aria = normalizeLabel(el.getAttribute("aria-label"));
+    const titleAttr = normalizeLabel(el.getAttribute("title"));
+    const viewName = normalizeLabel(el.getAttribute("data-view-name"));
+    if (text.includes("applied") || aria.includes("applied") || titleAttr.includes("applied")) return false;
+
+    return text.includes("easy apply")
+      || aria.includes("easy apply")
+      || titleAttr.includes("easy apply")
+      || viewName.includes("easy-apply")
+      || viewName.includes("easy apply");
+  }
+
   function findEasyApplyButton() {
-    // Strategy 1: Check inside top card / job details container for the active job's Apply button (PRIMARY STRATEGY)
+    // Active job pane first. `main` is last because the search split view
+    // renders other Easy Apply buttons inside the left-hand results list.
     const topCardContainers = [
+      ".scaffold-layout__detail",
+      ".jobs-search__job-details",
+      ".jobs-details",
       ".job-details-jobs-unified-top-card__container--two-pane",
+      ".job-details-jobs-unified-top-card__container",
       ".jobs-details__top-card",
       ".jobs-unified-top-card",
-      ".jobs-search__job-details",
+      ".jobs-details__main-content",
       ".job-view-layout",
       "[data-view-name*='job-details']",
       ".top-card-layout",
       "main"
     ];
 
+    const seenRoots = new Set();
     for (const containerSel of topCardContainers) {
       const container = document.querySelector(containerSel);
-      if (!container || !isElementVisible(container)) continue;
+      if (!container || seenRoots.has(container) || !isElementVisible(container)) continue;
+      seenRoots.add(container);
+      if (container.closest(SEARCH_LIST_ROOT)) continue;
 
-      // Ensure this container is not part of the left search list
-      if (container.closest(".jobs-search-results-list, .scaffold-layout__list, ul.jobs-search__results-list")) continue;
-
-      // Look for specific apply buttons inside the active job's top card
-      const specificButtons = Array.from(container.querySelectorAll(
-        "button.jobs-apply-button, .jobs-apply-button--top-card button, button[data-view-name*='easy-apply'], div[data-view-name*='easy-apply'] button, .jobs-s-apply button"
-      ));
-
-      for (const btn of specificButtons) {
-        if (!isElementVisible(btn) || isMsgOrChatElement(btn)) continue;
-        if (btn.disabled || btn.getAttribute("aria-disabled") === "true") continue;
-        const text = (btn.innerText || btn.textContent || "").trim().toLowerCase();
-        const aria = (btn.getAttribute("aria-label") || "").toLowerCase();
-        if (text.includes("applied") || aria.includes("applied")) continue;
-        console.log("[Vedha AI] Found Easy Apply button via top-card specific selector:", btn);
-        return btn;
-      }
-
-      // Any button or role=button inside top card containing "easy apply"
-      const allTopCardBtns = Array.from(container.querySelectorAll("button, a, [role='button']"));
-      for (const btn of allTopCardBtns) {
-        if (!isElementVisible(btn) || isMsgOrChatElement(btn)) continue;
-        if (btn.disabled || btn.getAttribute("aria-disabled") === "true") continue;
-        const text = (btn.innerText || btn.textContent || "").trim().toLowerCase();
-        const aria = (btn.getAttribute("aria-label") || "").toLowerCase();
-        if (text.includes("applied") || aria.includes("applied")) continue;
-
-        if (text.includes("easy apply") || aria.includes("easy apply")) {
-          const target = btn.closest("button") || btn;
-          console.log("[Vedha AI] Found Easy Apply button via top-card text scan:", target);
-          return target;
-        }
+      const match = findEasyApplyButtonIn(container);
+      if (match) {
+        console.log("[Vedha AI] Found Easy Apply button in", containerSel, match);
+        return match;
       }
     }
 
-    // Strategy 2: Specific LinkedIn Easy Apply selectors across document (strictly excluding left search list)
-    const specificSelectors = [
-      "button[data-view-name*='easy-apply']",
-      "div[data-view-name*='easy-apply'] button",
-      ".jobs-apply-button--top-card button",
-      "button.jobs-apply-button",
-      ".jobs-s-apply button"
-    ];
-
-    for (const sel of specificSelectors) {
-      const elements = Array.from(document.querySelectorAll(sel));
-      for (const el of elements) {
-        // Exclude left search results list
-        if (el.closest(".jobs-search-results-list, .scaffold-layout__list, ul.jobs-search__results-list, .jobs-search-two-pane__wrapper > div:first-child")) {
-          continue;
-        }
-        const btn = el.closest("button, [role='button']") || el;
-        if (isMsgOrChatElement(btn) || !isElementVisible(btn)) continue;
-        if (btn.disabled || btn.getAttribute("aria-disabled") === "true") continue;
-
-        const text = (btn.innerText || btn.textContent || "").trim().toLowerCase();
-        const aria = (btn.getAttribute("aria-label") || "").toLowerCase();
-        if (text.includes("applied") || aria.includes("applied")) continue;
-
-        console.log("[Vedha AI] Found Easy Apply button via global selector (" + sel + "):", btn);
-        return btn;
-      }
+    const globalMatch = findEasyApplyButtonIn(document);
+    if (globalMatch) {
+      console.log("[Vedha AI] Found Easy Apply button via document scan:", globalMatch);
     }
+    return globalMatch;
+  }
 
+  function findEasyApplyButtonIn(root) {
+    if (!root || typeof root.querySelectorAll !== "function") return null;
+    const nodes = root.querySelectorAll(
+      "button, a, [role='button'], .jobs-apply-button, [data-live-test-job-apply-button], [data-view-name*='easy-apply']"
+    );
+    const seen = new Set();
+    for (const node of nodes) {
+      const target = (typeof node.closest === "function" && node.closest("button, a, [role='button']")) || node;
+      if (seen.has(target)) continue;
+      seen.add(target);
+      if (isEasyApplyControl(target)) return target;
+    }
     return null;
+  }
+
+  async function waitForEasyApplySurface(timeoutMs = EASY_APPLY_DOM_WAIT_MS) {
+    const start = Date.now();
+    do {
+      const modal = findEasyApplyModal();
+      if (modal) return { modal, button: null };
+      const button = findEasyApplyButton();
+      if (button) return { modal: null, button };
+      if (Date.now() - start >= timeoutMs) break;
+      await sleep(250);
+    } while (Date.now() - start < timeoutMs);
+    return { modal: findEasyApplyModal(), button: findEasyApplyButton() };
   }
 
   async function clickElementNaturally(el) {
     if (!el) return;
-    const target = el.closest("button, a, [role='button']") || el;
+    const target = (typeof el.closest === "function" && el.closest("button, a, [role='button']")) || el;
     target.scrollIntoView({ behavior: "smooth", block: "center" });
     await sleep(randomBetween(200, 350));
 
-    const opts = { bubbles: true, cancelable: true, view: window };
-    target.dispatchEvent(new PointerEvent("pointerover", opts));
-    target.dispatchEvent(new MouseEvent("mouseenter", opts));
-    target.dispatchEvent(new MouseEvent("mouseover", opts));
-    target.dispatchEvent(new PointerEvent("pointerdown", opts));
-    target.dispatchEvent(new MouseEvent("mousedown", opts));
+    const rect = typeof target.getBoundingClientRect === "function"
+      ? target.getBoundingClientRect()
+      : { left: 0, top: 0, width: 1, height: 1 };
+    const clientX = rect.left + Math.max(rect.width || 0, 1) / 2;
+    const clientY = rect.top + Math.max(rect.height || 0, 1) / 2;
+    const hover = {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      clientX,
+      clientY,
+      button: 0,
+      buttons: 0,
+      pointerId: 1,
+      pointerType: "mouse",
+      isPrimary: true
+    };
+    const down = { ...hover, buttons: 1 };
+    target.dispatchEvent(new PointerEvent("pointerover", hover));
+    target.dispatchEvent(new MouseEvent("mouseenter", hover));
+    target.dispatchEvent(new MouseEvent("mouseover", hover));
+    target.dispatchEvent(new PointerEvent("pointermove", hover));
+    target.dispatchEvent(new PointerEvent("pointerdown", down));
+    target.dispatchEvent(new MouseEvent("mousedown", down));
     if (typeof target.focus === "function") target.focus();
     await sleep(randomBetween(50, 100));
-    target.dispatchEvent(new PointerEvent("pointerup", opts));
-    target.dispatchEvent(new MouseEvent("mouseup", opts));
-    // Single activation: the native click below dispatches exactly one click
-    // event (bubbles to React roots) AND performs the default action
-    // (navigation, submit). A synthetic 'click' here as well would double-fire
-    // handlers — double submits, double toggles. Pacing evidence stays above.
+    target.dispatchEvent(new PointerEvent("pointerup", hover));
+    target.dispatchEvent(new MouseEvent("mouseup", hover));
+    // One native click reaches React/Ember listeners and runs the default action.
+    // A second synthetic click event would double-submit the Easy Apply step.
     target.click();
     await sleep(randomBetween(400, 700));
   }
@@ -2707,25 +2749,13 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
     const isLinkedIn = window.location.hostname.includes("linkedin.com");
 
     if (isLinkedIn) {
-      let modal = findEasyApplyModal();
+      let surface = await waitForEasyApplySurface(EASY_APPLY_DOM_WAIT_MS);
+      let modal = surface.modal;
 
-      if (!modal) {
-        let applyBtn = findEasyApplyButton();
-        if (!applyBtn) {
-          const waitStart = Date.now();
-          while (Date.now() - waitStart < 2500) {
-            await sleep(250);
-            applyBtn = findEasyApplyButton();
-            if (applyBtn) break;
-            modal = findEasyApplyModal();
-            if (modal) break;
-          }
-        }
-        if (applyBtn && !modal) {
-          console.log("[Vedha AI] Clicking Easy Apply button for Safe Fill:", applyBtn);
-          await clickElementNaturally(applyBtn);
-          modal = await waitForEasyApplyModal(10000);
-        }
+      if (!modal && surface.button) {
+        console.log("[Vedha AI] Clicking Easy Apply button for Safe Fill:", surface.button);
+        await clickElementNaturally(surface.button);
+        modal = await waitForEasyApplyModal(10000);
       }
 
       if (modal) {
@@ -2812,8 +2842,9 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
       }
     }
 
-    // 1. Check if the modal is ALREADY OPEN
+    // 1. Attach immediately when the candidate already opened Easy Apply.
     let modal = findEasyApplyModal();
+    let applyButton = null;
 
     // 2. Only check if already applied when modal is not already open, and strictly inside the target job top card
     if (!modal) {
@@ -2829,29 +2860,18 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
       }
     }
 
-    // 3. If not open, look for the Easy Apply button and click it
+    // 3. Poll the active job pane while LinkedIn hydrates the split view, then click.
     if (!modal) {
-      let applyBtn = findEasyApplyButton();
+      const surface = await waitForEasyApplySurface(EASY_APPLY_DOM_WAIT_MS);
+      modal = surface.modal;
+      applyButton = surface.button;
+    }
 
-      // If button not found immediately, poll for 2.5s to handle async DOM mounting
-      if (!applyBtn) {
-        console.log("[Vedha AI] Easy Apply button not found immediately, polling for 2.5s...");
-        const waitStart = Date.now();
-        while (Date.now() - waitStart < 2500) {
-          await sleep(250);
-          applyBtn = findEasyApplyButton();
-          if (applyBtn) break;
-          modal = findEasyApplyModal();
-          if (modal) break;
-        }
-      }
-
-      if (applyBtn && !modal) {
-        console.log("[Vedha AI] Found Easy Apply button, clicking naturally...", applyBtn);
-        await clickElementNaturally(applyBtn);
-        modal = await waitForEasyApplyModal(10000);
-      }
-    } else {
+    if (!modal && applyButton) {
+      console.log("[Vedha AI] Found Easy Apply button, clicking naturally...", applyButton);
+      await clickElementNaturally(applyButton);
+      modal = await waitForEasyApplyModal(10000);
+    } else if (modal) {
       console.log("[Vedha AI] Easy Apply modal is already open on page:", modal);
     }
 
@@ -3125,23 +3145,11 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
     const isLinkedIn = window.location.hostname.includes("linkedin.com");
 
     if (isLinkedIn) {
-      let modal = findEasyApplyModal();
-      if (!modal) {
-        let applyBtn = findEasyApplyButton();
-        if (!applyBtn) {
-          const waitStart = Date.now();
-          while (Date.now() - waitStart < 2500) {
-            await sleep(250);
-            applyBtn = findEasyApplyButton();
-            if (applyBtn) break;
-            modal = findEasyApplyModal();
-            if (modal) break;
-          }
-        }
-        if (applyBtn && !modal) {
-          await clickElementNaturally(applyBtn);
-          modal = await waitForEasyApplyModal(8000);
-        }
+      const surface = await waitForEasyApplySurface(EASY_APPLY_DOM_WAIT_MS);
+      let modal = surface.modal;
+      if (!modal && surface.button) {
+        await clickElementNaturally(surface.button);
+        modal = await waitForEasyApplyModal(8000);
       }
 
       if (!modal) {

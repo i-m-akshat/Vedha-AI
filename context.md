@@ -694,3 +694,7 @@ A:\AIProjects\Resumebuilder\
      - Rebuilt and tagged `localhost/infra-frontend:latest` in Podman; restarted `vedha-frontend`.
      - Confirmed `http://localhost:3000` responding with HTTP 200 OK.
 
+### 2026-10-10T13:10:00Z — Target role extraction and Easy Apply detection
+- **Crawler**: `JobPostingTitleParser` stops saving `Company | motto` as the target role and reads the job-title heading instead (issue #12).
+- **Extension**: Easy Apply detection ignores form messages that merely contain `msg`, polls the details pane for 2.5 seconds, binds an already-open modal, and clicks with a pointer event sequence (issue #3).
+

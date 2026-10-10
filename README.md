@@ -29,11 +29,11 @@ Vedha AI is an enterprise-grade AI Career Operating System that bridges the gap 
   - Autonomous AI Playwright Worker (`workers/`) for semantic DOM navigation, resume attachment, and anti-bot evasion.
 - **Chrome Extension Copilot (Manifest V3)**:
   - **Adaptive Floating Copilot Dock**: Draggable floating pill/card with active modal elevation (`manageModalStacking`) so application dialogs are never blocked.
-  - **Dynamic LinkedIn Easy Apply AI Q&A Engine**: Real-time DOM inspection extracting employer questions, grounded AI answering via Google Gemini, and biometric Gaussian keystroke jitter auto-filling.
+  - **Dynamic LinkedIn Easy Apply AI Q&A Engine**: Real-time DOM inspection extracting employer questions, grounded AI answering via Google Gemini, and biometric Gaussian keystroke jitter auto-filling. The Easy Apply locator polls the job details pane, ignores LinkedIn chat, and attaches when the modal is already open.
   - 1-click job scraping directly from active browser tabs.
 - **Advanced Scraping Microservice (Crawl4AI)**:
   - Dedicated `unclecode/crawl4ai` microservice running on port 11235 with Playwright stealth mode and automated JavaScript accordions unrolling (`.show-more-less-html__button--more` on LinkedIn, `.styles_jhc__read-more-btn` on Naukri).
-  - Next.js SPA dynamic hydration management and dual-engine fallback to AngleSharp.
+  - Next.js SPA dynamic hydration management and dual-engine fallback to AngleSharp. Page titles shaped like `Company | motto` are not stored as the target role; the scraper keeps the job-title heading instead.
 - **Candidate Master Profile & Verified Evidence Base**:
   - Store work authorization, visa sponsorship requirements, notice period, and salary expectations once.
   - Key-value evidence knowledge base for verified real-world accomplishments.

@@ -78,6 +78,8 @@
 - **2026-10-06 03:32:30 IST**: Added Crawl4AI `@params` schema fix with 4.0s delay for SPA hydration (Naukri/Next.js) and Master Resume upload animated visual loader.
 - **2026-10-06 03:55:30 IST**: Hardened JD schema extraction with explicit JSON schema prompts for Gemini, added boundary-safe regex taxonomy fallback (`EnsureKeywordsPopulated`) in `JobDescriptionSchema.cs`, added unit test coverage in `AtsScoringEngineTests.cs`, recompiled and deployed backend, and ran backfill on existing records in `resumate_db`.
 - **2026-10-06 04:02:30 IST**: Implemented AI keyword fallback `ExtractKeywordsFallbackWithAiAsync` called strictly when keywords/skills are empty. Built `FuturisticCanvas3D.tsx` WebGL spatial canvas, updated `AppLayout.tsx` with telemetry and spatial toggle, enhanced `Card` and `Badge` with cyber holographic variants, and redesigned Result Studio ATS scorecard into a futuristic holographic radial gauge with neon keyword chips.
+- **2026-10-10 13:10:00 UTC**: Added `JobPostingTitleParser` and called it from `JobScraperService` after Crawl4AI and after AngleSharp extraction. Unit tests cover motto page titles and `Role at Company — Location`.
+
 
 
 

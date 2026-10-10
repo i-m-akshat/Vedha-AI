@@ -125,6 +125,8 @@ None. The resulting Markdown is saved directly to the existing `JobDescription.R
 - **2026-10-06 03:32:00 IST**: Updated payload contract to Crawl4AI v0.9.4 `@params` deserializer standard with `delay_before_return_html: 4.0` for SPA hydration (Naukri/Next.js). Added Resume Upload visual loading requirements.
 - **2026-10-06 03:55:00 IST**: Fixed ATS scoring and keyword extraction gap where under-specified Gemini prompts omitted technical arrays (`mustHaveSkills`, `keywords`), causing an artificial 33% ATS score cap. Added explicit schema prompt constraints, deterministic boundary-safe regex taxonomy fallback (`EnsureKeywordsPopulated`), and database backfill for existing parsed jobs and scorecards.
 - **2026-10-06 04:02:00 IST**: Added targeted AI keyword extraction fallback strictly when initial extraction and taxonomy return zero keywords (`ExtractKeywordsFallbackWithAiAsync`). Implemented futuristic minimalistic aesthetic UI/UX overhaul featuring Three.js neural constellation background canvas (`FuturisticCanvas3D`), 3D holographic cards, cybernetic telemetry headers, and glowing radial SVG ATS score gauge.
+- **2026-10-10 13:10:00 UTC**: Target role extraction ignores career-page branding. `JobPostingTitleParser` rejects titles shaped like `Company | motto` and reads the real role from a later heading. Crawl4AI and the AngleSharp fallback both use it.
+
 
 
 

@@ -1499,7 +1499,12 @@ function loadExtensionContentScript(env) {
     manageModalStacking: typeof manageModalStacking !== 'undefined' ? manageModalStacking : null,
     injectFloatingCopilotWidget: typeof injectFloatingCopilotWidget !== 'undefined' ? injectFloatingCopilotWidget : null,
     setNativeValue: typeof setNativeValue !== 'undefined' ? setNativeValue : null,
-    showCopilotReviewHud: typeof showCopilotReviewHud !== 'undefined' ? showCopilotReviewHud : null
+    showCopilotReviewHud: typeof showCopilotReviewHud !== 'undefined' ? showCopilotReviewHud : null,
+    findEasyApplyButton: typeof findEasyApplyButton !== 'undefined' ? findEasyApplyButton : null,
+    findEasyApplyModal: typeof findEasyApplyModal !== 'undefined' ? findEasyApplyModal : null,
+    isMsgOrChatElement: typeof isMsgOrChatElement !== 'undefined' ? isMsgOrChatElement : null,
+    clickElementNaturally: typeof clickElementNaturally !== 'undefined' ? clickElementNaturally : null,
+    waitForEasyApplySurface: typeof waitForEasyApplySurface !== 'undefined' ? waitForEasyApplySurface : null
   };
 `;
   const modifiedCode = rawCode.replace(/\n\s*\}\)\(\);?\s*$/, `${hook}\n})();`);
