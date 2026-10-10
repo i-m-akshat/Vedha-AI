@@ -651,6 +651,28 @@ async def execute_playwright_flow(
                             await human_type(num_inp, str(years))
                             log(f"[Playwright Agent] Populated numeric experience field with profile value {years}")
 
+                    # 4b. Read-back verification (parity with the ATS path):
+                    # confirm modal fills actually stuck before advancing.
+                    try:
+                        verify_ok, verify_total = 0, 0
+                        if await phone_input.count() > 0:
+                            verify_total += 1
+                            if (await phone_input.input_value() or "").strip():
+                                verify_ok += 1
+                            else:
+                                log("[Playwright Agent] WARNING: modal phone field is empty after fill.")
+                        numeric_check = await modal.locator("input[type='number'], input[id*='numeric']").all()
+                        for num_inp in numeric_check:
+                            try:
+                                verify_total += 1
+                                if (await num_inp.input_value() or "").strip():
+                                    verify_ok += 1
+                            except Exception:
+                                pass
+                        log(f"[Playwright Agent] Modal read-back: {verify_ok}/{verify_total} fields retained values.")
+                    except Exception as verify_ex:
+                        log(f"[Playwright Agent] Modal read-back probe failed (non-fatal): {verify_ex}")
+
                     # 5. Check if Review Screen Reached (Contains Submit Button)
                     submit_btn = modal.locator("button[aria-label='Submit application'], button:has-text('Submit application')").first
                     if await submit_btn.count() > 0:
