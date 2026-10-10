@@ -134,7 +134,9 @@ public class GeminiFunctionCallingClient
             {
                 name = t.Name,
                 description = Truncate(t.Description ?? t.Name, 500),
-                parameters = JsonNode.Parse(t.JsonSchema.GetRawText()),
+                // MEAI emits .NET-flavored JSON Schema; the Gemini API expects
+                // its Schema proto. Translate (never pass through raw).
+                parameters = ToGeminiSchema(JsonNode.Parse(t.JsonSchema.GetRawText())),
             })
             .ToList();
 
@@ -369,6 +371,178 @@ public class GeminiFunctionCallingClient
             }
 
             return new GeminiUsage(model, prompt, completion);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Translates .NET/MEAI-flavored JSON Schema into the Gemini API Schema
+    /// proto. The critical fix: MEAI emits <c>"type": ["string", "null"]</c>
+    /// for nullable parameters, but the API's <c>type</c> field is a single
+    /// enum (not repeating) — sending the array is a 400
+    /// ("Proto field is not repeating, cannot start list", observed live on
+    /// gemini-3.8-flash). Translation: one real type + null becomes
+    /// <c>{type, nullable: true}</c>; several real types become
+    /// <c>anyOf</c>. Applied recursively (properties/items/anchors); local
+    /// <c>$ref</c>s are inlined with a depth cap. Unknown keywords pass
+    /// through — the API ignores those; only the shape is normalized.
+    /// </summary>
+    public static JsonNode? ToGeminiSchema(JsonNode? node, int depth = 0)
+    {
+        if (node is not JsonObject obj || depth > 8)
+        {
+            return node;
+        }
+
+        // Inline local $refs (#/$defs/X, #/properties/X) with cycle protection:
+        // the API does not resolve references.
+        if (obj.TryGetPropertyValue("$ref", out var refNode)
+            && refNode?.ToString() is string refText
+            && refText.StartsWith("#/", StringComparison.Ordinal))
+        {
+            var resolved = ResolveLocalRef(obj, refText, depth);
+            if (resolved != null)
+            {
+                return resolved;
+            }
+        }
+
+        if (obj.TryGetPropertyValue("type", out var typeNode) && typeNode is JsonArray typeArray)
+        {
+            var names = typeArray
+                .Select(t => t?.ToString()?.Trim('"', ' ', '\'').ToLowerInvariant())
+                .Where(s => !string.IsNullOrEmpty(s))
+                .Select(s => s!)
+                .ToList();
+            var hasNull = names.Contains("null");
+            var real = names.Where(s => s != "null").Distinct().ToList();
+
+            obj.Remove("type");
+            if (real.Count == 1)
+            {
+                obj["type"] = real[0];
+                if (hasNull)
+                {
+                    obj["nullable"] = true;
+                }
+            }
+            else if (real.Count > 1)
+            {
+                var anyOf = new JsonArray();
+                foreach (var t in real)
+                {
+                    anyOf.Add(new JsonObject { ["type"] = t });
+                }
+
+                obj["anyOf"] = anyOf;
+                if (hasNull)
+                {
+                    obj["nullable"] = true;
+                }
+            }
+            else if (hasNull)
+            {
+                obj["nullable"] = true;
+            }
+            // Empty type array: key dropped, object accepts anything.
+        }
+
+        foreach (var key in new[] { "properties" })
+        {
+            if (obj.TryGetPropertyValue(key, out var props) && props is JsonObject propsObj)
+            {
+                foreach (var prop in propsObj.ToList())
+                {
+                    ReplaceChild(propsObj, prop.Key, prop.Value, ToGeminiSchema(prop.Value, depth + 1));
+                }
+            }
+        }
+
+        if (obj.TryGetPropertyValue("items", out var items))
+        {
+            if (items is JsonArray itemsArray)
+            {
+                for (var i = 0; i < itemsArray.Count; i++)
+                {
+                    var mapped = ToGeminiSchema(itemsArray[i], depth + 1);
+                    if (!ReferenceEquals(mapped, itemsArray[i]))
+                    {
+                        itemsArray[i] = mapped;
+                    }
+                }
+            }
+            else if (items is JsonObject)
+            {
+                ReplaceChild(obj, "items", items, ToGeminiSchema(items, depth + 1));
+            }
+        }
+
+        foreach (var key in new[] { "anyOf", "oneOf", "allOf", "prefixItems" })
+        {
+            if (obj.TryGetPropertyValue(key, out var arr) && arr is JsonArray jsonArr)
+            {
+                for (var i = 0; i < jsonArr.Count; i++)
+                {
+                    var mapped = ToGeminiSchema(jsonArr[i], depth + 1);
+                    if (!ReferenceEquals(mapped, jsonArr[i]))
+                    {
+                        jsonArr[i] = mapped;
+                    }
+                }
+            }
+        }
+
+        foreach (var key in new[] { "additionalProperties", "contains", "not", "if", "then", "else" })
+        {
+            if (obj.TryGetPropertyValue(key, out var sub) && sub is JsonObject)
+            {
+                ReplaceChild(obj, key, sub, ToGeminiSchema(sub, depth + 1));
+            }
+        }
+
+        return obj;
+    }
+
+    /// <summary>
+    /// JsonNodes reject re-parenting — even assigning an instance back into
+    /// its own slot throws. Skip the write when the translator returned the
+    /// identical (mutated-in-place) instance.
+    /// </summary>
+    private static void ReplaceChild(JsonObject parent, string key, JsonNode? oldChild, JsonNode? @new)
+    {
+        if (!ReferenceEquals(oldChild, @new))
+        {
+            parent[key] = @new;
+        }
+    }
+
+    private static JsonNode? ResolveLocalRef(JsonObject holder, string reference, int depth)
+    {
+        try
+        {
+            // Only same-document anchors: "#/$defs/Name" or "#/properties/name".
+            var segments = reference[2..].Split('/', StringSplitOptions.RemoveEmptyEntries);
+            JsonNode root = holder;
+            while (root.Parent != null)
+            {
+                root = root.Parent;
+            }
+
+            JsonNode? current = root;
+            foreach (var segment in segments)
+            {
+                var key = Uri.UnescapeDataString(segment.Replace("~1", "/").Replace("~0", "~"));
+                current = current?[key];
+                if (current == null)
+                {
+                    return null;
+                }
+            }
+
+            return ToGeminiSchema(current.DeepClone(), depth + 1);
         }
         catch
         {

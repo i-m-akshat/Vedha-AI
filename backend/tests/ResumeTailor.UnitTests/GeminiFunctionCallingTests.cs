@@ -4,6 +4,7 @@ using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using ResumeTailor.Application.Common.Interfaces;
@@ -350,5 +351,90 @@ public class GeminiFunctionCallingTests
 
         result2.IsSuccess.Should().BeTrue();
         handler2.LastRequestBody.Should().NotContain(call.CallId);
+    }
+
+    [Fact]
+    public void ToGeminiSchema_NullableTypeArray_BecomesSingleTypePlusNullable()
+    {
+        var node = System.Text.Json.Nodes.JsonNode.Parse(
+            """{"type": "object", "properties": {"q": {"type": ["string", "null"]}}}""");
+
+        var mapped = GeminiFunctionCallingClient.ToGeminiSchema(node);
+
+        var prop = mapped!["properties"]!["q"]!.AsObject();
+        prop["type"]!.ToString().Should().Be("string");
+        prop["nullable"]!.GetValue<bool>().Should().BeTrue();
+    }
+
+    [Fact]
+    public void ToGeminiSchema_MultiTypeArray_BecomesAnyOf()
+    {
+        var node = System.Text.Json.Nodes.JsonNode.Parse(
+            """{"type": ["string", "integer"]}""");
+
+        var mapped = GeminiFunctionCallingClient.ToGeminiSchema(node);
+
+        mapped!.AsObject().Should().NotContainKey("type");
+        mapped["anyOf"]!.AsArray().Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void ToGeminiSchema_NestedItems_TranslatedRecursively()
+    {
+        var node = System.Text.Json.Nodes.JsonNode.Parse(
+            """{"type": "object", "properties": {"tags": {"type": "array", "items": {"type": ["string", "null"]}}}}""");
+
+        var mapped = GeminiFunctionCallingClient.ToGeminiSchema(node);
+
+        var items = mapped!["properties"]!["tags"]!["items"]!.AsObject();
+        items["type"]!.ToString().Should().Be("string");
+        items["nullable"]!.GetValue<bool>().Should().BeTrue();
+    }
+
+    [Fact]
+    public void RealCatalogSchemas_Translate_WithoutTypeArrays()
+    {
+        // Regression for the live 400: every declared tool's parameters must
+        // survive translation with zero "type": [...] arrays anywhere.
+        var scopes = new Mock<IServiceScopeFactory>().Object;
+        var catalog = AkshTools.CreateCatalog(scopes, Guid.NewGuid(), Guid.NewGuid());
+
+        catalog.Should().NotBeEmpty();
+        foreach (var tool in catalog)
+        {
+            var raw = tool.JsonSchema.GetRawText();
+            var mapped = GeminiFunctionCallingClient.ToGeminiSchema(
+                System.Text.Json.Nodes.JsonNode.Parse(raw));
+            ContainsTypeArray(mapped).Should().BeFalse(
+                $"tool '{tool.Name}' schema must not contain type arrays after translation");
+        }
+    }
+
+    private static bool ContainsTypeArray(System.Text.Json.Nodes.JsonNode? node)
+    {
+        if (node is System.Text.Json.Nodes.JsonArray arr)
+        {
+            return false;
+        }
+
+        if (node is not System.Text.Json.Nodes.JsonObject obj)
+        {
+            return false;
+        }
+
+        foreach (var prop in obj)
+        {
+            if (prop.Key == "type" && prop.Value is System.Text.Json.Nodes.JsonArray)
+            {
+                return true;
+            }
+
+            if (ContainsTypeArray(prop.Value))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
