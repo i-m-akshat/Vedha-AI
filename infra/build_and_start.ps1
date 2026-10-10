@@ -52,6 +52,8 @@ $stealthEngine = if ($envMap["WORKER_STEALTH_ENGINE"]) { $envMap["WORKER_STEALTH
 $akshEnabled  = if ($envMap["Aksh__Enabled"]) { $envMap["Aksh__Enabled"] } else { "false" }
 $akshBudget   = if ($envMap["Aksh__DailyTokenBudget"]) { $envMap["Aksh__DailyTokenBudget"] } else { "200000" }
 $akshModel    = if ($envMap["Aksh__Model"]) { $envMap["Aksh__Model"] } else { "" }
+$akshMaxRuns  = if ($envMap["Aksh__MaxConcurrentRuns"]) { $envMap["Aksh__MaxConcurrentRuns"] } else { "3" }
+$dispatchEnabled = if ($envMap["Dispatch__Enabled"]) { $envMap["Dispatch__Enabled"] } else { "true" }
 
 # 4. Ensure Network exists
 $networks = podman network ls --format "{{.Name}}" 2>$null
@@ -137,6 +139,8 @@ podman run -d --name vedha-backend --network infra_vedha-network --network-alias
     -e Aksh__Enabled="$akshEnabled" `
     -e Aksh__DailyTokenBudget="$akshBudget" `
     -e Aksh__Model="$akshModel" `
+    -e Aksh__MaxConcurrentRuns="$akshMaxRuns" `
+    -e Dispatch__Enabled="$dispatchEnabled" `
     -e Crawl4AiSettings__BaseUrl="http://crawler:11235" `
     -e Crawl4AiSettings__Enabled="true" `
     -e Crawl4AiSettings__ApiToken="$crawlerToken" `

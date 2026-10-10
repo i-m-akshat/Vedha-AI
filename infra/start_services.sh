@@ -25,6 +25,8 @@ AI_MAX_TOKENS=$(echo "${AI_MAX_TOKENS:-16384}" | tr -d '\r')
 Aksh__Enabled=$(echo "${Aksh__Enabled:-false}" | tr -d '\r')
 Aksh__DailyTokenBudget=$(echo "${Aksh__DailyTokenBudget:-200000}" | tr -d '\r')
 Aksh__Model=$(echo "${Aksh__Model:-}" | tr -d '\r')
+Aksh__MaxConcurrentRuns=$(echo "${Aksh__MaxConcurrentRuns:-3}" | tr -d '\r')
+Dispatch__Enabled=$(echo "${Dispatch__Enabled:-true}" | tr -d '\r')
 CRAWL4AI_API_TOKEN=$(echo "${CRAWL4AI_API_TOKEN:-vedha_crawler_token_2026}" | tr -d '\r')
 CRAWLER_ENABLED=$(echo "${CRAWLER_ENABLED:-true}" | tr -d '\r')
 AGENTQL_API_KEY=$(echo "${AGENTQL_API_KEY:-}" | tr -d '\r')
@@ -145,6 +147,8 @@ podman run -d --name vedha-backend \
   -e Aksh__Enabled="${Aksh__Enabled}" \
   -e Aksh__DailyTokenBudget="${Aksh__DailyTokenBudget}" \
   -e Aksh__Model="${Aksh__Model}" \
+  -e Aksh__MaxConcurrentRuns="${Aksh__MaxConcurrentRuns}" \
+  -e Dispatch__Enabled="${Dispatch__Enabled}" \
   -e Crawl4AiSettings__BaseUrl="http://vedha-crawler:11235" \
   -e Crawl4AiSettings__Enabled="${CRAWLER_ENABLED}" \
   -e Crawl4AiSettings__ApiToken="${CRAWL4AI_API_TOKEN}" \

@@ -146,9 +146,15 @@ public class GeminiFunctionCallingClient
             {
                 temperature = options?.Temperature ?? 0.2f,
                 maxOutputTokens = 8192,
-                // Thinking traces would require echoing thoughtSignatures on the
-                // next turn; tool-routing reasoning runs without them by design.
-                thinkingConfig = new { thinkingBudget = 0 },
+                // No thinkingConfig: 3.x uses thinking_level (low/medium/high),
+                // not thinking_budget — sending the legacy field risks rejection.
+                // Server default (medium) applies.
+                // KNOWN LIMIT (documented, watch in live logs): with thinking on,
+                // model parts may carry thoughtSignature, which 3.x wants echoed
+                // for multi-turn function calling when history is manipulated
+                // (ours is rebuilt every turn). ids are echoed (hard requirement,
+                // implemented); signatures are not yet. If live loops degrade
+                // after turn 1 with signature warnings, echo comes next.
             },
         };
 
@@ -409,21 +415,27 @@ public class GeminiFunctionCallingClient
     private static string Truncate(string value, int maxLength)
         => string.IsNullOrEmpty(value) || value.Length <= maxLength ? value ?? string.Empty : value[..maxLength];
 
+    /// <summary>
+    /// Harness model resolution (verified 2026-10-10 against vendor docs):
+    /// unset means gemini-3.8-flash (GA flagship Flash, agent-engineered).
+    /// 2.x is capacity-gated for new API users — never defaulted or mapped to.
+    /// Explicit lite aliases still resolve to lite (cost choice respected);
+    /// every other explicit name passes through untouched (never downgraded).
+    /// </summary>
     private static string ResolveModelName(string? modelName)
     {
         if (string.IsNullOrWhiteSpace(modelName))
         {
-            return "gemini-flash-lite-latest";
+            return "gemini-3.8-flash";
         }
 
         var clean = modelName.Trim();
-        if (string.Equals(clean, "gemini-2.0-flash", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(clean, "gemini-1.5-flash", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(clean, "gemini-3.8-flash", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(clean, "gemini-3.6-flash", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(clean, "gemini-2.5-flash-lite", StringComparison.OrdinalIgnoreCase) ||
+        if (string.Equals(clean, "gemini-2.5-flash-lite", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(clean, "gemini-3.5-flash-lite", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(clean, "gemini-3.1-flash-lite", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(clean, "flash-lite-latest", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(clean, "gemini-flash-lite", StringComparison.OrdinalIgnoreCase))
+            string.Equals(clean, "gemini-flash-lite", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(clean, "gemini-flash-lite-latest", StringComparison.OrdinalIgnoreCase))
         {
             return "gemini-flash-lite-latest";
         }

@@ -120,9 +120,9 @@ export async function* streamAkshTurn(
   }
 }
 
-/** Flash-Lite blended estimate: $0.25/M in + $1.50/M out. */
+/** 3.8 Flash introductory pricing estimate: $0.75/M in + $3.75/M out (through Dec 2026). */
 export function estimateCostUsd(inputTokens: number, outputTokens: number): number {
-  return (inputTokens * 0.25 + outputTokens * 1.5) / 1_000_000;
+  return (inputTokens * 0.75 + outputTokens * 3.75) / 1_000_000;
 }
 
 export function formatTokens(n: number): string {

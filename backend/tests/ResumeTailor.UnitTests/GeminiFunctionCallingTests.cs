@@ -22,6 +22,7 @@ public class GeminiFunctionCallingTests
     {
         private readonly Queue<string> _responses;
         public string? LastRequestBody { get; private set; }
+        public string? LastRequestUrl { get; private set; }
         public int RequestCount { get; private set; }
 
         public StubHandler(string json) : this(new[] { json }) { }
@@ -31,6 +32,7 @@ public class GeminiFunctionCallingTests
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             RequestCount++;
+            LastRequestUrl = request.RequestUri?.ToString();
             if (request.Content != null)
             {
                 LastRequestBody = await request.Content.ReadAsStringAsync(cancellationToken);
@@ -291,6 +293,25 @@ public class GeminiFunctionCallingTests
 
         result2.IsSuccess.Should().BeTrue();
         handler2.LastRequestBody.Should().Contain("api-call-007");
+    }
+
+    [Fact]
+    public async Task DefaultModel_IsCurrentFlagshipFlash()
+    {
+        // No model configured anywhere: the harness must target the current
+        // GA flagship Flash (verified 2026-10-10 as gemini-3.8-flash), never a
+        // capacity-gated 2.x model and never lite by silent default.
+        var handler = new StubHandler("""
+            {"candidates": [{"content": {"role": "model", "parts": [{"text": "Hello!"}]}, "finishReason": "STOP"}]}
+            """);
+        var client = CreateClient(handler);
+
+        var result = await client.GenerateWithToolsAsync(
+            new List<ChatMessage> { new(ChatRole.User, "hi") },
+            new ChatOptions { Instructions = "test" });
+
+        result.IsSuccess.Should().BeTrue();
+        handler.LastRequestUrl.Should().Contain("gemini-3.8-flash");
     }
 
     [Fact]

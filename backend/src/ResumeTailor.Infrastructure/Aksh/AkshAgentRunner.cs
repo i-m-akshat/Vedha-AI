@@ -311,8 +311,12 @@ public class AkshAgentRunner : IAkshAgentRunner
             _ => null,
         };
         var modelOverride = _config.GetValue<string?>("Aksh:Model");
+        // Harness default is gemini-3.8-flash (GA flagship Flash,
+        // agent-engineered; 2.x is capacity-gated for new API users):
+        // explicit global override, else the candidate's Settings model,
+        // else 3.8 Flash. Lite stays available by explicit choice.
         var userClient = _services.GetRequiredService<AkshChatClientAdapter>()
-            .WithCredentials(user?.PreferredAiProvider, userKey, modelOverride ?? user?.PreferredModel);
+            .WithCredentials(user?.PreferredAiProvider, userKey, modelOverride ?? user?.PreferredModel ?? "gemini-3.8-flash");
         var agent = HarnessAgentFactory.CreateTurnAgent(_services, userId, session.Id, userClient);
         var answer = new StringBuilder();
         var chatMessages = new List<ChatMessage> { new(ChatRole.User, prompt) };

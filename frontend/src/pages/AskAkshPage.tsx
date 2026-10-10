@@ -652,7 +652,7 @@ export const AskAkshPage: React.FC = () => {
               </span>
             </p>
             <p className="mt-1 text-[11px] text-[#6c707d]">
-              Flash-Lite blended estimate. Memories and deterministic checks cost nothing.
+              3.8 Flash introductory pricing estimate. Memories and deterministic checks cost nothing.
             </p>
           </section>
 

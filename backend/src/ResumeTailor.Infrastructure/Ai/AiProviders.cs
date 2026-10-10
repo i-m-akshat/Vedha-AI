@@ -1055,20 +1055,25 @@ public class GeminiProvider : IAiProvider
         return text.Trim();
     }
 
+    /// <summary>
+    /// Model resolution (verified 2026-10-10): explicit names pass through
+    /// untouched — never downgraded (a previous revision forced 2.x/3.x Flash
+    /// names onto lite, which would silently reroute an explicit 3.8 choice).
+    /// Only unset + explicit lite aliases resolve to lite-latest.
+    /// </summary>
     private static string ResolveModelName(string? modelName)
     {
         if (string.IsNullOrWhiteSpace(modelName))
             return "gemini-flash-lite-latest";
 
         var clean = modelName.Trim();
-        if (string.Equals(clean, "gemini-3.6-flash", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(clean, "gemini-2.0-flash", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(clean, "gemini-1.5-flash", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(clean, "gemini-3.8-flash", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(clean, "gemini-2.5-flash-lite", StringComparison.OrdinalIgnoreCase) ||
+        if (string.Equals(clean, "gemini-2.5-flash-lite", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(clean, "gemini-3.5-flash-lite", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(clean, "gemini-3.1-flash-lite", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(clean, "flash lite latest", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(clean, "flash-lite-latest", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(clean, "gemini-flash-lite", StringComparison.OrdinalIgnoreCase))
+            string.Equals(clean, "gemini-flash-lite", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(clean, "gemini-flash-lite-latest", StringComparison.OrdinalIgnoreCase))
             return "gemini-flash-lite-latest";
 
         return clean;
