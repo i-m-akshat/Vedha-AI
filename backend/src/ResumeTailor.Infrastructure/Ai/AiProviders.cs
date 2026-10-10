@@ -665,9 +665,11 @@ public class GeminiProvider : IAiProvider
                 return Result<TResponse>.Failure($"AI output was truncated due to exceeding maximum token limit ({maxTokens}).");
             }
 
-            var content = candidate?["content"]?["parts"]?[0]?["text"]?.ToString();
+            // Thinking models may return thought parts (no text) before/around the
+            // answer: concatenate every text part instead of reading parts[0] only.
+            var content = ExtractCandidateText(candidate);
             if (string.IsNullOrWhiteSpace(content))
-                return Result<TResponse>.Failure("Empty content returned from Gemini.");
+                return Result<TResponse>.Failure(GeminiEmptyReason(node, finishReason));
 
             var cleanedJson = CleanJsonFences(content);
             var parsed = JsonSerializer.Deserialize<TResponse>(cleanedJson, JsonOptions);
@@ -709,63 +711,194 @@ public class GeminiProvider : IAiProvider
             generationConfig = CreateGenerationConfig(maxTokens, 0.2, false, model)
         };
 
-        HttpResponseMessage? response = null;
-        string? responseContent = null;
-
-        for (var attempt = 1; attempt <= 3; attempt++)
+        // Rounds: 0 = initial attempt, 1 = single retry after a tool-loop
+        // glitch (UNEXPECTED_TOOL_CALL / MALFORMED_FUNCTION_CALL with empty
+        // content — a known transient flash-lite behavior, especially when
+        // history contains prior function-call turns). Bounded: never loops.
+        for (var round = 0; round < 2; round++)
         {
-            try
-            {
-                using var request = new HttpRequestMessage(HttpMethod.Post, url);
-                request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
-                response = await _httpClient.SendAsync(request, cancellationToken);
-                responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            HttpResponseMessage? response = null;
+            string? responseContent = null;
 
-                if (response.StatusCode == System.Net.HttpStatusCode.NotFound && !model.Contains("gemini-flash-lite-latest"))
+            for (var attempt = 1; attempt <= 3; attempt++)
+            {
+                try
                 {
-                    _logger.LogWarning("Gemini model '{Model}' returned 404 Not Found. Retrying with fallback model gemini-flash-lite-latest...", model);
-                    model = "gemini-flash-lite-latest";
-                    url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
-                    body = new
+                    using var request = new HttpRequestMessage(HttpMethod.Post, url);
+                    request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+                    response = await _httpClient.SendAsync(request, cancellationToken);
+                    responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                    if (response.StatusCode == System.Net.HttpStatusCode.NotFound && !model.Contains("gemini-flash-lite-latest"))
                     {
-                        system_instruction = new { parts = new[] { new { text = systemPrompt } } },
-                        contents = new[] { new { parts = new[] { new { text = userPrompt } } } },
-                        generationConfig = CreateGenerationConfig(maxTokens, 0.2, false, model)
-                    };
-                    continue;
-                }
+                        _logger.LogWarning("Gemini model '{Model}' returned 404 Not Found. Retrying with fallback model gemini-flash-lite-latest...", model);
+                        model = "gemini-flash-lite-latest";
+                        url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
+                        body = new
+                        {
+                            system_instruction = new { parts = new[] { new { text = systemPrompt } } },
+                            contents = new[] { new { parts = new[] { new { text = userPrompt } } } },
+                            generationConfig = CreateGenerationConfig(maxTokens, 0.2, false, model)
+                        };
+                        continue;
+                    }
 
-                if ((response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable || (int)response.StatusCode == 429) && attempt < 3)
+                    if ((response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable || (int)response.StatusCode == 429) && attempt < 3)
+                    {
+                        _logger.LogWarning("Gemini API transient {StatusCode} on attempt {Attempt}. Retrying in {Delay}ms...", response.StatusCode, attempt, attempt * 1500);
+                        await Task.Delay(attempt * 1500, cancellationToken);
+                        continue;
+                    }
+
+                    break;
+                }
+                catch (Exception ex) when (attempt < 3 && !cancellationToken.IsCancellationRequested)
                 {
-                    _logger.LogWarning("Gemini API transient {StatusCode} on attempt {Attempt}. Retrying in {Delay}ms...", response.StatusCode, attempt, attempt * 1500);
-                    await Task.Delay(attempt * 1500, cancellationToken);
-                    continue;
+                    _logger.LogWarning(ex, "Gemini HTTP request exception on attempt {Attempt}. Retrying...", attempt);
+                    await Task.Delay(attempt * 1000, cancellationToken);
                 }
-
-                break;
             }
-            catch (Exception ex) when (attempt < 3 && !cancellationToken.IsCancellationRequested)
+
+            if (response == null || !response.IsSuccessStatusCode)
             {
-                _logger.LogWarning(ex, "Gemini HTTP request exception on attempt {Attempt}. Retrying...", attempt);
-                await Task.Delay(attempt * 1000, cancellationToken);
+                return Result<string>.Failure($"Gemini API error ({response?.StatusCode}): {responseContent}");
             }
+
+            var node = JsonNode.Parse(responseContent!);
+            var candidate = node?["candidates"]?[0];
+            var finishReason = candidate?["finishReason"]?.ToString();
+            if (string.Equals(finishReason, "MAX_TOKENS", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Gemini text output was truncated due to token limit ({MaxTokens}).", maxTokens);
+            }
+
+            var content = ExtractCandidateText(candidate);
+            if (!string.IsNullOrEmpty(content))
+            {
+                return Result<string>.Success(content);
+            }
+
+            // STOP with no text parts and no safety block is a NORMAL Gemini outcome
+            // (terse turn, stop quirk) — not an error. Fail graceful with empty text
+            // so the harness narrates from its deterministic receipts instead of
+            // alarming the candidate. Blocks still fail honestly below.
+            if (IsBenignEmptyResponse(node, finishReason))
+            {
+                _logger.LogInformation("Gemini returned no text parts with a benign finish (finishReason={FinishReason}); treating as empty turn.", finishReason);
+                return Result<string>.Success(string.Empty);
+            }
+
+            if (round == 0 && IsToolLoopGlitch(node, finishReason))
+            {
+                _logger.LogWarning("Gemini tool-loop glitch (finishReason={FinishReason}, blockReason={BlockReason}); retrying the turn once with identical parameters.",
+                    finishReason, node?["promptFeedback"]?["blockReason"]?.ToString());
+                await Task.Delay(1500, cancellationToken);
+                continue;
+            }
+
+            var reason = GeminiEmptyReason(node, finishReason);
+            _logger.LogWarning("Gemini returned no usable text (finishReason={FinishReason}, blockReason={BlockReason}).",
+                finishReason, node?["promptFeedback"]?["blockReason"]?.ToString());
+            return Result<string>.Failure(reason);
         }
 
-        if (response == null || !response.IsSuccessStatusCode)
+        return Result<string>.Failure("Gemini returned no usable text after retry.");
+    }
+
+    /// <summary>
+    /// Concatenates text across all candidate parts. Thinking models emit thought
+    /// parts without text; reading parts[0] alone misreports those as empty output.
+    /// Thought-flagged parts are skipped: internal reasoning must never leak into
+    /// user-visible narration.
+    /// </summary>
+    private static string ExtractCandidateText(JsonNode? candidate)
+    {
+        var parts = candidate?["content"]?["parts"]?.AsArray();
+        if (parts == null)
         {
-            return Result<string>.Failure($"Gemini API error ({response?.StatusCode}): {responseContent}");
+            return string.Empty;
         }
 
-        var node = JsonNode.Parse(responseContent!);
-        var candidate = node?["candidates"]?[0];
-        var finishReason = candidate?["finishReason"]?.ToString();
-        if (string.Equals(finishReason, "MAX_TOKENS", StringComparison.OrdinalIgnoreCase))
+        var sb = new StringBuilder();
+        foreach (var part in parts)
         {
-            _logger.LogWarning("Gemini text output was truncated due to token limit ({MaxTokens}).", maxTokens);
+            // JsonValue-typed; string compare avoids GetValue<T> throws on
+            // unexpected shapes. Absent "thought" => null => not skipped.
+            if (string.Equals(part?["thought"]?.ToString(), "true", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var text = part?["text"]?.ToString();
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                continue;
+            }
+
+            if (sb.Length > 0)
+            {
+                sb.Append('\n');
+            }
+
+            sb.Append(text);
         }
 
-        var content = candidate?["content"]?["parts"]?[0]?["text"]?.ToString();
-        return !string.IsNullOrEmpty(content) ? Result<string>.Success(content) : Result<string>.Failure("Empty content returned from Gemini.");
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// STOP (or missing reason) with zero text and zero safety signal is benign:
+    /// the model simply emitted nothing this turn. Anything else (SAFETY,
+    /// RECITATION, MAX_TOKENS, explicit blockReason) stays a failure.
+    /// </summary>
+    private static bool IsBenignEmptyResponse(JsonNode? root, string? finishReason)
+    {
+        var blockReason = root?["promptFeedback"]?["blockReason"]?.ToString();
+        if (!string.IsNullOrWhiteSpace(blockReason))
+            return false;
+
+        return string.IsNullOrWhiteSpace(finishReason)
+            || string.Equals(finishReason, "STOP", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Tool-loop glitch: the model attempted a function call outside the
+    /// declared set (often after history containing prior function-call turns,
+    /// or a flash-lite quirk with no tools at all) and produced no content.
+    /// Documented ecosystem-wide as transient — a single identical retry
+    /// frequently succeeds. Never treated as benign-empty: the ReAct loop
+    /// genuinely broke, so a repeated glitch stays a visible failure.
+    /// </summary>
+    private static bool IsToolLoopGlitch(JsonNode? root, string? finishReason)
+    {
+        if (!string.IsNullOrWhiteSpace(root?["promptFeedback"]?["blockReason"]?.ToString()))
+            return false;
+
+        return string.Equals(finishReason, "UNEXPECTED_TOOL_CALL", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(finishReason, "MALFORMED_FUNCTION_CALL", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GeminiEmptyReason(JsonNode? root, string? finishReason)
+    {
+        var blockReason = root?["promptFeedback"]?["blockReason"]?.ToString();
+        if (!string.IsNullOrWhiteSpace(blockReason))
+        {
+            return $"Gemini blocked the prompt (safety filter: {blockReason}). Rephrase and retry.";
+        }
+
+        if (string.Equals(finishReason, "SAFETY", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Gemini blocked the response (safety filter). Rephrase and retry.";
+        }
+
+        if (IsToolLoopGlitch(root, finishReason))
+        {
+            return $"Gemini hit a transient tool-loop glitch (finishReason={finishReason}) and returned no content, even after retry. Please send your message again.";
+        }
+
+        return string.IsNullOrWhiteSpace(finishReason)
+            ? "Gemini returned no text parts in its response."
+            : $"Gemini returned no text parts (finishReason={finishReason}).";
     }
 
     public async Task<Result<TResponse>> ParseDocumentBytesAsync<TResponse>(

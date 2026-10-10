@@ -39,51 +39,104 @@
 
   syncWebAppToken();
 
-  // Production-Grade Default Candidate Profile (Prevents empty field starvation)
+  // Unknown-safe default profile: every key exists (fill code + tests reference
+  // them) but NO value is synthesized. Blanks stay blank and flow into the
+  // amber "needs you" escalation path (Step E) instead of filing someone
+  // else's identity. Attestation booleans are null (unknown), never false:
+  // false would file a "No" the candidate never gave. Only explicit opt-outs
+  // that refuse action (coverLetterOptIn/agreedToTerms=false) are safe falses.
   const DEFAULT_CANDIDATE_PROFILE = {
-    fullName: "Alex Rivera",
-    firstName: "Alex",
-    lastName: "Rivera",
-    email: "alex.rivera.dev@gmail.com",
-    phoneNumber: "+1 (555) 349-2810",
-    phoneNumberDigitsOnly: "5553492810",
-    currentCity: "San Francisco, CA",
-    postalCode: "94105",
-    country: "United States",
-    countryCode: "US",
-    linkedInUrl: "https://linkedin.com/in/alex-rivera-dev",
-    githubUrl: "https://github.com/alexrivera",
-    portfolioUrl: "https://alexrivera.dev",
-    noticePeriodDays: 30,
-    noticePeriodWeeks: 4,
-    expectedSalary: "140000",
-    expectedSalaryFormatted: "140,000",
-    salaryCurrency: "USD",
-    requiresVisaSponsorship: false,
-    isAuthorizedToWork: true,
-    workAuthorization: "U.S. Citizen",
-    citizenshipStatus: "Citizen",
-    willingToRelocate: true,
-    willingToCommute: true,
-    remotePreference: "Remote",
-    totalYearsExperience: 5,
-    education: "Bachelor of Science in Computer Science",
-    educationLevel: "Bachelor's Degree",
-    university: "University of California, Berkeley",
-    major: "Computer Science",
-    graduationYear: "2020",
-    gpa: "3.8",
-    // EEO / Voluntary Disclosure Fields
-    gender: "Prefer not to disclose",
-    ethnicity: "Prefer not to disclose",
-    veteranStatus: "I am not a protected veteran",
-    disabilityStatus: "I do not have a disability",
-    pronouns: "They/Them",
+    fullName: "",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phoneNumber: "",
+    phoneNumberDigitsOnly: "",
+    currentCity: "",
+    postalCode: "",
+    country: "",
+    countryCode: "",
+    linkedInUrl: "",
+    githubUrl: "",
+    portfolioUrl: "",
+    noticePeriodDays: null,
+    noticePeriodWeeks: null,
+    expectedSalary: "",
+    expectedSalaryFormatted: "",
+    salaryCurrency: "",
+    requiresVisaSponsorship: null,
+    isAuthorizedToWork: null,
+    workAuthorization: "",
+    citizenshipStatus: "",
+    willingToRelocate: null,
+    willingToCommute: null,
+    remotePreference: "",
+    totalYearsExperience: null,
+    education: "",
+    educationLevel: "",
+    university: "",
+    major: "",
+    graduationYear: "",
+    gpa: "",
+    // EEO / Voluntary Disclosure Fields — never auto-answered, only escalated.
+    gender: "",
+    ethnicity: "",
+    veteranStatus: "",
+    disabilityStatus: "",
+    pronouns: "",
     // Additional commonly required fields
-    referralSource: "LinkedIn",
+    referralSource: "",
     coverLetterOptIn: false,
-    agreedToTerms: true
+    agreedToTerms: false
   };
+
+  // Sensitive-question gate (fail-closed): identity, legal/attestation, EEO,
+  // consent, and compensation fields must ONLY be answered from explicit
+  // profile values or grounded answers — never rule-invented, never AI-guessed.
+  // Unknowns escalate to the candidate (amber) instead of filing fabrications.
+  const SENSITIVE_PATTERNS = [
+    "sponsorship", "visa", "authorized", "legally", "eligible", "citizen",
+    "right to work", "clearance",
+    "gender", "race", "ethnicity", "veteran", "disability", "eeo", "pronoun",
+    "consent", "agree", "certify", "acknowledge", "terms", "privacy",
+    "accurate", "truthful", "attest",
+    "background check", "drug test", "relocate", "relocation", "commute",
+    "18 years", "date of birth", "dob", " age ",
+    "phone", "mobile", "tel", "salary", "compensation", "ctc", "pay expectation",
+    "postal", "zip", "ssn", "social security", "passport",
+    "full name", "first name", "last name", "email address", "email"
+  ];
+
+  function isSensitiveQuestion(qLower = "", errLower = "", el = null) {
+    const hay = `${qLower} ${errLower}`.toLowerCase();
+    if (SENSITIVE_PATTERNS.some(p => hay.includes(p))) return true;
+    try {
+      const t = (el && el.type ? el.type : "").toLowerCase();
+      if (t === "password") return true;
+      if (t === "tel") return true;
+    } catch { /* attribute probe must never break the loop */ }
+    return false;
+  }
+
+  function hasGroundedValue(v) {
+    // 0 is grounded (e.g. 0 notice days); false is NOT (an attestation never
+    // defaults to "No"). Strict !== keeps both cases exact.
+    return v !== undefined && v !== null && v !== "" && v !== false;
+  }
+
+  function squashText(s) {
+    return String(s || "").toLowerCase().replace(/[\s_.\-]+/g, "");
+  }
+
+  // Explicit-attestation resolver: flat payload field first, nested
+  // candidateProfile second. false/0 survive (tri-state safe); only
+  // undefined/null/"" fall through. Unknowns stay unknown (never defaulted).
+  function profileVal(payload, profileObj, key) {
+    const a = payload ? payload[key] : undefined;
+    if (a !== undefined && a !== null && a !== "") return a;
+    const b = profileObj ? profileObj[key] : undefined;
+    return b === undefined ? null : b;
+  }
 
   // 1. Enhanced Visibility & Honeypot Detector
   function isElementVisible(el) {
@@ -265,6 +318,9 @@
 
   function setNativeValue(element, value) {
     if (!element) return;
+    // Null/undefined coerce to "": without this, String(null) files the
+    // literal text "null" into application forms (a fabrication).
+    if (value === null || value === undefined) value = "";
 
     // Resolve the correct prototype for the element type (INPUT, TEXTAREA, or SELECT)
     let prototype;
@@ -313,20 +369,16 @@
     
     const target = String(optionValueOrText).toLowerCase().trim();
     const options = Array.from(selectEl.options);
-    
-    // Find matching option by value or text
-    let chosenOpt = options.find(o => 
-      (o.value && o.value.toLowerCase() === target) ||
+    const squash = (s) => String(s || "").toLowerCase().replace(/[\s_.\-]+/g, "");
+
+    // Equality only — never substring: option "Yesterday…" contains "yes" and
+    // "5-10 years" contains "5", and filing either is a wrong attestation.
+    // A non-matching grounded value returns false so the field escalates.
+    let chosenOpt = options.find(o =>
+      (o.value && o.value.toLowerCase().trim() === target) ||
       (o.text && o.text.trim().toLowerCase() === target) ||
-      (o.text && o.text.trim().toLowerCase().includes(target))
+      (o.text && squash(o.text) === squash(target))
     );
-    
-    // Fallback: fuzzy match
-    if (!chosenOpt) {
-      chosenOpt = options.find(o => 
-        o.text && o.text.toLowerCase().includes(target.replace(/\s+/g, ''))
-      );
-    }
     
     if (!chosenOpt) {
       return false;
@@ -911,6 +963,19 @@
 
     document.getElementById("vedha-hud-sync-btn")?.addEventListener("click", async () => {
       const btn = document.getElementById("vedha-hud-sync-btn");
+      if (btn) btn.innerText = "⏳ Verifying...";
+
+      // Verify-or-don't-claim: only a visible Applied/confirmation signal may
+      // mark Submitted. Otherwise the run stays paused for human review.
+      const evidence = probeSubmissionEvidence(document);
+      if (!evidence) {
+        if (btn) btn.innerText = "⚠️ Not verified";
+        showSafeFillNotice(0, 1);
+        console.log("[Vedha AI] HUD sync refused: no submission evidence on page; staying paused.");
+        setTimeout(() => { if (btn) btn.innerText = "✅ Confirm & Sync as Submitted"; }, 3000);
+        return;
+      }
+
       if (btn) btn.innerText = "⏳ Syncing...";
 
       chrome.storage.local.get(["jwtToken", "vedha_token", "token"], async (stored) => {
@@ -933,8 +998,19 @@
     });
   }
 
-  function isFieldActionable(el) {
-    if (!el) return false;
+  // Null-safe visible text: innerText is missing on SVG elements, XPATh
+  // results, and DOM mocks (and empty-string innerText means visibly empty,
+  // which ?? preserves). Never throws, so label scans can't crash a run.
+  function visibleText(el) {
+    if (!el) return "";
+    try {
+      return ((el.innerText ?? el.textContent) || "").trim();
+    } catch {
+      return "";
+    }
+  }
+
+  function isFieldActionable(el) {    if (!el) return false;
     if (el.type === "hidden") return false;
     if (el.disabled || el.readOnly) return false;
     const style = window.getComputedStyle(el);
@@ -945,6 +1021,9 @@
   function getFieldQuestionText(el, raw = false) {
     if (!el) return "";
     let question = "";
+    // Hoisted: strategy 5 compares against the wrapping label found here.
+    // (Block-scoping this const used to throw ReferenceError at strategy 5.)
+    let parentLbl = null;
     
     // Strategy 1: Check form field containers with specific selectors
     const container = el.closest(
@@ -954,19 +1033,22 @@
       const header = container.querySelector(
         "label, legend, span.fb-dash-form-element__label, .t-14.t-bold, span[aria-hidden='true'], [data-test-form-builder-radio-button-form-component__title], [data-testid*='label'], [data-cy*='label']"
       );
-      if (header && header.innerText.trim()) question = header.innerText.trim();
+      const headerText = visibleText(header);
+      if (headerText) question = headerText;
     }
     
     // Strategy 2: Check for associated label by ID
     if (!question && el.id) {
       const lbl = document.querySelector(`label[for="${el.id}"]`);
-      if (lbl && lbl.innerText.trim()) question = lbl.innerText.trim();
+      const lblText = visibleText(lbl);
+      if (lblText) question = lblText;
     }
     
     // Strategy 3: Check if element is wrapped in a label
     if (!question) {
-      const parentLbl = el.closest("label");
-      if (parentLbl && parentLbl.innerText.trim()) question = parentLbl.innerText.trim();
+      parentLbl = el.closest("label");
+      const parentText = visibleText(parentLbl);
+      if (parentText) question = parentText;
     }
     
     // Strategy 4: Check aria-label, placeholder, name attributes
@@ -982,7 +1064,7 @@
         // Look for label-like elements in siblings or parent
         const possibleLabels = parent.querySelectorAll("label, .label, [class*='label'], span, p, dt");
         for (const pl of possibleLabels) {
-          const txt = pl.innerText.trim();
+          const txt = visibleText(pl);
           if (txt && txt.length > 1 && txt.length < 100 && !txt.includes("\n")) {
             // Check if this label is associated with our element
             if (pl.getAttribute("for") === el.id || pl.contains(el) || pl.closest("label") === parentLbl) {
@@ -1046,15 +1128,18 @@
     let text = "";
     if (radio.id) {
       const lbl = document.querySelector(`label[for="${radio.id}"]`);
-      if (lbl && lbl.innerText.trim()) text = lbl.innerText.trim();
+      const lblText = visibleText(lbl);
+      if (lblText) text = lblText;
     }
     if (!text) {
       const parentLbl = radio.closest("label");
-      if (parentLbl && parentLbl.innerText.trim()) text = parentLbl.innerText.trim();
+      const parentText = visibleText(parentLbl);
+      if (parentText) text = parentText;
     }
     if (!text) {
       const sibling = radio.nextElementSibling || radio.previousElementSibling;
-      if (sibling && sibling.innerText && sibling.innerText.trim()) text = sibling.innerText.trim();
+      const siblingText = visibleText(sibling);
+      if (siblingText) text = siblingText;
     }
     if (!text) text = radio.value || "";
     return text.replace(/[\*\r\n]+/g, " ").trim();
@@ -1173,6 +1258,15 @@ Return JSON array in format:
     const company = safePayload.company || "Target Company";
     const answersList = Array.isArray(safePayload.answers) ? safePayload.answers : [];
     let filledCount = 0;
+    let escalatedCount = 0;
+    const escalateFillField = (el, label) => {
+      try {
+        el.style.border = "2px solid #f59e0b";
+        el.style.boxShadow = "0 0 8px rgba(245, 158, 11, 0.45)";
+        el.setAttribute("title", `⚠️ Needs you: ${label}`);
+      } catch { /* cosmetics must never break the fill */ }
+      escalatedCount++;
+    };
 
     // Step A: Collect all actionable elements in this step
     const allInputs = Array.from(container.querySelectorAll("input, textarea, select")).filter(isFieldActionable);
@@ -1397,9 +1491,10 @@ Return JSON array in format:
           filledCount++;
         }
       }
-      // GPA / Grade
+      // GPA / Grade — profile value only; unknown stays blank (Step E ambers it).
       else if (q.includes("gpa") || q.includes("grade") || q.includes("percentage")) {
-        const gpaVal = String(safePayload.gpa || DEFAULT_CANDIDATE_PROFILE.gpa || "3.8");
+        const gpaVal = String(safePayload.gpa || "");
+        if (!gpaVal) continue;
         if (await typeLikeHuman(input, gpaVal)) {
           input.style.border = "2px solid #10b981";
           input.style.boxShadow = "0 0 0 1px #10b981";
@@ -1407,9 +1502,10 @@ Return JSON array in format:
           filledCount++;
         }
       }
-      // Education / Degree
+      // Education / Degree — profile value only; unknown stays blank.
       else if (q.includes("degree") || q.includes("major") || q.includes("school") || q.includes("university") || q.includes("field of study")) {
-        const eduVal = safePayload.education || DEFAULT_CANDIDATE_PROFILE.education || "Computer Science";
+        const eduVal = safePayload.education || "";
+        if (!eduVal) continue;
         if (await typeLikeHuman(input, eduVal)) {
           input.style.border = "2px solid #10b981";
           input.style.boxShadow = "0 0 0 1px #10b981";
@@ -1417,9 +1513,20 @@ Return JSON array in format:
           filledCount++;
         }
       }
-      // Textareas / Cover Letter / Statement / Summary / Why join
+      // Textareas / Cover Letter / Statement — grounded answers only. There is
+      // no generic essay: filing one fabricates the candidate's voice. Unknowns
+      // fall through to Step E amber; backend prefilled answers DO apply here.
       else if (input.tagName === "TEXTAREA" || q.includes("cover letter") || q.includes("summary") || q.includes("tell us about") || q.includes("why do you want")) {
-        const summaryVal = "I am a dedicated software engineer with strong technical skills and hands-on experience delivering robust, high-performance systems. I am excited about the opportunity to contribute to your team's mission and solve impactful challenges.";
+        let summaryVal = geminiAnswers[qRaw.toLowerCase()] || "";
+        if (!summaryVal) {
+          const matchedKey = Object.keys(geminiAnswers).find(k => k.includes(q.slice(0, 20)) || q.includes(k.slice(0, 20)));
+          if (matchedKey) summaryVal = geminiAnswers[matchedKey];
+        }
+        if (!summaryVal) {
+          const matched = answersList.find(a => q.includes((a.questionText || "").toLowerCase().slice(0, 15)));
+          if (matched) summaryVal = matched.answerText;
+        }
+        if (!summaryVal) continue;
         if (await typeLikeHuman(input, summaryVal)) {
           input.style.border = "2px solid #10b981";
           input.style.boxShadow = "0 0 0 1px #10b981";
@@ -1440,13 +1547,14 @@ Return JSON array in format:
         }
         if (!answerText) {
           if (q.includes("experience") || q.includes("years") || q.includes("how long")) {
-            answerText = String(safePayload.totalYearsExperience || 5);
+            answerText = hasGroundedValue(safePayload.totalYearsExperience) ? String(safePayload.totalYearsExperience) : "";
           } else if (q.includes("salary") || q.includes("ctc")) {
-            answerText = String(safePayload.expectedSalary || safePayload.currentSalary || "140000");
+            answerText = (safePayload.expectedSalary || safePayload.currentSalary) ? String(safePayload.expectedSalary || safePayload.currentSalary) : "";
           } else if (q.includes("notice")) {
-            answerText = String(safePayload.noticePeriod || safePayload.noticePeriodDays || "30");
+            answerText = hasGroundedValue(safePayload.noticePeriod ?? safePayload.noticePeriodDays) ? String(safePayload.noticePeriod ?? safePayload.noticePeriodDays) : "";
           } else if (input.type === "number" || input.getAttribute("inputmode") === "numeric") {
-            answerText = "5";
+            // No invented digits: unknown numerics stay blank for Step E amber.
+            answerText = "";
           }
         }
 
@@ -1461,12 +1569,15 @@ Return JSON array in format:
       }
     }
 
-    // 2. Consent / Terms / Certification Checkboxes
+    // 2. Consent / Terms / Certification Checkboxes — NEVER auto-checked.
+    // A checkbox click attests agreement, accuracy, or consent in the
+    // candidate's name. Every unchecked actionable box escalates (amber) for
+    // an explicit human click instead.
     const checkboxes = Array.from(container.querySelectorAll("input[type='checkbox']")).filter(isFieldActionable);
     for (const cb of checkboxes) {
       if (cb.checked) continue;
       const labelText = (getFieldQuestionText(cb, true) || "").toLowerCase();
-      const isConsent = cb.required ||
+      const needsHuman = cb.required ||
         labelText.includes("agree") ||
         labelText.includes("consent") ||
         labelText.includes("certify") ||
@@ -1477,14 +1588,9 @@ Return JSON array in format:
         labelText.includes("authorized") ||
         labelText.includes("accurate") ||
         labelText.includes("truthful");
-      if (isConsent || cb.required) {
-        cb.click();
-        cb.dispatchEvent(new Event("change", { bubbles: true }));
-        cb.style.outline = "2px solid #10b981";
-        cb.setAttribute("title", "✨ Auto-checked by Vedha AI");
-        filledCount++;
-        await sleep(150);
-      }
+      escalateFillField(cb, needsHuman
+        ? "Review and check this box yourself — agreement/consent is never auto-filled"
+        : "Review and check this box yourself if it applies");
     }
 
     // 3. Radio buttons
@@ -1503,38 +1609,39 @@ Return JSON array in format:
       let matchedRadio = null;
       if (answerText) {
         const ansLower = answerText.toLowerCase();
+        const squashRadio = (s) => String(s || "").toLowerCase().replace(/[\s_.\-]+/g, "");
+        // Equality only (see selectDropdownOption): "Yes" must never match
+        // "Yesterday…", nor "No" match "Not a veteran".
         matchedRadio = radios.find(r => {
           const t = getRadioLabelText(r).toLowerCase();
-          return t === ansLower || t.includes(ansLower) || ansLower.includes(t);
+          return t === ansLower || squashRadio(t) === squashRadio(ansLower);
         });
       }
 
-      // Rule-based fallback for standard yes/no legal questions
+      // Rule-based fallback: explicit profile attestations ONLY, tri-state.
+      // Sponsorship, relocation/commute, and work-authorization answer from
+      // the candidate's own stored booleans (=== true -> Yes, === false -> No).
+      // Unknown (null/undefined) selects nothing - the old blanket "Yes" and
+      // first-"Yes" fallbacks are deleted; all else stays blank for Step E.
       if (!matchedRadio) {
-        let wantYes = null;
         if (q.includes("sponsorship") || q.includes("require visa") || q.includes("visa sponsorship")) {
-          wantYes = safePayload.requiresVisaSponsorship === true;
+          const sponsorship = profileVal(safePayload, safePayload.candidateProfile, "requiresVisaSponsorship");
+          if (sponsorship === true || sponsorship === false) {
+            const targetWord = sponsorship ? "yes" : "no";
+            matchedRadio = radios.find(r => getRadioLabelText(r).toLowerCase().includes(targetWord));
+          }
+        } else if (q.includes("relocate") || q.includes("relocation") || q.includes("commute")) {
+          const reloc = profileVal(safePayload, safePayload.candidateProfile, "willingToRelocate") ?? profileVal(safePayload, safePayload.candidateProfile, "willingToCommute");
+          if (reloc === true || reloc === false) {
+            const targetWord = reloc ? "yes" : "no";
+            matchedRadio = radios.find(r => getRadioLabelText(r).toLowerCase().includes(targetWord));
+          }
         } else if (q.includes("authorized") || q.includes("legally") || q.includes("eligible") || q.includes("right to work")) {
-          wantYes = true;
-        } else if (q.includes("commute") || q.includes("relocate") || q.includes("background check") || q.includes("drug test")) {
-          wantYes = true;
-        } else if (q.includes("completed") || q.includes("degree") || q.includes("bachelor") || q.includes("graduated")) {
-          wantYes = true;
-        } else if (q.includes("experience") || q.includes("proficient") || q.includes("skilled") || q.includes("familiar")) {
-          wantYes = true;
-        } else if (q.includes("18 years") || q.includes("age") || q.includes("adult")) {
-          wantYes = true;
-        } else if (q.includes("previously employed") || q.includes("worked here before") || q.includes("former employee")) {
-          wantYes = false;
-        }
-
-        if (wantYes !== null) {
-          const targetWord = wantYes ? "yes" : "no";
-          matchedRadio = radios.find(r => getRadioLabelText(r).toLowerCase().includes(targetWord));
-        } else {
-          // If still unmatched, look for an affirmative "Yes" option
-          const yesRadio = radios.find(r => getRadioLabelText(r).toLowerCase().includes("yes"));
-          if (yesRadio) matchedRadio = yesRadio;
+          const auth = profileVal(safePayload, safePayload.candidateProfile, "isAuthorizedToWork");
+          if (auth === true || auth === false) {
+            const targetWord = auth ? "yes" : "no";
+            matchedRadio = radios.find(r => getRadioLabelText(r).toLowerCase().includes(targetWord));
+          }
         }
       }
 
@@ -1565,25 +1672,26 @@ Return JSON array in format:
       // Determine what to select
       let selectValue = answerText;
       
-      // Rule-based fallback for standard yes/no questions
+      // Rule-based fallback: explicit attestations + profile-text equality.
+      // Sponsorship/relocation/authorization tri-state (see radio block);
+      // country and education match option text/value by full normalized
+      // equality only. No invented "Yes", no "5+", no first-option pick.
       if (!selectValue) {
         if (q.includes("sponsorship") || q.includes("require visa") || q.includes("visa sponsorship")) {
-          selectValue = safePayload.requiresVisaSponsorship === true ? "Yes" : "No";
-        } else if (q.includes("authorized") || q.includes("legally") || q.includes("eligible")) {
-          selectValue = "Yes";
-        } else if (q.includes("commute") || q.includes("relocate") || q.includes("background check")) {
-          selectValue = "Yes";
-        } else if (q.includes("experience") || q.includes("years")) {
-          selectValue = "5+"; // Will fuzzy match "5", "3-5", "4-6", "senior"
+          const sponsorship = profileVal(safePayload, safePayload.candidateProfile, "requiresVisaSponsorship");
+          if (sponsorship === true || sponsorship === false) {
+            selectValue = sponsorship ? "Yes" : "No";
+          }
+        } else {
+          const prof = safePayload.candidateProfile || {};
+          const country = profileVal(safePayload, prof, "country") || profileVal(safePayload, prof, "countryCode");
+          const edu = profileVal(safePayload, prof, "educationLevel") || profileVal(safePayload, prof, "education");
+          const target = squashText(country || edu || "");
+          if (target) {
+            const hit = Array.from(sel.options).find(o => squashText(o.text) === target || squashText(o.value) === target);
+            if (hit) selectValue = hit.value || hit.text;
+          }
         }
-      }
-
-      // Fallback: If still no value, select first non-placeholder option
-      if (!selectValue && sel.options.length > 1 && sel.selectedIndex <= 0) {
-        const firstValid = Array.from(sel.options).find(o => 
-          o.value && !o.text.toLowerCase().includes("select") && !o.text.toLowerCase().includes("choose")
-        );
-        if (firstValid) selectValue = firstValid.value;
       }
 
       if (selectValue) {
@@ -1664,6 +1772,7 @@ Return JSON array in format:
     return {
       success: true,
       filledCount,
+      escalatedCount,
       unansweredCount: unansweredElements.length,
       hasUnanswered: unansweredElements.length > 0
     };
@@ -1698,6 +1807,23 @@ Return JSON array in format:
         hasError = true;
       }
 
+      // 3. Explicit error association: aria-describedby/errormessage pointing
+      // at a VISIBLE element with error-like text means the portal already
+      // flagged this field — even when validity/aria state looks clean
+      // (plain text inputs accept anything, so validity never fires for them).
+      if (!hasError) {
+        const describedByIds = el.getAttribute("aria-describedby") || el.getAttribute("aria-errormessage") || "";
+        if (describedByIds) {
+          for (const id of describedByIds.split(/\s+/)) {
+            const descEl = document.getElementById(id);
+            if (descEl && isElementVisible(descEl) && visibleText(descEl).length > 2) {
+              hasError = true;
+              break;
+            }
+          }
+        }
+      }
+
       if (hasError) {
         // Try to locate error message text from describedby or sibling badge
         if (!errorMsg || errorMsg === "Invalid field format") {
@@ -1705,8 +1831,9 @@ Return JSON array in format:
           if (describedBy) {
             for (const id of describedBy.split(/\s+/)) {
               const descEl = document.getElementById(id);
-              if (descEl && isElementVisible(descEl) && descEl.innerText.trim()) {
-                errorMsg = descEl.innerText.trim();
+              const descText = descEl && isElementVisible(descEl) ? visibleText(descEl) : "";
+              if (descText) {
+                errorMsg = descText;
                 break;
               }
             }
@@ -1719,8 +1846,9 @@ Return JSON array in format:
             const errBadge = group.querySelector(
               ".artdeco-inline-feedback--error, [data-test-form-builder-error], [data-automation-id='errorWidget'], [data-automation-id='errorMessage'], .field-error, .error-message, .invalid-feedback, [role='alert'], .fb-dash-form-element__error-text"
             );
-            if (errBadge && isElementVisible(errBadge) && errBadge.innerText.trim()) {
-              errorMsg = errBadge.innerText.trim();
+            const badgeText = errBadge && isElementVisible(errBadge) ? visibleText(errBadge) : "";
+            if (badgeText) {
+              errorMsg = badgeText;
             }
           }
         }
@@ -1769,10 +1897,12 @@ Return JSON array in format:
         // Do NOT filter on specific error keywords — valid constraint messages like
         // "Must be a whole number", "10 digits only", "Choose between 1 and 50" contain none.
         if (badge.getAttribute("role") === "alert") {
+          const formScope = badge.closest("form, [role='form'], .jobs-easy-apply-form, .application-form");
           const hasNearbyControl = !!(
-            badge.closest("form, [role='form'], .jobs-easy-apply-form, .application-form") &&
-            (badge.closest("form, [role='form'], .jobs-easy-apply-form, .application-form")
-              .querySelector("input:not([type='hidden']), textarea, select"))
+            (formScope && formScope.querySelector("input:not([type='hidden']), textarea, select")) ||
+            // Formless alerts still count when a control sits beside the badge
+            // (same parent) — global banners (cookie/GDPR) have no nearby input.
+            (badge.parentElement && badge.parentElement.querySelector("input:not([type='hidden']), textarea, select, fieldset"))
           );
           // Skip only if there's genuinely no form context — avoids swallowing real constraint alerts
           if (!hasNearbyControl) continue;
@@ -1831,6 +1961,23 @@ Return JSON array in format:
               }
               prev = prev.previousElementSibling;
             }
+          }
+        }
+
+        // 3b. Climb wrappers (e.g. <div class="error-wrapper"><span class="field-error">):
+        // when the badge sits alone in a wrapper, the input lives in an
+        // ancestor that holds EXACTLY ONE actionable field. Ambiguous
+        // ancestors (multi-input rows) never match — precision over recall.
+        if (!matchedControl) {
+          let ancestor = badge.parentElement;
+          for (let depth = 0; depth < 3 && ancestor && !matchedControl; depth++) {
+            try {
+              const fields = Array.from(
+                ancestor.querySelectorAll("input:not([type='hidden']), textarea, select")
+              ).filter(isFieldActionable);
+              if (fields.length === 1) matchedControl = fields[0];
+            } catch { /* selector hiccup must not break attribution */ }
+            ancestor = ancestor.parentElement;
           }
         }
 
@@ -1934,16 +2081,158 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
     return null;
   }
 
+  // ---- Aksh run session: harness state machine + bounded retries (Phase 3) ----
+  // One run id per page lifetime; each field gets a fixed remediation budget.
+  // Exhausted fields are highlighted amber for the candidate instead of looping forever.
+  // States: OBSERVE → FILL → VERIFY → FIX → STEP → … → REVIEW → SUBMIT/DONE,
+  // with ESCALATED (unfixable fields) and ABORTED (kill switch) as exits.
+  const VEDHA_MAX_FIELD_ATTEMPTS = 3;
+  const vedhaRun = {
+    id: `run-${Date.now().toString(36)}`,
+    startedAt: Date.now(),
+    state: "IDLE",
+    escalatedTotal: 0,
+    attempts: new WeakMap(),
+    noteAttempt(el) {
+      const n = (this.attempts.get(el) || 0) + 1;
+      this.attempts.set(el, n);
+      return n;
+    },
+    noteSuccess(el) { this.attempts.delete(el); },
+    transition(to) {
+      const from = this.state;
+      this.state = to;
+      console.log(`[Vedha AI] [${this.id}] ${from} → ${to}`);
+      try {
+        chrome.runtime?.sendMessage?.({
+          action: "AGENT_STEP_UPDATE",
+          runId: this.id,
+          runState: to,
+          title: `Run ${to}`,
+        });
+      } catch {
+        // Progress relay must never break the run loop.
+      }
+    },
+  };
+
+  async function pacerSleep(minMs, maxMs) {
+    const ms = minMs + Math.floor(Math.random() * Math.max(1, maxMs - minMs));
+    await sleep(ms);
+  }
+
+  // Phase 4 dispatch: tracker-issued cancel reaches in-flight runs.
+  // The poller passes runStatusUrl + token in the run payload; each wizard
+  // step re-checks before touching the DOM. Network loss never aborts a run.
+  async function checkRunCancelledRemotely(payload) {
+    try {
+      const url = payload?.runStatusUrl;
+      const token = payload?.token;
+      if (!url || !token) return false;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) return false;
+      const item = await res.json();
+      const st = item.status ?? item.Status;
+      return st === "Cancelled" || st === 6;
+    } catch {
+      return false;
+    }
+  }
+  // Submission-evidence probe (verify-or-don't-claim): a click is never
+  // proof. Returns evidence text when the page shows the posting as applied,
+  // a confirmation message, or a success URL - else "".
+  function probeSubmissionEvidence(scope) {
+    try {
+      const root = scope || document;
+      const appliedBadge = root.querySelector
+        ? root.querySelector(".jobs-s-apply--applied, [data-test-applied], .applied-badge, .application-submitted")
+        : null;
+      if (appliedBadge && isElementVisible(appliedBadge)) {
+        return `Applied badge visible: "${(appliedBadge.innerText || appliedBadge.textContent || "").trim().slice(0, 80)}"`;
+      }
+      const bodyText = ((root === document ? document.body : root).innerText || root.textContent || "").toLowerCase();
+      const successPatterns = [
+        "application submitted", "successfully applied", "thank you for applying",
+        "application received", "your application has been", "application complete"
+      ];
+      for (const pat of successPatterns) {
+        if (bodyText.includes(pat)) return `confirmation text: "${pat}"`;
+      }
+      const url = (window.location.href || "").toLowerCase();
+      if (/(success|confirm|thank|complete|applied)/.test(url)) return `success URL: ${window.location.href.slice(0, 160)}`;
+    } catch { /* probing must never break the run */ }
+    return "";
+  }
+  // VERIFY settle: portals render validation badges asynchronously after fill.
+  // Watch the container with a MutationObserver until the visible error count
+  // is stable for ~600ms (or timeout), so VERIFY scans settled DOM — not a
+  // mid-render snapshot. Resolves with the settled error list.
+  async function waitForValidationSettled(container, timeoutMs = 2500) {
+    const scope = container || document.body;
+    let lastCount = findActiveValidationErrors(scope).length;
+    let lastChange = Date.now();
+    let settled = false;
+    const observer = new MutationObserver(() => {
+      let nowCount = 0;
+      try { nowCount = findActiveValidationErrors(scope).length; } catch { nowCount = lastCount; }
+      if (nowCount !== lastCount) {
+        lastCount = nowCount;
+        lastChange = Date.now();
+      }
+    });
+    try {
+      observer.observe(scope, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "aria-invalid"] });
+    } catch {
+      // Observation is best-effort; polling below still applies.
+    }
+    const start = Date.now();
+    while (!settled && Date.now() - start < timeoutMs) {
+      await sleep(150);
+      settled = Date.now() - lastChange >= 600;
+    }
+    try { observer.disconnect(); } catch { /* best-effort */ }
+    return findActiveValidationErrors(scope);
+  }
+
+  function escalateField(el, err) {
+    try {
+      el.style.border = "2px solid #f59e0b";
+      el.style.outline = "2px solid #f59e0b";
+      el.style.boxShadow = "0 0 8px rgba(245, 158, 11, 0.45)";
+      el.setAttribute("title", `Needs you: ${err.errorMessage || "validation failed repeatedly"}`);
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    } catch {
+      // Cosmetics must never break the remediation loop.
+    }
+  }
+
   // Two-Tier Self-Healing Validation Remediation Engine (Heuristic Sanitizers + Error-Aware AI)
   async function remediateValidationErrors(container = document.body, payload = {}) {
     const errors = findActiveValidationErrors(container);
     if (errors.length === 0) return 0;
 
-    console.log(`[Vedha AI] Found ${errors.length} active validation error(s) to remediate:`, errors);
+    console.log(`[Vedha AI] [${vedhaRun.id}] Found ${errors.length} active validation error(s) to remediate:`, errors);
     let remediatedCount = 0;
+    let escalatedCount = 0;
 
     const safePayload = payload || {};
     const candidateProfile = safePayload.candidateProfile || {};
+
+    // AI availability, resolved ONCE per call: Tier-2 needs either the run
+    // payload token or a stored direct key. When neither exists, an unhealed
+    // field can never resolve on later passes either — escalate immediately
+    // instead of vanishing silently (the retry budget still guards flaky AI).
+    let aiAvailable = !!safePayload.token;
+    if (!aiAvailable) {
+      try {
+        const stored = await new Promise((resolve) => {
+          try {
+            chrome.storage.local.get(["gemini_api_key"], resolve);
+          } catch { resolve(null); }
+        });
+        aiAvailable = !!(stored && stored.gemini_api_key);
+      } catch { aiAvailable = false; }
+    }
 
     const wordNumbers = {
       zero: "0", one: "1", two: "2", three: "3", four: "4",
@@ -1960,12 +2249,28 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
         const currVal = err.currentValue || "";
         let remediatedVal = null;
 
+        // Retry budget: same field failing across repeated passes escalates to the human.
+        if (el && vedhaRun.noteAttempt(el) > VEDHA_MAX_FIELD_ATTEMPTS) {
+          escalateField(el, err);
+          escalatedCount++;
+          continue;
+        }
+
          // TIER 1: DETERMINISTIC HEURISTIC SANITIZERS
 
         // 1. Whole Number / Integer / Numeric Only Requirement
         // Activates on: error message keywords, HTML5 badInput/type="number",
         // OR question-context keywords (covers text-type inputs with generic error messages).
+        // Salary-family questions are EXCLUDED here even when the message says
+        // "numeric": the salary branch extracts the PRIMARY monetary value
+        // ("$140,000 (base) + $20,000 bonus" -> "140000"), while this block
+        // would take the first numeric token ("140").
+        // Phone-family questions are excluded the same way (digit-count
+        // normalizers own them, not first-token parsing).
+        // Postal-family questions are excluded (first token of a ZIP+message
+        // like "94105-1234" would corrupt the code).
         if (
+          !/(salary|compensation|ctc|pay|amount|phone|mobile|tel\b|postal|zip)/.test(qLower + " " + errLower) && (
           errLower.includes("whole number") ||
           errLower.includes("numeric") ||
           errLower.includes("integer") ||
@@ -1978,7 +2283,7 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
           el.getAttribute("inputmode") === "numeric" ||
           // Activate on question context for text inputs with any generic error
           (qLower.includes("experience") || qLower.includes("years") || qLower.includes("how many") ||
-           qLower.includes("notice period") || qLower.includes("months"))
+           qLower.includes("notice period") || qLower.includes("months")))
         ) {
           // A: Try to round-parse a float first (preserves GPA "3.8" -> "4" for integer fields,
           //    or extracts "5" from "5 years"). Use first numeric token.
@@ -2011,20 +2316,24 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
             }
           }
 
-          // D: Contextual Fallbacks if still null
+          // D: Contextual profile values if still null. No invented digits:
+          // null flows to the sensitive-gate below (escalate, never AI-guess).
           if (!remediatedVal) {
             if (qLower.includes("experience") || qLower.includes("years") || qLower.includes("how many")) {
-              remediatedVal = String(safePayload.yearsOfExperience || candidateProfile.totalYearsExperience || "4");
+              const yrs = safePayload.yearsOfExperience ?? candidateProfile.totalYearsExperience;
+              if (hasGroundedValue(yrs)) remediatedVal = String(yrs);
             } else if (qLower.includes("notice") || qLower.includes("days") || qLower.includes("weeks")) {
-              remediatedVal = String(safePayload.noticePeriodDays || candidateProfile.noticePeriodDays || "30");
+              const notice = safePayload.noticePeriodDays ?? candidateProfile.noticePeriodDays;
+              if (hasGroundedValue(notice)) remediatedVal = String(notice);
             } else if (qLower.includes("salary") || qLower.includes("compensation") || qLower.includes("ctc")) {
-              // Extract just the numeric value, no concatenation of parenthetical conversions
-              const salaryStr = String(safePayload.expectedSalary || candidateProfile.expectedSalary || "140000");
-              const salaryMatch = salaryStr.match(/(\d{1,3}(?:,\d{3})+|\d+)/);
-              remediatedVal = salaryMatch ? salaryMatch[1].replace(/,/g, "") : salaryStr.replace(/\D/g, "");
-            } else {
-              remediatedVal = "1";
+              const salarySrc = safePayload.expectedSalary || candidateProfile.expectedSalary;
+              if (salarySrc) {
+                const salaryStr = String(salarySrc);
+                const salaryMatch = salaryStr.match(/(\d{1,3}(?:,\d{3})+|\d+)/);
+                remediatedVal = salaryMatch ? salaryMatch[1].replace(/,/g, "") : salaryStr.replace(/\D/g, "");
+              }
             }
+            // else: no "1" fallback — an invented quantity is a fabrication.
           }
         }
 
@@ -2039,7 +2348,7 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
         ) {
           const rawSource = currVal ||
             safePayload.phone || safePayload.phoneNumber ||
-            candidateProfile.phoneNumber || "5553492810";
+            candidateProfile.phoneNumber || "";
           const rawDigits = rawSource.replace(/\D/g, "");
 
           // Check if a separate country code dropdown exists near this field
@@ -2053,7 +2362,11 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
           // Check if the portal requires E.164 format (+1...)
           const requiresE164 = !!(el.getAttribute("pattern") && el.getAttribute("pattern").includes("+"));
 
-          if (requiresE164) {
+          // No phone on file: never invent one (the old "5553492810" fallback
+          // filed a stranger's number). Null flows to escalation, not AI guess.
+          if (!rawDigits) {
+            remediatedVal = null;
+          } else if (requiresE164) {
             // Format as E.164: +1 followed by 10 digits
             remediatedVal = `+1${rawDigits.slice(-10)}`;
           } else if (hasCountryCodeDropdown) {
@@ -2063,7 +2376,7 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
             // Standard 10-digit extraction: take last 10 to strip country codes
             remediatedVal = rawDigits.slice(-10);
           } else {
-            remediatedVal = rawDigits || "5553492810";
+            remediatedVal = rawDigits || null;
           }
         }
 
@@ -2092,12 +2405,13 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
               // Convert LPA (lakhs per annum) to rupees: 1 lakh = 100,000
               remediatedVal = String(Math.round(parseFloat(lpaMatch[1]) * 100000));
             } else {
-              // Fallback to candidate profile value
-              const fallbackSalary = String(
-                safePayload.expectedSalary || candidateProfile.expectedSalary || "140000"
-              );
-              const fallbackMatch = fallbackSalary.match(/(\d{1,3}(?:,\d{3})+|\d+)/);
-              remediatedVal = fallbackMatch ? fallbackMatch[1].replace(/,/g, "") : fallbackSalary.replace(/\D/g, "");
+              // Fallback to candidate profile value — or nothing. No invented salary.
+              const fallbackSrc = safePayload.expectedSalary || candidateProfile.expectedSalary;
+              if (fallbackSrc) {
+                const fallbackSalary = String(fallbackSrc);
+                const fallbackMatch = fallbackSalary.match(/(\d{1,3}(?:,\d{3})+|\d+)/);
+                remediatedVal = fallbackMatch ? fallbackMatch[1].replace(/,/g, "") : fallbackSalary.replace(/\D/g, "");
+              }
             }
           }
         }
@@ -2111,7 +2425,8 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
           qLower.includes("postcode")
         ) {
           const zipDigits = currVal.replace(/\D/g, "");
-          remediatedVal = zipDigits.slice(0, 6) || candidateProfile.postalCode || "94105";
+          // No invented ZIP: profile postal code or nothing (escalated, never AI-guessed).
+          remediatedVal = zipDigits.slice(0, 6) || candidateProfile.postalCode || null;
         }
 
         // 5. Bounds / Range Clamping (e.g. "between X and Y", "minimum 0")
@@ -2125,13 +2440,11 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
           remediatedVal = String(valNum);
         }
 
-        // 6. Checkbox Constraint (required consent / terms / EEO — must be checked)
+        // 6. Checkbox Constraint — NEVER auto-checked (see fill block).
+        // A remediation click would attest consent the candidate never gave.
         else if (el.tagName === "INPUT" && el.type === "checkbox") {
-          el.checked = true;
-          el.dispatchEvent(new Event("click", { bubbles: true, composed: true }));
-          el.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
-          el.style.outline = "2px solid #10b981";
-          remediatedCount++;
+          escalateField(el, err);
+          escalatedCount++;
           continue;
         }
 
@@ -2144,15 +2457,34 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
             ? Array.from(radioGroup.querySelectorAll("input[type='radio']"))
             : [el];
           let targetRadio = null;
+          // Explicit attestations only (see fill block): sponsorship,
+          // relocation/commute, and work-authorization tri-state from the
+          // candidate's stored booleans. Unknowns escalate below.
           if (qLower.includes("sponsorship") || qLower.includes("require visa")) {
-            const target = safePayload.requiresVisaSponsorship === true ? "yes" : "no";
-            targetRadio = radios.find(r => getRadioLabelText(r).toLowerCase().includes(target));
-          } else if (qLower.includes("authorized") || qLower.includes("legally") ||
-                     qLower.includes("commute") || qLower.includes("relocate") ||
-                     qLower.includes("willing")) {
-            targetRadio = radios.find(r => getRadioLabelText(r).toLowerCase().includes("yes"));
+            const sponsorship = profileVal(safePayload, candidateProfile, "requiresVisaSponsorship");
+            if (sponsorship === true || sponsorship === false) {
+              const target = sponsorship ? "yes" : "no";
+              targetRadio = radios.find(r => getRadioLabelText(r).toLowerCase().includes(target));
+            }
+          } else if (qLower.includes("relocate") || qLower.includes("relocation") || qLower.includes("commute")) {
+            const reloc = profileVal(safePayload, candidateProfile, "willingToRelocate") ?? profileVal(safePayload, candidateProfile, "willingToCommute");
+            if (reloc === true || reloc === false) {
+              const target = reloc ? "yes" : "no";
+              targetRadio = radios.find(r => getRadioLabelText(r).toLowerCase().includes(target));
+            }
+          } else if (qLower.includes("authorized") || qLower.includes("legally") || qLower.includes("eligible") || qLower.includes("right to work")) {
+            const auth = profileVal(safePayload, candidateProfile, "isAuthorizedToWork");
+            if (auth === true || auth === false) {
+              const target = auth ? "yes" : "no";
+              targetRadio = radios.find(r => getRadioLabelText(r).toLowerCase().includes(target));
+            }
           }
-          if (!targetRadio) targetRadio = radios[0] || el;
+          // No first-radio fallback, no invented "Yes": unknowns escalate.
+          if (!targetRadio) {
+            escalateField(el, err);
+            escalatedCount++;
+            continue;
+          }
           if (targetRadio) {
             targetRadio.click();
             targetRadio.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
@@ -2170,21 +2502,44 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
           );
           if (availableOptions.length > 0) {
             let chosen = null;
+            // Explicit attestations (sponsorship/relocation/authorization
+            // tri-state) plus profile-text equality for country/education.
+            // EEO is never auto-picked. No first-option fallback.
             if (qLower.includes("sponsorship") || qLower.includes("require visa")) {
-              const target = safePayload.requiresVisaSponsorship === true ? "yes" : "no";
-              chosen = availableOptions.find(o => o.text.toLowerCase().includes(target));
-            } else if (qLower.includes("authorized") || qLower.includes("legally") ||
-                       qLower.includes("commute") || qLower.includes("relocate")) {
-              chosen = availableOptions.find(o => o.text.toLowerCase().includes("yes"));
+              const sponsorship = profileVal(safePayload, candidateProfile, "requiresVisaSponsorship");
+              if (sponsorship === true || sponsorship === false) {
+                const target = sponsorship ? "yes" : "no";
+                chosen = availableOptions.find(o => o.text.toLowerCase().includes(target));
+              }
+            } else if (qLower.includes("relocate") || qLower.includes("relocation") || qLower.includes("commute")) {
+              const reloc = profileVal(safePayload, candidateProfile, "willingToRelocate") ?? profileVal(safePayload, candidateProfile, "willingToCommute");
+              if (reloc === true || reloc === false) {
+                const target = reloc ? "yes" : "no";
+                chosen = availableOptions.find(o => o.text.toLowerCase().includes(target));
+              }
+            } else if (qLower.includes("authorized") || qLower.includes("legally") || qLower.includes("eligible") || qLower.includes("right to work")) {
+              const auth = profileVal(safePayload, candidateProfile, "isAuthorizedToWork");
+              if (auth === true || auth === false) {
+                const target = auth ? "yes" : "no";
+                chosen = availableOptions.find(o => o.text.toLowerCase().includes(target));
+              }
             } else if (qLower.includes("education") || qLower.includes("degree")) {
-              const edLevel = (safePayload.educationLevel || candidateProfile.educationLevel || "").toLowerCase();
-              chosen = availableOptions.find(o => o.text.toLowerCase().includes(edLevel.split("'")[0]));
-            } else if (qLower.includes("gender") || qLower.includes("pronoun")) {
-              chosen = availableOptions.find(o =>
-                o.text.toLowerCase().includes("prefer") || o.text.toLowerCase().includes("decline")
-              );
+              const edLevel = (profileVal(safePayload, candidateProfile, "educationLevel") || profileVal(safePayload, candidateProfile, "education") || "").toLowerCase();
+              if (edLevel) {
+                chosen = availableOptions.find(o => o.text.toLowerCase().includes(edLevel.split("'")[0]));
+              }
+            } else {
+              const country = profileVal(safePayload, candidateProfile, "country") || profileVal(safePayload, candidateProfile, "countryCode");
+              const target = squashText(country || "");
+              if (target) {
+                chosen = availableOptions.find(o => squashText(o.text) === target || squashText(o.value) === target);
+              }
             }
-            if (!chosen) chosen = availableOptions[0];
+            if (!chosen) {
+              escalateField(el, err);
+              escalatedCount++;
+              continue;
+            }
 
             if (chosen) {
               // Use HTMLSelectElement prototype descriptor — never HTMLInputElement
@@ -2210,27 +2565,38 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
           }
         }
 
-        // 9. Radio Buttons (<fieldset>) Selection Error
+        // 9. Radio Buttons (<fieldset>) Selection Error — grounded or escalated.
         else if (el.tagName === "FIELDSET" || (el.getAttribute && el.getAttribute("role") === "radiogroup")) {
           const radios = Array.from(el.querySelectorAll("input[type='radio']"));
           if (radios.length > 0) {
             let targetRadio = null;
+            // Explicit attestations only (see radio-single block above):
+            // sponsorship, relocation/commute, work-authorization tri-state.
+            // EEO decline-picks and the first-radio fallback stay deleted.
             if (qLower.includes("sponsorship") || qLower.includes("require visa")) {
-              const target = safePayload.requiresVisaSponsorship === true ? "yes" : "no";
-              targetRadio = radios.find(r => getRadioLabelText(r).toLowerCase().includes(target));
-            } else if (qLower.includes("authorized") || qLower.includes("legally") ||
-                       qLower.includes("commute") || qLower.includes("relocate") ||
-                       qLower.includes("willing")) {
-              targetRadio = radios.find(r => getRadioLabelText(r).toLowerCase().includes("yes"));
-            } else if (qLower.includes("veteran") || qLower.includes("disability")) {
-              // For EEO fields, prefer "decline to self-identify" or "not a veteran"
-              targetRadio = radios.find(r =>
-                getRadioLabelText(r).toLowerCase().includes("not") ||
-                getRadioLabelText(r).toLowerCase().includes("decline") ||
-                getRadioLabelText(r).toLowerCase().includes("prefer not")
-              );
+              const sponsorship = profileVal(safePayload, candidateProfile, "requiresVisaSponsorship");
+              if (sponsorship === true || sponsorship === false) {
+                const target = sponsorship ? "yes" : "no";
+                targetRadio = radios.find(r => getRadioLabelText(r).toLowerCase().includes(target));
+              }
+            } else if (qLower.includes("relocate") || qLower.includes("relocation") || qLower.includes("commute")) {
+              const reloc = profileVal(safePayload, candidateProfile, "willingToRelocate") ?? profileVal(safePayload, candidateProfile, "willingToCommute");
+              if (reloc === true || reloc === false) {
+                const target = reloc ? "yes" : "no";
+                targetRadio = radios.find(r => getRadioLabelText(r).toLowerCase().includes(target));
+              }
+            } else if (qLower.includes("authorized") || qLower.includes("legally") || qLower.includes("eligible") || qLower.includes("right to work")) {
+              const auth = profileVal(safePayload, candidateProfile, "isAuthorizedToWork");
+              if (auth === true || auth === false) {
+                const target = auth ? "yes" : "no";
+                targetRadio = radios.find(r => getRadioLabelText(r).toLowerCase().includes(target));
+              }
             }
-            if (!targetRadio) targetRadio = radios[0];
+            if (!targetRadio) {
+              escalateField(el, err);
+              escalatedCount++;
+              continue;
+            }
 
             if (targetRadio) {
               targetRadio.click();
@@ -2252,8 +2618,16 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
         }
 
 
+        // Sensitive gate: identity/legal/EEO/consent/compensation fields are
+        // NEVER AI-guessed. Null here means no grounded value exists - leave
+        // it for the per-field retry budget to escalate on repeated passes.
+        const sensitiveSkip = !remediatedVal && isSensitiveQuestion(qLower, errLower, el);
+        if (sensitiveSkip) {
+          console.log(`[Vedha AI] [${vedhaRun.id}] Sensitive field "${qRaw}" has no grounded value - skipping AI guess, leaving for escalation.`);
+        }
+
         // TIER 2: ERROR-AWARE AI REMEDIATION FALLBACK
-        if (!remediatedVal && qRaw.length > 3) {
+        if (!sensitiveSkip && !remediatedVal && qRaw.length > 3) {
           console.log(`[Vedha AI] Querying AI grounding for complex validation error: "${err.errorMessage}" on "${qRaw}"`);
           const aiFix = await queryGeminiForValidationError({
             questionText: qRaw,
@@ -2267,7 +2641,8 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
         }
 
         // TIER 3: BIOMETRIC RE-APPLICATION & EVENT TRIGGERING
-        if (remediatedVal !== null && remediatedVal !== undefined) {
+        // Empty string never applies (clears the field to blank).
+        if (remediatedVal !== null && remediatedVal !== undefined && remediatedVal !== "") {
           console.log(`[Vedha AI] Remediating field "${qRaw}": "${currVal}" -> "${remediatedVal}" (Error was: ${err.errorMessage})`);
           el.focus();
           setNativeValue(el, "");
@@ -2277,9 +2652,20 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
           el.dispatchEvent(new Event("blur", { bubbles: true, composed: true }));
           el.style.border = "2px solid #10b981";
           el.style.boxShadow = "0 0 8px rgba(16, 185, 129, 0.4)";
-          el.setAttribute("title", `✨ Self-Healed: "${err.errorMessage}" -> "${remediatedVal}"`);
+          el.setAttribute("title", `Self-Healed: "${err.errorMessage}" -> "${remediatedVal}"`);
           remediatedCount++;
-          await sleep(200);
+          vedhaRun.noteSuccess(el);
+          await pacerSleep(250, 800);
+        }
+
+        // Fail-closed per-error tail: no tier produced a value AND no future
+        // pass could do better (sensitive dead-end, or no AI credentials to
+        // consult) -> amber highlight + count NOW instead of vanishing.
+        // Flaky-AI cases (credentials exist, Tier-2 attempted) stay on the
+        // retry budget above.
+        if ((remediatedVal === null || remediatedVal === undefined || remediatedVal === "") && (sensitiveSkip || !aiAvailable)) {
+          escalateField(el, err);
+          escalatedCount++;
         }
       } catch (remErr) {
         console.warn("[Vedha AI] Failed to remediate validation error on element:", err, remErr);
@@ -2288,6 +2674,10 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
 
     // Allow portal DOM listeners to re-evaluate and clear inline feedback badges
     await sleep(400);
+    if (escalatedCount > 0) {
+      vedhaRun.escalatedTotal += escalatedCount;
+      console.log(`[Vedha AI] [${vedhaRun.id}] ${escalatedCount} field(s) need you - highlighted amber instead of retried.`);
+    }
     return remediatedCount;
   }
 
@@ -2477,12 +2867,15 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
     }
 
     let stepCount = 0;
+    let easyFilledCount = 0;
     while (stepCount < 15) {
       stepCount++;
       modal = findEasyApplyModal();
       if (!modal) break;
 
-      await fillModalInputs(modal, safePayload, false);
+      const easyFill = await fillModalInputs(modal, safePayload, false);
+      easyFilledCount += (easyFill.filledCount || 0);
+      vedhaRun.escalatedTotal += (easyFill.escalatedCount || 0);
       await sleep(600);
 
       // Check for validation errors on current step and self-heal before attempting progression
@@ -2515,10 +2908,19 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
           };
         } else {
           await clickElementNaturally(submitBtn);
-          await sleep(2500);
+          await pacerSleep(2200, 3200);
+          // Verify-or-don't-claim: a click is not a submission.
+          const submitEvidence = probeSubmissionEvidence(document);
+          if (!submitEvidence) {
+            return {
+              success: false,
+              filledCount: easyFilledCount,
+              error: "Submit was clicked but no confirmation (Applied badge, confirmation text, or success page) could be verified. Check the posting manually before retrying."
+            };
+          }
           const doneBtn = document.querySelector("button[aria-label='Dismiss'], button:has-text('Done')");
           if (doneBtn) doneBtn.click();
-          return { success: true, submitted: true, message: "Application submitted successfully on LinkedIn!" };
+          return { success: true, submitted: true, filledCount: easyFilledCount, evidence: submitEvidence, message: `Application submitted on LinkedIn (${submitEvidence}).` };
         }
       }
 
@@ -2592,7 +2994,17 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
       break;
     }
 
-    return { success: true, message: "Completed LinkedIn Easy Apply processing." };
+    // Loop ended without reaching Submit or Review: never report completion.
+    // Exception: the page itself proves submission (already-applied posting).
+    const tailEvidence = probeSubmissionEvidence(document);
+    if (tailEvidence) {
+      return { success: true, submitted: true, filledCount: easyFilledCount, evidence: tailEvidence, message: `Verified on page (${tailEvidence}).` };
+    }
+    return {
+      success: false,
+      filledCount: easyFilledCount,
+      error: `Easy Apply ended on step ${stepCount} without reaching Review or Submit (modal closed or no progression button). Open the posting to check manually.`
+    };
   }
 
   // 11. Intelligent Universal Progression Button Discovery Engine (Workday, Greenhouse, Lever, Ashby, Indeed, Taleo, etc.)
@@ -2682,9 +3094,13 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
       }
     }
 
-    if (submitCandidate) return { type: "submit", element: submitCandidate };
-    if (reviewCandidate) return { type: "review", element: reviewCandidate };
+    // Priority: Next > Review > Submit. On multi-step wizards Submit is
+    // visible from step 1 — taking it first would skip remaining stages or
+    // submit an incomplete application. Submit fires only when it is the sole
+    // remaining action (the final step), where callers pause or verify first.
     if (nextCandidate) return { type: "next", element: nextCandidate };
+    if (reviewCandidate) return { type: "review", element: reviewCandidate };
+    if (submitCandidate) return { type: "submit", element: submitCandidate };
     return null;
   }
 
@@ -2746,8 +3162,23 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
     let stepIndex = 1;
     const maxSteps = 12;
     let totalFieldsFilled = 0;
+    vedhaRun.transition("OBSERVE");
 
     while (stepIndex <= maxSteps && !isAutonomousLoopAborted) {
+      // Phase 4 dispatch: tracker cancel wins before any step touches the DOM.
+      if (safePayload?.runStatusUrl) {
+        if (await checkRunCancelledRemotely(safePayload)) {
+          vedhaRun.transition("ABORTED");
+          console.log(`[Vedha AI] [${vedhaRun.id}] Run receipt: state=ABORTED reason=tracker-cancel filled=${totalFieldsFilled}`);
+          return {
+            success: false,
+            cancelled: true,
+            filledCount: totalFieldsFilled,
+            error: "Cancelled from the tracker."
+          };
+        }
+      }
+
       // Step A: CAPTCHA / WAF check
       const challenge = detectCaptchaOrChallenge();
       if (challenge) {
@@ -2777,16 +3208,21 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
       });
 
       // Step C: Biometric AutoFill on Current Page / Step
+      vedhaRun.transition("FILL");
       const fillRes = await fillModalInputs(container, safePayload, true);
       totalFieldsFilled += (fillRes.filledCount || 0);
+      vedhaRun.escalatedTotal += (fillRes.escalatedCount || 0);
 
-      await sleep(randomBetween(600, 900));
+      await pacerSleep(600, 900);
       if (isAutonomousLoopAborted) break;
 
-      // Step C2: Check & Remediate any validation errors that appeared during fill
-      const preErrors = findActiveValidationErrors(container);
+      // Step C2: VERIFY (settled) then FIX any validation errors from fill.
+      // waitForValidationSettled observes async portal badges before scanning.
+      vedhaRun.transition("VERIFY");
+      const preErrors = await waitForValidationSettled(container);
       if (preErrors.length > 0) {
         console.log(`[Vedha AI] Step ${stepIndex} detected ${preErrors.length} validation errors. Running self-healing remediation...`);
+        vedhaRun.transition("FIX");
         const healedCount = await remediateValidationErrors(container, safePayload);
         totalFieldsFilled += healedCount;
         await sleep(500);
@@ -2816,6 +3252,7 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
         progression.element.style.boxShadow = "0 0 20px rgba(14, 165, 233, 0.7)";
 
         if (safePayload?.copilotMode !== false) {
+          vedhaRun.transition("REVIEW");
           showCopilotReviewHud(safePayload?.queueItemId, safePayload?.company, safePayload?.title);
           chrome.runtime?.sendMessage?.({
             action: "AGENT_STEP_UPDATE",
@@ -2833,24 +3270,37 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
             message: "All application stages completed. Paused at final Review screen for confirmation."
           };
         } else {
+          vedhaRun.transition("SUBMIT");
           await clickElementNaturally(progression.element);
-          await sleep(2500);
+          await pacerSleep(2200, 3200);
+          // Verify-or-don't-claim: a click is not a submission.
+          const multiEvidence = probeSubmissionEvidence(document);
+          if (!multiEvidence) {
+            vedhaRun.transition("ESCALATED");
+            return {
+              success: false,
+              filledCount: totalFieldsFilled,
+              error: "Submit was clicked but no confirmation (Applied badge, confirmation text, or success page) could be verified. Check the posting manually before retrying."
+            };
+          }
           chrome.runtime?.sendMessage?.({
             action: "AGENT_FINISHED",
             totalSteps: 4,
-            message: "Application submitted successfully!"
+            message: `Application submitted successfully (${multiEvidence})!`
           });
           return {
             success: true,
             submitted: true,
             filledCount: totalFieldsFilled,
-            message: "Application submitted successfully!"
+            evidence: multiEvidence,
+            message: `Application submitted successfully (${multiEvidence})!`
           };
         }
       }
 
       // 2. REVIEW BUTTON
       if (progression.type === "review") {
+        vedhaRun.transition("STEP");
         chrome.runtime?.sendMessage?.({
           action: "AGENT_STEP_UPDATE",
           step: 3,
@@ -2861,15 +3311,16 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
           progress: 80
         });
         await clickElementNaturally(progression.element);
-        await sleep(1800);
+        await pacerSleep(1500, 2200);
         stepIndex++;
         continue;
       }
 
       // 3. NEXT / CONTINUE BUTTON
       if (progression.type === "next") {
-        // Pre-click check: if any errors exist, attempt remediation before pausing
-        let errors = findActiveValidationErrors(container);
+        vedhaRun.transition("STEP");
+        // Pre-click check: settled scan first (async badges), then remediate before pausing
+        let errors = await waitForValidationSettled(container);
         if (errors.length > 0) {
           console.log(`[Vedha AI] Attempting pre-Next remediation for ${errors.length} validation error(s)...`);
           const healed = await remediateValidationErrors(container, safePayload);
@@ -2881,6 +3332,8 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
         if (errors.length > 0) {
           errors[0].inputElement?.scrollIntoView({ behavior: "smooth", block: "center" });
           showSafeFillNotice(totalFieldsFilled, errors.length);
+          vedhaRun.transition("ESCALATED");
+          console.log(`[Vedha AI] [${vedhaRun.id}] Run receipt: state=ESCALATED filled=${totalFieldsFilled} escalated~${vedhaRun.escalatedTotal} step=${stepIndex}`);
           return {
             success: false,
             error: `Paused: ${errors.length} required field(s) require manual review (${errors[0].errorMessage || "Validation error"}).`
@@ -2913,11 +3366,12 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
         });
 
         await clickElementNaturally(progression.element);
-        await sleep(2000);
+        await pacerSleep(1700, 2500);
 
         // POST-CLICK CHECK:
         // Did the portal reject navigation and show new validation errors?
-        const postClickErrors = findActiveValidationErrors(container);
+        // Settled scan: post-click badges render asynchronously.
+        const postClickErrors = await waitForValidationSettled(container);
         if (postClickErrors.length > 0) {
           console.log(`[Vedha AI] Progression click triggered ${postClickErrors.length} validation errors. Running self-healing...`);
           const postHealed = await remediateValidationErrors(container, safePayload);
@@ -2931,7 +3385,7 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
             if (retryProgression && retryProgression.type === "next") {
               console.log("[Vedha AI] Re-clicking Next after successful validation remediation...");
               await clickElementNaturally(retryProgression.element);
-              await sleep(2000);
+              await pacerSleep(1700, 2500);
             }
           } else {
             unresolved[0].inputElement?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -2954,7 +3408,7 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
           // Log warning and do NOT increment stepIndex to avoid false-positive reporting.
           console.warn(`[Vedha AI] Step fingerprint unchanged after Next click on step ${stepIndex}. Portal may have rejected navigation or no new inputs loaded.`);
           // Still increment to avoid hard infinite loop, but apply a longer back-off
-          await sleep(1500);
+          await pacerSleep(1200, 2000);
           stepIndex++;
         }
         continue;
@@ -2964,13 +3418,47 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
     }
 
     // Loop exhausted without reaching a submit or review action.
-    // Return success:false to avoid false-positive reporting to the candidate.
+    // Honest terminal receipt: count fields still blank (never fabricated)
+    // so the candidate and the backend see filled AND remaining work.
+    let leftoverBlanks = 0;
+    try {
+      leftoverBlanks = Array.from(document.querySelectorAll(
+        "input:not([type='hidden']):not([type='submit']):not([type='button']), textarea, select"
+      )).filter(el => {
+        try {
+          if (!isFieldActionable(el)) return false;
+          if (el.type === "checkbox" || el.type === "radio") return !el.checked;
+          if (el.tagName === "SELECT") return el.selectedIndex <= 0;
+          return !((el.value || "").trim());
+        } catch { return false; }
+      }).length;
+    } catch { leftoverBlanks = 0; }
+    const terminalState = isAutonomousLoopAborted ? "ABORTED" : "DONE";
+    vedhaRun.transition(terminalState);
+    console.log(`[Vedha AI] [${vedhaRun.id}] Run receipt: state=${terminalState} filled=${totalFieldsFilled} escalated~${vedhaRun.escalatedTotal} steps=${stepIndex - 1}/${maxSteps} elapsedMs=${Date.now() - vedhaRun.startedAt}`);
+    // Final honesty gate: a "completed" run with live validation errors is not
+    // complete. Fail closed with the count instead of success-on-filledCount.
+    if (!isAutonomousLoopAborted) {
+      const finalErrors = await waitForValidationSettled(document.body, 1500);
+      if (finalErrors.length > 0) {
+        vedhaRun.transition("ESCALATED");
+        return {
+          success: false,
+          filledCount: totalFieldsFilled,
+          unansweredCount: leftoverBlanks,
+          escalatedCount: vedhaRun.escalatedTotal,
+          error: `Run ended with ${finalErrors.length} unresolved validation error(s) (${finalErrors[0].errorMessage || "see highlighted fields"}). Fix the amber fields and retry.`
+        };
+      }
+    }
     chrome.runtime?.sendMessage?.({ action: "AGENT_FINISHED" });
     return {
       success: totalFieldsFilled > 0,
       filledCount: totalFieldsFilled,
+      unansweredCount: leftoverBlanks,
+      escalatedCount: vedhaRun.escalatedTotal,
       message: totalFieldsFilled > 0
-        ? `Auto-fill completed (${totalFieldsFilled} fields populated). Please verify and submit manually.`
+        ? `Auto-fill completed (${totalFieldsFilled} fields populated, ${leftoverBlanks} left blank for you). Please verify and submit manually.`
         : "No fillable fields found. Please verify the form is visible and retry."
     };
   }
@@ -3419,12 +3907,12 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
         githubUrl: profile.githubUrl,
         portfolio: profile.portfolioUrl,
         portfolioUrl: profile.portfolioUrl,
-        noticePeriod: profile.noticePeriodDays || 30,
-        noticePeriodDays: profile.noticePeriodDays || 30,
-        expectedSalary: profile.expectedSalary || "140000",
-        requiresVisaSponsorship: profile.requiresVisaSponsorship || false,
-        totalYearsExperience: profile.totalYearsExperience || 5,
-        education: profile.education || "Bachelor of Science in Computer Science",
+        noticePeriod: profile.noticePeriodDays ?? null,
+        noticePeriodDays: profile.noticePeriodDays ?? null,
+        expectedSalary: profile.expectedSalary || "",
+        requiresVisaSponsorship: profile.requiresVisaSponsorship ?? null,
+        totalYearsExperience: profile.totalYearsExperience ?? null,
+        education: profile.education || "",
         token: token,
         isSafeFill: true,
         copilotMode: options.copilotMode !== false,
@@ -3680,7 +4168,10 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
 
   // 14. Message Listener
   chrome.runtime?.onMessage?.addListener((request, sender, sendResponse) => {
-    if (request.action === "EXTRACT_JOB_DETAILS") {
+    if (request.action === "PING_CONTENT_SCRIPT") {
+      sendResponse({ alive: true, version: "1.0.0" });
+      return true;
+    } else if (request.action === "EXTRACT_JOB_DETAILS") {
       const details = extractJobDetails();
       sendResponse(details);
     } else if (request.action === "PIN_INPAGE_DOCK" || request.action === "OPEN_INPAGE_DOCK") {
@@ -3724,7 +4215,8 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
     } else if (request.action === "AUTONOMOUS_MULTI_STEP_FILL") {
       runAutonomousMultiStepFill(request.payload || {}).then(sendResponse);
       return true;
-    } else if (request.action === "ABORT_AGENT_LOOP") {
+    } else if (request.action === "ABORT_AGENT_LOOP" || request.action === "ABORT_AGENT") {
+      // ABORT_AGENT is the legacy popup action name; both must stop the loop.
       isAutonomousLoopAborted = true;
       sendResponse({ aborted: true });
       return true;

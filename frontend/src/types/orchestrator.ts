@@ -7,7 +7,8 @@ export enum PipelineExecutionStatus {
   PausedForUserReview = 'PausedForUserReview',
   Submitted = 'Submitted',
   Failed = 'Failed',
-  Cancelled = 'Cancelled'
+  Cancelled = 'Cancelled',
+  DispatchedToExtension = 'DispatchedToExtension'
 }
 
 export interface CandidateProfileDto {

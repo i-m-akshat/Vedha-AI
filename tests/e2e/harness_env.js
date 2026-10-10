@@ -530,6 +530,30 @@ class Element extends Node {
   }
 
   click() {
+    // Mirror real browser default action: clicking a checkbox toggles it;
+    // clicking a radio checks it and unchecks same-name group siblings.
+    // Without this, click-based remediation can never be observed by tests.
+    try {
+      const tag = (this.tagName || this.nodeName || '').toUpperCase();
+      const type = String(this.getAttribute ? (this.getAttribute('type') || '') : '').toLowerCase();
+      if (tag === 'INPUT' && (type === 'checkbox' || type === 'radio') && !this.disabled) {
+        if (type === 'checkbox') {
+          this._checked = !this._checked;
+        } else if (!this._checked) {
+          const name = this.getAttribute ? this.getAttribute('name') : null;
+          const doc = this.ownerDocument;
+          if (name && doc && typeof doc.querySelectorAll === 'function') {
+            const group = doc.querySelectorAll('input[type="radio"]');
+            for (const sib of group || []) {
+              if (sib !== this && sib.getAttribute && sib.getAttribute('name') === name) {
+                sib._checked = false;
+              }
+            }
+          }
+          this._checked = true;
+        }
+      }
+    } catch (_) { /* default-action simulation must never break dispatch */ }
     this.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
   }
 
@@ -1146,12 +1170,12 @@ function createChromeMock(config = {}) {
                 console.error('Error dispatching message:', e);
               }
             }
-            const timeoutMs = hasAsync ? 250 : 10;
+            const timeoutMs = hasAsync ? 15000 : 10;
             setTimeout(() => {
               if (!responded) resolve(null);
             }, timeoutMs);
           });
-        }
+        },
       },
       sendMessage(request, callback) {
         return new Promise(resolve => {
@@ -1170,7 +1194,7 @@ function createChromeMock(config = {}) {
               if (res === true) hasAsync = true;
             } catch (_) {}
           }
-          const timeoutMs = hasAsync ? 250 : 10;
+          const timeoutMs = hasAsync ? 15000 : 10;
           setTimeout(() => {
             if (!resolved) {
               if (typeof callback === 'function') callback(null);

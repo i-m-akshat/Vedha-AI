@@ -40,6 +40,15 @@ public class JobScraperService : IJobScraperService
             return Result<(string, string?, string?, JobSource)>.Failure("Only HTTP(S) job URLs without embedded credentials are supported.");
         }
 
+        // Centralized SSRF enforcement (covers every caller, including the
+        // Aksh deterministic auto-scrape that bypasses the tool-level guard):
+        // literal blocks + DNS-resolve-and-recheck, fail closed.
+        var (allowed, reason) = await Security.UrlSafetyGuard.IsUrlAllowedAsync(url, _logger, cancellationToken);
+        if (!allowed)
+        {
+            return Result<(string, string?, string?, JobSource)>.Failure(reason ?? "URL is not allowed.");
+        }
+
         try
         {
             var source = DetectJobSource(uri);

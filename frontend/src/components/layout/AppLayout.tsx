@@ -16,7 +16,8 @@ import {
   Plus, 
   CheckCircle2,
   Sun,
-  Moon
+  Moon,
+  Bot
 } from 'lucide-react';
 import { useAuthStore, useThemeStore } from '../../stores/useAuthStore';
 
@@ -27,6 +28,7 @@ export type ActivePage =
   | 'tailor-studio' 
   | 'result-studio' 
   | 'orchestrator'
+  | 'ask-aksh'
   | 'tracker' 
   | 'history' 
   | 'analytics' 
@@ -57,6 +59,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
     { id: 'tailor-studio', label: 'Tailor Resume', icon: <FileText className="w-4 h-4" /> },
     { id: 'result-studio', label: 'Resume Preview', icon: <Sparkles className="w-4 h-4" /> },
     { id: 'orchestrator', label: 'Auto-Apply Queue', icon: <Send className="w-4 h-4" />, badge: 'Active' },
+    { id: 'ask-aksh', label: 'Ask Aksh', icon: <Bot className="w-4 h-4" />, badge: 'New' },
     { id: 'tracker', label: 'Job Tracker', icon: <Kanban className="w-4 h-4" /> },
     { id: 'master-resume', label: 'Master Resume', icon: <Code className="w-4 h-4" /> },
     { id: 'candidate-profile', label: 'Candidate Profile', icon: <UserCheck className="w-4 h-4" /> },

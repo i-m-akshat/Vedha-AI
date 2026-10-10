@@ -98,6 +98,9 @@ services:
       - AiSettings__DefaultProvider=${DEFAULT_AI_PROVIDER:-Gemini}
       - AiSettings__DefaultModel=${DEFAULT_AI_MODEL:-gemini-flash-lite-latest}
       - AiSettings__MaxTokens=${AI_MAX_TOKENS:-16384}
+      - Aksh__Enabled=${Aksh__Enabled:-false}
+      - Aksh__DailyTokenBudget=${Aksh__DailyTokenBudget:-200000}
+      - Aksh__Model=${Aksh__Model:-}
       - Crawl4AiSettings__BaseUrl=${CRAWLER_URL:-http://crawler:11235}
       - Crawl4AiSettings__Enabled=${CRAWLER_ENABLED:-true}
       - Crawl4AiSettings__ApiToken=${CRAWL4AI_API_TOKEN:-vedha_crawler_token_2026}
@@ -124,6 +127,7 @@ services:
       - MINIO_BUCKET=${MINIO_BUCKET:-vedha-resumes}
       - AGENTQL_API_KEY=${AGENTQL_API_KEY}
       - RESIDENTIAL_PROXY_URL=${RESIDENTIAL_PROXY_URL}
+      - WORKER_STEALTH_ENGINE=${WORKER_STEALTH_ENGINE:-patchright}
     networks:
       - vedha-network
 

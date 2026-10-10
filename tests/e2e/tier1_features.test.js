@@ -306,9 +306,10 @@ describe('Tier 1: Feature Coverage (F1 to F12)', () => {
 
       const errors = exports.findActiveValidationErrors(env.document.body);
       assert.ok(errors.length > 0, 'Must detect validation error on field with aria-describedby');
-      const err = errors.find(e => e.element && e.element.id === 'years_exp');
+      // Production contract: { inputElement, errorMessage, questionText, currentValue, fieldType }
+      const err = errors.find(e => e.inputElement && e.inputElement.id === 'years_exp');
       assert.ok(err, 'Error must be linked to #years_exp input');
-      assert.match(err.message, /whole number/i, 'Error message must match text from aria-describedby container');
+      assert.match(err.errorMessage, /whole number/i, 'Error message must match text from aria-describedby container');
       env.cleanup();
     });
 
@@ -329,7 +330,7 @@ describe('Tier 1: Feature Coverage (F1 to F12)', () => {
       const errors = exports.findActiveValidationErrors(env.document.body);
 
       assert.ok(errors.length > 0, 'Must detect invalid phone format error');
-      const phoneErr = errors.find(e => e.element && e.element.id === 'field_phone');
+      const phoneErr = errors.find(e => e.inputElement && e.inputElement.id === 'field_phone');
       assert.ok(phoneErr, 'Error must be attributed to #field_phone, NOT #field_first_name');
       env.cleanup();
     });
@@ -367,7 +368,7 @@ describe('Tier 1: Feature Coverage (F1 to F12)', () => {
       const errors = exports.findActiveValidationErrors(env.document.body);
 
       assert.ok(errors.length > 0, 'Must capture role="alert" with phrase "Must be a whole number"');
-      const found = errors.some(e => /whole number/i.test(e.message));
+      const found = errors.some(e => /whole number/i.test(e.errorMessage));
       assert.ok(found, 'Error message must reflect alert notice');
       env.cleanup();
     });
@@ -385,7 +386,7 @@ describe('Tier 1: Feature Coverage (F1 to F12)', () => {
       const errors = exports.findActiveValidationErrors(env.document.body);
 
       assert.ok(errors.length > 0, 'Must capture native HTML5 typeMismatch failure');
-      assert.strictEqual(errors[0].element.id, 'email_req');
+      assert.strictEqual(errors[0].inputElement.id, 'email_req');
       env.cleanup();
     });
   });
@@ -583,7 +584,7 @@ describe('Tier 1: Feature Coverage (F1 to F12)', () => {
         html: '<input id="shadowed_input" type="text"/>'
       });
       const input = env.document.getElementById('shadowed_input');
-      // Shadow property with custom setter
+      // Shadow property with custom setter (mimics React's value tracker)
       let intercepted = false;
       Object.defineProperty(input, 'value', {
         get() { return this._val || ''; },
@@ -596,7 +597,12 @@ describe('Tier 1: Feature Coverage (F1 to F12)', () => {
 
       const exports = loadExtensionContentScript(env);
       exports.setNativeValue(input, 'Passed');
-      assert.strictEqual(input.value, 'Passed', 'Value must be set despite framework property shadowing');
+      // Bypass proof: the shadowing interceptor never fired, and the native
+      // slot holds the value. (Reading input.value hits the shadow getter by
+      // design — in real browsers too — so the contract asserts the bypass,
+      // not the shadowed read.)
+      assert.strictEqual(intercepted, false, 'Framework shadow setter must be bypassed');
+      assert.strictEqual(input._value, 'Passed', 'Native value slot must hold the set value');
       env.cleanup();
     });
   });
@@ -995,10 +1001,10 @@ describe('Tier 1: Feature Coverage (F1 to F12)', () => {
   });
 
   // =========================================================================
-  // F11: Comprehensive Candidate Profile Fallback
+  // F11: Unknown-Safe Candidate Profile (fail closed — no synthesized identity)
   // =========================================================================
-  describe('F11: Comprehensive Candidate Profile Fallback', () => {
-    it('F11-1: DEFAULT_CANDIDATE_PROFILE provides legal work authorization fields', () => {
+  describe('F11: Unknown-Safe Candidate Profile', () => {
+    it('F11-1: DEFAULT_CANDIDATE_PROFILE provides legal work authorization keys', () => {
       const env = createBrowserEnvironment();
       const exports = loadExtensionContentScript(env);
       const profile = exports.DEFAULT_CANDIDATE_PROFILE;
@@ -1013,38 +1019,50 @@ describe('Tier 1: Feature Coverage (F1 to F12)', () => {
       env.cleanup();
     });
 
-    it('F11-2: DEFAULT_CANDIDATE_PROFILE provides explicit visa sponsorship status', () => {
+    it('F11-2: requiresVisaSponsorship is tri-state (boolean or unknown null)', () => {
       const env = createBrowserEnvironment();
       const exports = loadExtensionContentScript(env);
       const profile = exports.DEFAULT_CANDIDATE_PROFILE;
 
-      assert.strictEqual(typeof profile.requiresVisaSponsorship, 'boolean', 'requiresVisaSponsorship must be a boolean');
+      assert.ok(
+        profile.requiresVisaSponsorship === null || typeof profile.requiresVisaSponsorship === 'boolean',
+        'requiresVisaSponsorship must be boolean or null (unknown) — never a fabricated default'
+      );
       env.cleanup();
     });
 
-    it('F11-3: DEFAULT_CANDIDATE_PROFILE includes postal code and relocation preferences', () => {
+    it('F11-3: location keys exist without fabricated values', () => {
       const env = createBrowserEnvironment();
       const exports = loadExtensionContentScript(env);
       const profile = exports.DEFAULT_CANDIDATE_PROFILE;
 
-      assert.ok(profile.currentCity, 'Profile must provide currentCity');
-      assert.ok(profile.postalCode || profile.currentCity, 'Profile must provide location/postal details');
+      assert.ok('currentCity' in profile, 'Profile must provide currentCity key');
+      assert.ok('postalCode' in profile, 'Profile must provide postalCode key');
+      assert.ok(
+        !String(profile.currentCity).includes('San Francisco') && !String(profile.postalCode).includes('94105'),
+        'Defaults must not contain a fabricated city or ZIP'
+      );
       env.cleanup();
     });
 
-    it('F11-4: DEFAULT_CANDIDATE_PROFILE includes voluntary EEO disclosure fallbacks', () => {
+    it('F11-4: identity defaults are blank and attestations are unknown', () => {
       const env = createBrowserEnvironment();
       const exports = loadExtensionContentScript(env);
       const profile = exports.DEFAULT_CANDIDATE_PROFILE;
 
-      // EEO disclosures or standard fallback categories
-      assert.ok(profile.fullName && profile.email && profile.phoneNumber, 'Core identity fields must be present');
-      assert.ok(profile.totalYearsExperience !== undefined, 'Years of experience must be present');
+      // Keys present for fill-code compatibility; values unknown-safe.
+      assert.ok('fullName' in profile && 'email' in profile && 'phoneNumber' in profile, 'Core identity keys must be present');
+      assert.ok('totalYearsExperience' in profile, 'Years of experience key must be present');
+      assert.strictEqual(profile.fullName, '', 'fullName default must be blank (fail closed)');
+      assert.strictEqual(profile.email, '', 'email default must be blank (fail closed)');
+      assert.strictEqual(profile.isAuthorizedToWork, null, 'work authorization must be unknown, never default-true');
+      assert.strictEqual(profile.agreedToTerms, false, 'terms must default to unchecked (fail closed)');
       env.cleanup();
     });
 
-    it('F11-5: Form autofill falls back to default candidate profile when backend is offline', async () => {
+    it('F11-5: Offline autofill leaves identity blank and reports unanswered (no fabrication)', async () => {
       const env = createBrowserEnvironment({
+        url: 'https://careers.example.com/apply',
         html: `
           <form>
             <input id="cand_name" name="name" type="text"/>
@@ -1059,9 +1077,13 @@ describe('Tier 1: Feature Coverage (F1 to F12)', () => {
         action: 'AUTO_FILL_FORM',
         payload: {}
       });
-      assert.ok(res, 'Auto fill must succeed using fallback profile');
+      assert.ok(res, 'Auto fill must return a result');
+      const nameVal = env.document.getElementById('cand_name').value;
       const emailVal = env.document.getElementById('cand_email').value;
-      assert.ok(emailVal.includes('@'), 'Email field must be populated using fallback profile');
+      assert.strictEqual(nameVal, '', 'Name must stay blank without profile data (never fabricated)');
+      assert.strictEqual(emailVal, '', 'Email must stay blank without profile data (never fabricated)');
+      assert.ok(!String(nameVal + emailVal).includes('Alex'), 'No persona values may leak into the form');
+      assert.ok((res.unansweredCount || 0) >= 2, 'Blank identity fields must be reported as unanswered');
       env.cleanup();
     });
   });

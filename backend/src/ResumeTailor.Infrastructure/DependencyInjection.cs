@@ -1,8 +1,10 @@
+using Microsoft.Agents.AI;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ResumeTailor.Application.Common.Interfaces;
 using ResumeTailor.Infrastructure.Ai;
+using ResumeTailor.Infrastructure.Aksh;
 using ResumeTailor.Infrastructure.AtsEngine;
 using ResumeTailor.Infrastructure.Billing;
 using ResumeTailor.Infrastructure.Export;
@@ -107,6 +109,17 @@ public static class DependencyInjection
 
         services.AddScoped<IJobApplicationOrchestrator, JobApplicationOrchestrator>();
         services.AddScoped<SemanticDomFormMapper>();
+        services.AddHostedService<ExpiredClaimSweeperService>();
+
+        // 9b. Aksh Agentic Copilot (harness agent + runner + token ledger)
+        // NOTE: no shared/model-scoped agent is registered — every turn builds
+        // a per-user bound agent via HarnessAgentFactory.CreateTurnAgent, so no
+        // tool can ever accept a model-supplied userId (deleted legacy shape).
+        services.AddSingleton<AkshChatClientAdapter>();
+        services.AddTransient<GeminiFunctionCallingClient>();
+        services.AddScoped<ITokenLedger, TokenLedger>();
+        services.AddScoped<IPacingGovernor, AkshPacingGovernor>();
+        services.AddScoped<IAkshAgentRunner, AkshAgentRunner>();
 
         // 10. Autonomous Job Application SaaS (NATS, S3, Embeddings, RAG, Billing)
         services.AddHttpClient<IS3StorageService, MinioS3StorageService>();

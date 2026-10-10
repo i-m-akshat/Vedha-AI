@@ -173,8 +173,8 @@ describe('Tier 4: Real-World Application Workloads', () => {
     env.cleanup();
   });
 
-  // S4: Offline Backend Mode with Fallback Profile & Form Filling
-  it('S4: Offline backend recovery using default candidate profile without starvation', async () => {
+  // S4: Offline Backend Mode — fail closed, never fabricate
+  it('S4: Offline backend recovery leaves identity blank and reports unanswered (no starvation fabrication)', async () => {
     const env = createBrowserEnvironment({
       url: 'https://jobs.lever.co/techco/apply',
       html: `
@@ -199,8 +199,13 @@ describe('Tier 4: Real-World Application Workloads', () => {
     const nameVal = env.document.getElementById('name_field').value;
     const emailVal = env.document.getElementById('email_field').value;
 
-    assert.ok(nameVal.length > 0, 'Name must be populated from default profile');
-    assert.ok(emailVal.includes('@'), 'Email must be populated with valid email format');
+    assert.strictEqual(nameVal, '', 'Name must stay blank without profile data (never fabricated)');
+    assert.strictEqual(emailVal, '', 'Email must stay blank without profile data (never fabricated)');
+    assert.ok(
+      !String(nameVal + emailVal).includes('Alex') && !String(nameVal + emailVal).includes('555'),
+      'No persona values may leak into the form'
+    );
+    assert.ok((fillResult.unansweredCount || 0) >= 4, 'Blank identity fields must be reported as unanswered');
     env.cleanup();
   });
 

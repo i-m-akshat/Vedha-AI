@@ -35,7 +35,12 @@ public enum PipelineExecutionStatus
     PausedForUserReview = 3,
     Submitted = 4,
     Failed = 5,
-    Cancelled = 6
+    Cancelled = 6,
+    /// <summary>
+    /// Phase 4 dispatch: approved package waiting for the candidate's browser
+    /// extension to claim and execute. Appended only — never reorder.
+    /// </summary>
+    DispatchedToExtension = 7
 }
 
 public enum AiProviderType
@@ -59,4 +64,36 @@ public enum TemplateStyle
     ModernMinimalist = 1,
     ExecutiveClean = 2,
     TechnicalPro = 3
+}
+
+/// <summary>
+/// How much autonomy the candidate grants Aksh per portal.
+/// Supervised (default): agent prepares; human approves every submission.
+/// SupervisedAuto (opt-in): approved low-risk portals may submit after package approval.
+/// LinkedIn/Naukri remain Supervised regardless (anti-ban rule).
+/// </summary>
+public enum AutonomyLevel
+{
+    Supervised = 0,
+    SupervisedAuto = 1
+}
+
+public enum AkshSessionStatus
+{
+    Planning = 0,
+    Executing = 1,
+    AwaitingApproval = 2,
+    Paused = 3,
+    Completed = 4,
+    Failed = 5,
+    Cancelled = 6
+}
+
+public enum AkshApprovalStatus
+{
+    Pending = 0,
+    Approved = 1,
+    Rejected = 2,
+    Expired = 3,
+    Consumed = 4
 }

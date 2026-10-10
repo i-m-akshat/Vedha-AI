@@ -31,6 +31,14 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<IdempotentTransaction> IdempotentTransactions => Set<IdempotentTransaction>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
+    // Aksh agentic copilot
+    public DbSet<AkshSession> AkshSessions => Set<AkshSession>();
+    public DbSet<AkshMessage> AkshMessages => Set<AkshMessage>();
+    public DbSet<AkshApproval> AkshApprovals => Set<AkshApproval>();
+
+    // Phase 4 extension dispatch
+    public DbSet<ExtensionRunClaim> ExtensionRunClaims => Set<ExtensionRunClaim>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -57,6 +65,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<ApplicationQueueItem>(b =>
         {
             b.HasKey(q => q.Id);
+            // Phase 4 claim hot path: oldest dispatchable run per user.
+            b.HasIndex(q => new { q.UserId, q.Status });
             b.HasOne(q => q.User)
              .WithMany(u => u.ApplicationQueue)
              .HasForeignKey(q => q.UserId)
@@ -183,6 +193,47 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         {
             b.HasKey(p => p.Id);
             b.HasIndex(p => new { p.UserId, p.TemplateKey }).IsUnique();
+        });
+
+        modelBuilder.Entity<AkshSession>(b =>
+        {
+            b.HasKey(s => s.Id);
+            b.HasIndex(s => new { s.UserId, s.Status, s.CreatedAtUtc });
+            b.HasOne(s => s.User)
+             .WithMany()
+             .HasForeignKey(s => s.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AkshMessage>(b =>
+        {
+            b.HasKey(m => m.Id);
+            b.HasIndex(m => m.SessionId);
+            b.HasOne(m => m.Session)
+             .WithMany(s => s.Messages)
+             .HasForeignKey(m => m.SessionId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AkshApproval>(b =>
+        {
+            b.HasKey(a => a.Id);
+            b.HasIndex(a => new { a.SessionId, a.Status });
+            b.HasOne(a => a.Session)
+             .WithMany(s => s.Approvals)
+             .HasForeignKey(a => a.SessionId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ExtensionRunClaim>(b =>
+        {
+            // PK on QueueItemId IS the atomic claim gate: one live claim per item.
+            b.HasKey(c => c.QueueItemId);
+            b.HasIndex(c => new { c.UserId, c.ClaimedAtUtc });
+            b.HasOne(c => c.QueueItem)
+             .WithOne()
+             .HasForeignKey<ExtensionRunClaim>(c => c.QueueItemId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
     }
 

@@ -1,6 +1,6 @@
 @echo off
 echo [Vedha AI] Stopping containers...
-wsl -d podman-machine-default -u root podman stop vedha-backend vedha-frontend vedha-postgres vedha-redis
+wsl -d podman-machine-default -u root podman stop vedha-backend vedha-frontend vedha-worker vedha-crawler vedha-postgres vedha-redis vedha-nats vedha-minio
 
 powershell -Command "Get-CimInstance Win32_Process -Filter \"CommandLine LIKE '%%localhost_proxy.py%%'\" -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
 

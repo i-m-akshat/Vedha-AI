@@ -377,6 +377,7 @@
       <a href="#orchestrator-rag"><span class="sec-num">06</span> AI Orchestrator & Invariants</a>
       <a href="#frontend-state"><span class="sec-num">07</span> Frontend Stores (Zustand)</a>
       <a href="#extension-internals"><span class="sec-num">08</span> Extension Internals</a>
+      <a href="#aksh-agent"><span class="sec-num">09</span> Aksh Agent Harness & Tool Calling</a>
     </nav>
 
     <div class="sidebar-footer">
@@ -740,6 +741,39 @@ builder.Entity&lt;RefreshToken&gt;(b =>
             Manages <code>chrome.storage.local</code>, coordinates API requests to the ASP.NET Core backend with JWT bearer headers, and handles sidepanel opening events.
           </p>
         </div>
+      </div>
+    </section>
+
+    <!-- SECTION 9: AKSH AGENT HARNESS -->
+    <section id="aksh-agent">
+      <h2 class="section-heading">9. Aksh Agentic Copilot & Microsoft Agent Framework (MAF) Harness</h2>
+      <p>
+        The Aksh autonomous career copilot operates on Microsoft Agent Framework (MAF 1.24.0) and Microsoft.Extensions.AI (MEAI 10.10.0), bridging native AI providers with typed, in-process tools:
+      </p>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">GeminiFunctionCallingClient & Adapter</div>
+          <p>
+            <code>AkshChatClientAdapter</code> implements <code>IChatClient</code>. It bridges MEAI <code>ChatOptions.Tools</code> to Gemini's native <code>functionDeclarations</code> API, maps all multi-turn message history with <code>functionResponse</code> (normalized to role <code>"user"</code>), and parses returned <code>functionCall</code> parts into <code>FunctionCallContent</code>.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-title">Autonomous ReAct Execution Loop</div>
+          <p>
+            When <code>HarnessAgent.RunStreamingAsync</code> executes, it inspects model tool requests, invokes registered <code>AIFunction</code>s (<code>scrape_job</code>, <code>prepare_package</code>, <code>answer_screening</code>, <code>check_truth</code>, <code>launch_apply</code>), appends receipts to <code>AkshMessages</code>, updates plan checklist status, and yields real-time SSE stream events.
+          </p>
+        </div>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>Component</th><th>Interface / Class</th><th>Lifecycle & Responsibility</th></tr></thead>
+          <tbody>
+            <tr><td><code>GeminiFunctionCallingClient</code></td><td>Class</td><td>Transient bridge translating MEAI tool calls into Gemini function calling payloads & returning <code>FunctionCallContent</code>.</td></tr>
+            <tr><td><code>AkshChatClientAdapter</code></td><td><code>IChatClient</code></td><td>Singleton bridge resolving scoped AI services, carrying candidate API credentials and routing tool calls.</td></tr>
+            <tr><td><code>AkshTools</code></td><td>Static Factory</td><td>Catalog of 7 server-bound tools with closure-bound <code>userId</code>/<code>sessionId</code> preventing cross-tenant leakage.</td></tr>
+            <tr><td><code>AkshAgentRunner</code></td><td><code>IAkshAgentRunner</code></td><td>Scoped orchestrator managing turn budget gates, session persistence, SSE stream events, and approval gates.</td></tr>
+          </tbody>
+        </table>
       </div>
     </section>
 

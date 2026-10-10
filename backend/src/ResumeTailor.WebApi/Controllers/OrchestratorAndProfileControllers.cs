@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ResumeTailor.Application.Common.Interfaces;
 using ResumeTailor.Application.Features.CandidateProfile;
+using ResumeTailor.Application.Features.ExtensionDispatch;
 using ResumeTailor.Application.Features.Orchestrator;
 using ResumeTailor.Domain.Enums;
 using ResumeTailor.Domain.ValueObjects;
@@ -59,7 +60,9 @@ public class CandidateProfileController : BaseApiController
             req.EqualEmploymentRace,
             req.EqualEmploymentVeteran,
             req.EqualEmploymentDisability,
-            req.EvidenceKnowledgeBase ?? new()
+            req.EvidenceKnowledgeBase ?? new(),
+            req.AutonomyLevel,
+            req.MaxApplicationsPerDay
         );
 
         var result = await Mediator.Send(command);
@@ -122,7 +125,9 @@ public record UpdateCandidateProfileRequest(
     string? EqualEmploymentRace,
     string? EqualEmploymentVeteran,
     string? EqualEmploymentDisability,
-    Dictionary<string, string>? EvidenceKnowledgeBase
+    Dictionary<string, string>? EvidenceKnowledgeBase,
+    AutonomyLevel AutonomyLevel = AutonomyLevel.Supervised,
+    int MaxApplicationsPerDay = 10
 );
 
 public record SaveScreeningMemoryRequest(
@@ -247,6 +252,61 @@ public class OrchestratorController : BaseApiController
 
         if (result.IsFailure)
             return BadRequest(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// Phase 4 dispatch: extension claims its user's next dispatched run.
+    /// 204 when none waiting; 409-safe atomic claim (first claimant wins).
+    /// </summary>
+    [HttpGet("extension/runs/next")]
+    public async Task<IActionResult> ClaimNextExtensionRun()
+    {
+        var userId = _currentUserService.UserId;
+        if (!userId.HasValue) return Unauthorized();
+
+        var result = await Mediator.Send(new ClaimExtensionRunQuery(userId.Value));
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error, reasonCode = "claim_failed" });
+
+        if (result.Value == null)
+            return NoContent();
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// Phase 4 dispatch: extension posts step + terminal receipts for its claimed run.
+    /// </summary>
+    [HttpPost("extension/runs/{id:guid}/receipt")]
+    public async Task<IActionResult> PostExtensionReceipt(Guid id, [FromBody] ExtensionReceiptRequest req)
+    {
+        var userId = _currentUserService.UserId;
+        if (!userId.HasValue) return Unauthorized();
+
+        var result = await Mediator.Send(new PostExtensionReceiptCommand(
+            userId.Value,
+            id,
+            req.ClaimToken,
+            req.State,
+            req.FilledCount,
+            req.EscalatedCount,
+            req.Message,
+            req.Logs
+        ));
+
+        if (result.IsFailure)
+        {
+            // Uniform 404 for unknown/cancelled/other-user (no existence leak);
+            // 409 for a claim that moved on; 400 for malformed state.
+            return result.Error switch
+            {
+                "run_not_found" or "run_cancelled" => NotFound(new { error = result.Error, reasonCode = result.Error }),
+                "stale_claim" => Conflict(new { error = result.Error, reasonCode = result.Error }),
+                _ => BadRequest(new { error = result.Error, reasonCode = result.Error }),
+            };
+        }
 
         return Ok(result.Value);
     }
@@ -426,6 +486,15 @@ public record UpdateQueueStatusRequest(
 public record ExecuteQueueRequest(
     bool Headed = false,
     bool CopilotMode = true
+);
+
+public record ExtensionReceiptRequest(
+    Guid ClaimToken,
+    string State,
+    int? FilledCount = null,
+    int? EscalatedCount = null,
+    string? Message = null,
+    List<string>? Logs = null
 );
 
 public record QuickMatchRequest(

@@ -140,6 +140,11 @@ public class CandidateProfile : AuditableEntity
     public string GithubUrl { get; set; } = string.Empty;
     public string PortfolioUrl { get; set; } = string.Empty;
 
+    // Aksh autonomy contract: Supervised (default) vs opt-in SupervisedAuto per portal,
+    // plus a daily pacing cap enforced by the governor before any submission.
+    public AutonomyLevel AutonomyLevel { get; set; } = AutonomyLevel.Supervised;
+    public int MaxApplicationsPerDay { get; set; } = 10;
+
     // Optional EEO (Equal Employment Opportunity) answers for US/global standard ATS forms
     public string? EqualEmploymentGender { get; set; }
     public string? EqualEmploymentRace { get; set; }
@@ -186,10 +191,32 @@ public class ApplicationQueueItem : AuditableEntity
 
     public PipelineExecutionStatus Status { get; set; } = PipelineExecutionStatus.Prepared;
     public bool RequiresManualReview { get; set; } = true; // Review Gateway: Defaults to true for all external/LinkedIn copilot workflows
-    
+
+    // Phase 4 extension-dispatch claim: set atomically at claim time via the
+    // ExtensionRunClaims ticket (the ticket's PK is the atomic gate; these
+    // fields carry state for display, lease expiry, and receipt validation).
+    public DateTime? ClaimedAtUtc { get; set; }
+    public Guid? ClaimToken { get; set; }
+
     // JSON serialized List<string> for live automation step traces
     public string ExecutionLogsJson { get; set; } = "[]";
     public string? ErrorMessage { get; set; }
     public DateTime? AppliedAtUtc { get; set; }
+}
+
+/// <summary>
+/// Phase 4 dispatch claim ticket. PK on QueueItemId makes the claim atomic:
+/// exactly one INSERT can win per item on every provider, with no raw SQL
+/// and no provider-specific GUID handling. Expired tickets are swept back
+/// to dispatchable state; terminal/cancelled runs delete their ticket.
+/// </summary>
+public class ExtensionRunClaim : AuditableEntity
+{
+    public Guid QueueItemId { get; set; }
+    public ApplicationQueueItem? QueueItem { get; set; }
+
+    public Guid UserId { get; set; }
+    public Guid ClaimToken { get; set; }
+    public DateTime ClaimedAtUtc { get; set; } = DateTime.UtcNow;
 }
 

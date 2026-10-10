@@ -114,8 +114,8 @@ describe('Tier 3: Pairwise Combinatorial Interactions', () => {
     env.cleanup();
   });
 
-  // P5: F11 (Default Profile) + F12 (Idempotent Injection)
-  it('P5 (F11+F12): Freshly injected tab initializes idempotency guard and loads complete default candidate profile', () => {
+  // P5: F11 (Unknown-Safe Profile) + F12 (Idempotent Injection)
+  it('P5 (F11+F12): Freshly injected tab initializes idempotency guard and loads unknown-safe default profile', () => {
     const env = createBrowserEnvironment({
       url: 'https://boards.greenhouse.io/job/10',
       html: '<form></form>'
@@ -125,7 +125,11 @@ describe('Tier 3: Pairwise Combinatorial Interactions', () => {
     assert.strictEqual(env.window.__VEDHA_CONTENT_SCRIPT_INITIALIZED__, true, 'Idempotency guard must be set');
     const profile = exports.DEFAULT_CANDIDATE_PROFILE;
     assert.ok(profile, 'Default profile must exist');
-    assert.ok(profile.fullName && profile.email, 'Profile must have full candidate credentials');
+    assert.ok('fullName' in profile && 'email' in profile, 'Profile must expose identity keys');
+    assert.ok(
+      !String(profile.fullName).includes('Alex') && !String(profile.email).includes('@'),
+      'Defaults must carry no fabricated identity (fail closed)'
+    );
     env.cleanup();
   });
 

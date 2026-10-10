@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ADR-006: Aksh — Agentic Copilot & Harness Orchestrator on Microsoft Agent Framework — Vedha AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090a0f;
+      --card-bg: #11131a;
+      --card-bg-elevated: #161922;
+      --border: #212533;
+      --border-accent: #373d52;
+      --text-main: #f1f3f9;
+      --text-muted: #9aa1b5;
+      --text-dim: #646b82;
+      --primary: #6366f1;
+      --primary-light: #818cf8;
+      --primary-glow: rgba(99, 102, 241, 0.15);
+      --emerald: #10b981;
+      --emerald-glow: rgba(16, 185, 129, 0.15);
+      --amber: #f59e0b;
+      --amber-glow: rgba(245, 158, 11, 0.12);
+      --rose: #f43f5e;
+      --cyan: #06b6d4;
+      --aksh-1: #4f46e5;
+      --aksh-2: #06b6d4;
+      --aksh-3: #10b981;
+      --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+    html.light {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --card-bg-elevated: #f1f5f9;
+      --border: #e2e8f0;
+      --border-accent: #cbd5e1;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #94a3b8;
+      --primary: #4f46e5;
+      --primary-light: #6366f1;
+      --primary-glow: rgba(79, 70, 229, 0.1);
+      --emerald: #059669;
+      --emerald-glow: rgba(5, 150, 105, 0.1);
+      --amber: #d97706;
+      --amber-glow: rgba(217, 119, 6, 0.08);
+      --rose: #e11d48;
+      --cyan: #0891b2;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.65;
+      min-height: 100vh;
+      padding: 40px 24px 80px 24px;
+      transition: background-color 0.2s, color 0.2s;
+    }
+    .container { max-width: 980px; margin: 0 auto; }
+    .nav-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-link {
+      color: var(--primary-light);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .nav-link:hover { text-decoration: underline; }
+    .meta-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 18px; }
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid transparent;
+    }
+    .badge-id { font-family: var(--font-mono); background: var(--primary-glow); color: var(--primary-light); border-color: rgba(99, 102, 241, 0.3); }
+    .badge-status { background: var(--amber-glow); color: var(--amber); border-color: rgba(245, 158, 11, 0.35); }
+    .badge-accepted { background: var(--emerald-glow); color: var(--emerald); border-color: rgba(16, 185, 129, 0.35); }
+    .badge-date { font-family: var(--font-mono); background: var(--card-bg-elevated); color: var(--text-dim); border-color: var(--border); }
+    .badge-stack { font-family: var(--font-mono); background: var(--card-bg-elevated); color: var(--text-muted); border-color: var(--border); }
+    .theme-btn {
+      margin-left: auto;
+      background: var(--card-bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 14px; line-height: 1.2; }
+    h2 { font-size: 21px; font-weight: 700; margin: 36px 0 12px 0; display: flex; align-items: center; gap: 10px; }
+    h2::before { content: ''; display: inline-block; width: 4px; height: 20px; background: var(--primary); border-radius: 2px; flex-shrink: 0; }
+    h3 { font-size: 16px; font-weight: 700; margin: 24px 0 10px 0; color: var(--text-main); }
+    p { font-size: 15px; color: var(--text-muted); margin-bottom: 16px; }
+    ul, ol { margin: 12px 0 18px 24px; color: var(--text-muted); font-size: 14.5px; }
+    li { margin-bottom: 8px; }
+    code {
+      font-family: var(--font-mono);
+      background: var(--card-bg-elevated);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12.5px;
+      color: var(--primary-light);
+      border: 1px solid var(--border);
+      word-break: break-word;
+    }
+    pre {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      background: var(--card-bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      overflow-x: auto;
+      color: var(--text-muted);
+      margin: 16px 0 20px 0;
+      line-height: 1.6;
+    }
+    .callout {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--emerald);
+      border-radius: 12px;
+      padding: 20px 22px;
+      margin: 24px 0;
+    }
+    .callout.warn { border-left-color: var(--amber); }
+    .callout.info { border-left-color: var(--primary); }
+    .callout-title { font-weight: 700; font-size: 13.5px; margin-bottom: 6px; }
+    .callout .callout-title { color: var(--emerald); }
+    .callout.warn .callout-title { color: var(--amber); }
+    .callout.info .callout-title { color: var(--primary-light); }
+    .callout p { margin: 0; font-size: 14px; }
+    .diagram-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      margin: 24px 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+    .diagram-caption { font-size: 11.5px; color: var(--text-dim); font-family: var(--font-mono); margin-top: 10px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin: 20px 0; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+    .card-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; color: var(--text-main); }
+    .card p { font-size: 13px; margin: 0; }
+    .table-wrap { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; overflow-x: auto; margin: 20px 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; text-align: left; min-width: 680px; }
+    th { background: var(--card-bg-elevated); color: var(--text-main); font-weight: 600; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+    td { padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--text-muted); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    .step-list { display: flex; flex-direction: column; gap: 14px; margin: 20px 0; }
+    .step { display: flex; gap: 16px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 18px; align-items: flex-start; }
+    .step-n {
+      width: 30px; height: 30px; border-radius: 8px; background: var(--primary);
+      color: #fff; display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 13px; flex-shrink: 0;
+    }
+    .step-t { font-size: 14.5px; font-weight: 700; color: var(--text-main); margin-bottom: 4px; }
+    .step-d { font-size: 13.5px; color: var(--text-muted); margin: 0; }
+    /* Aksh brand hero */
+    .hero {
+      background: linear-gradient(135deg, rgba(79,70,229,0.14) 0%, rgba(6,182,212,0.10) 55%, rgba(16,185,129,0.10) 100%);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 30px 30px 26px 30px;
+      margin: 8px 0 26px 0;
+      display: flex;
+      gap: 26px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .hero-copy { flex: 1; min-width: 260px; }
+    .wordmark {
+      font-size: 44px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      line-height: 1;
+      background: linear-gradient(90deg, #818cf8 0%, #22d3ee 60%, #34d399 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 6px 0 8px 0;
+    }
+    html.light .wordmark {
+      background: linear-gradient(90deg, #4f46e5 0%, #0891b2 60%, #059669 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+    }
+    .tagline { font-size: 14px; color: var(--text-muted); margin: 0; }
+    .tagline strong { color: var(--text-main); }
+    .toc {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 22px;
+      margin: 0 0 8px 0;
+      columns: 2;
+      font-size: 13.5px;
+    }
+    .toc a { color: var(--primary-light); text-decoration: none; display: block; padding: 3px 0; break-inside: avoid; }
+    .toc a:hover { text-decoration: underline; }
+    footer { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--text-dim); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    @media (max-width: 720px) {
+      .grid-2 { grid-template-columns: 1fr; }
+      .toc { columns: 1; }
+      h1 { font-size: 26px; }
+      .wordmark { font-size: 34px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="nav-bar">
+      <a href="index.html" class="nav-link">← Back to ADR Catalog</a>
+      <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+        <a href="../architecture/hld.html" class="nav-link">📘 System HLD</a>
+        <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">🌙 Toggle Theme</button>
+      </div>
+    </div>
+
+    <div class="meta-bar">
+      <span class="badge badge-id">ADR-006</span>
+      <span class="badge badge-accepted">● ACCEPTED</span>
+      <span class="badge badge-date">2026-10-10 (Rev 9)</span>
+      <span class="badge badge-stack">Microsoft Agent Framework 1.24.0 (Harness) • .NET 10 • Clean Architecture</span>
+    </div>
+
+    <!-- ============ 0. AKSH BRAND ============ -->
+    <div class="hero">
+      <svg width="128" height="128" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Aksh agent logo">
+        <defs>
+          <linearGradient id="akshBadge" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#312e81"/><stop offset="55%" stop-color="#4f46e5"/><stop offset="100%" stop-color="#0e7490"/>
+          </linearGradient>
+          <radialGradient id="akshGlow" cx="50%" cy="38%" r="55%">
+            <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.35"/><stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="akshA2" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#c7d2fe"/>
+          </linearGradient>
+        </defs>
+        <rect x="4" y="4" width="88" height="88" rx="24" fill="url(#akshBadge)"/>
+        <rect x="4" y="4" width="88" height="88" rx="24" fill="none" stroke="#818cf8" stroke-width="1.5" opacity="0.5"/>
+        <circle cx="48" cy="48" r="34" fill="url(#akshGlow)"/>
+        <path d="M30,68 L48,28 L66,68" fill="none" stroke="url(#akshA2)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M39,37 L48,27 L57,37" fill="none" stroke="#22d3ee" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M39,59 L45.5,65.5 L59,50" fill="none" stroke="#34d399" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M74,14 L76,20 L82,22 L76,24 L74,30 L72,24 L66,22 L72,20 Z" fill="#22d3ee"/>
+        <circle cx="25" cy="24" r="2.5" fill="#818cf8" opacity="0.8"/>
+      </svg>
+      <div class="hero-copy">
+        <div class="wordmark">AKSH</div>
+        <p class="tagline"><strong>A</strong>utonomous <strong>K</strong>nowledge-driven <strong>S</strong>creening <strong>H</strong>arness — the Vedha AI career copilot.<br>
+        Mark: ascending <strong>A</strong> (your career, moving up) + <strong>checkmark</strong> crossbar (verified truth, approved submit) + <strong>spark</strong> (the AI).</p>
+      </div>
+    </div>
+
+    <h1>Aksh — Agentic Copilot &amp; Harness Orchestrator on Microsoft Agent Framework</h1>
+    <p>
+      Introduce <strong>Aksh</strong>: a single conversational AI agent that plans, executes, and supervises the entire Vedha AI copilot pipeline —
+      job scraping, resume tailoring, cover letters, screening answers, queue preparation, and browser submission —
+      built on <strong>Microsoft Agent Framework (MAF) 1.24.0</strong> and its batteries-included <strong>Harness Agent</strong>.
+      This ADR answers: <em>can we implement it, how does it work, and what does it change?</em>
+      Short answer: <strong>yes — as a thin agentic layer over the existing MediatR pipeline, behind the existing Review Gateway.</strong>
+    </p>
+
+    <nav class="toc" aria-label="Document contents">
+      <a href="#brand">0. Brand, Logo &amp; Naming</a>
+      <a href="#summary">0.1 Plain-English Summary</a>
+      <a href="#context">1. Context &amp; Problem</a>
+      <a href="#decision">2. Decision</a>
+      <a href="#arch">3. Architecture (C4 + Components)</a>
+      <a href="#flow">4. End-to-End Flow &amp; Sequence</a>
+      <a href="#detailed">5. Detailed Design (Entities, Contracts, Tools)</a>
+      <a href="#states">6. Session Lifecycle &amp; State Transitions</a>
+      <a href="#api">7. API &amp; Data Contracts</a>
+      <a href="#ext">8. Extension Harness Loop (Observe→Fill→Validate→Fix)</a>
+      <a href="#alts">9. Alternatives Considered</a>
+      <a href="#security">10. Security &amp; Prompt-Injection Defense</a>
+      <a href="#cost">11. Cost-Efficient History &amp; Token Discipline</a>
+      <a href="#plan">12. Implementation Plan &amp; Acceptance Criteria</a>
+      <a href="#verify">13. Verification &amp; Test Matrix</a>
+      <a href="#risks">14. Risks &amp; Edge Cases</a>
+      <a href="#glossary">15. Glossary &amp; Revision History</a>
+      <a href="#analysis">16. Harness Implementation Analysis (vs Reference)</a>
+      <a href="#mcp">17. MCP Remote Tool Plane (Adopted Direction)</a>
+    </nav>
+
+    <!-- ============ BRAND ============ -->
+    <h2 id="brand">0. Brand, Logo &amp; Naming</h2>
+    <div class="grid-3">
+      <div class="card"><div class="card-title">↑ Ascending A</div><p>The letter A drawn as an upward arrow — career growth, the whole point. Reads clearly even at 24px in the SPA and extension header.</p></div>
+      <div class="card"><div class="card-title">✓ Checkmark crossbar</div><p>The A's crossbar is a green tick: every fact verified against your resume, every submit approved by you. Trust, drawn literally.</p></div>
+      <div class="card"><div class="card-title">✦ The spark</div><p>A small cyan spark — the AI inside. It assists from the corner; it never takes over the mark, just like Aksh never takes over your application.</p></div>
+    </div>
+    <p><strong>Palette:</strong> indigo <code>#4f46e5</code> (planning) → cyan <code>#06b6d4</code> (execution) → emerald <code>#10b981</code> (approval) — the same gradient as the run lifecycle. <strong>Voice:</strong> Aksh speaks as a precise junior recruiter: cites evidence per answer, never invents, asks when unsure. <strong>Usage:</strong> the SVG mark above is the single source of truth (no raster copies); SPA "Ask Aksh" avatar and extension sidepanel header reuse it at 24–32px.</p>
+
+    <div class="callout" id="summary">
+      <div class="callout-title">💡 Plain-English Summary: What Is Aksh?</div>
+      <p>
+        Today the candidate clicks through separate stages: paste a job link, tailor the resume, generate a cover letter,
+        answer screening questions, review the queue item, then launch browser automation — like ordering each course of a meal
+        from a different waiter. <strong>Aksh is one head waiter</strong> (think Naukri's Neo agent): you say
+        <em>"Apply to this LinkedIn posting"</em>, and Aksh breaks the job into a todo list, calls the existing kitchen
+        (scraper, tailor, Q&amp;A engine, ATS truth-checker), shows you every draft for approval, and only then walks the
+        finished tray to the browser. It never invents facts, never submits without your explicit approval, and writes down
+        everything it did so you can audit it.
+      </p>
+    </div>
+
+    <!-- ============ 1. CONTEXT ============ -->
+    <h2 id="context">1. Context &amp; Problem</h2>
+    <p>
+      The current orchestrator (<code>JobApplicationOrchestrator.RunPipelineAsync</code>) is an <strong>imperative pipeline</strong>:
+      fixed steps in a fixed order, driven by button clicks. Each AI call is one-shot with no run memory, no plan, no recovery,
+      and no clarifying questions mid-flow. The connected spike (<code>docs/bugfixes/copilot-pipeline-auto-apply-stall-and-extension-harness-spike.md</code>)
+      proved a harder fact: the pipeline <strong>stages but never applies</strong> — providers return <code>PausedForUserReview</code> with log lines only,
+      and the headless worker fallback degrades silently. Aksh is the strategic answer; the spike is the tactical build plan. Neither duplicates the other.
+    </p>
+    <ul>
+      <li><strong>No run-level reasoning:</strong> cannot re-plan when a step fails (scraper blocked → ask for pasted JD text).</li>
+      <li><strong>No conversational surface:</strong> cannot hold a goal like <em>"get me ready to apply to these 3 jobs"</em>.</li>
+      <li><strong>No execution venue strategy:</strong> headless-first is both fragile and ban-prone; the spike inverts this to extension-first.</li>
+      <li><strong>Hand-rolled scaffolding risk:</strong> loop, memory, approvals, telemetry from scratch duplicates supported MAF runtime.</li>
+    </ul>
+
+    <!-- ============ 2. DECISION ============ -->
+    <h2 id="decision">2. Decision</h2>
+    <p>
+      Adopt <strong>Microsoft Agent Framework 1.24.0</strong> (verified 2026-10-10; GA since April 2026, monthly cadence, 11M+ downloads,
+      net8.0 target → runs on net10.0, built on <code>Microsoft.Extensions.AI</code> 10.x) and build Aksh as a <strong>Harness Agent</strong>
+      (<code>chatClient.AsHarnessAgent(...)</code>) whose <strong>tools are thin adapters over the existing Vedha pipeline</strong>.
+      The harness supplies the runtime (tool loop + iteration cap, todos + plan/execute modes, session memory, compaction, approvals, web search,
+      OpenTelemetry); Vedha supplies domain tools and guardrails (ATS truth engine, Review Gateway, per-user scoping, pacing governor).
+    </p>
+
+    <!-- ============ 3. ARCHITECTURE ============ -->
+    <h2 id="arch">3. Architecture (C4 + Components)</h2>
+    <div class="diagram-box">
+      <svg viewBox="0 0 900 340" width="900" height="340" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;">
+        <defs>
+          <linearGradient id="akshGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#4f46e5"/><stop offset="100%" stop-color="#06b6d4"/>
+          </linearGradient>
+          <filter id="sh" x="-5%" y="-5%" width="110%" height="115%">
+            <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.35"/>
+          </filter>
+        </defs>
+        <rect x="20" y="16" width="860" height="60" rx="10" fill="#161922" stroke="#373d52"/>
+        <text x="40" y="40" fill="#9aa1b5" font-family="Geist,sans-serif" font-size="11" font-weight="700">CANDIDATE SURFACE (unchanged UX, new chat entry point)</text>
+        <text x="40" y="62" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="13" font-weight="600">React SPA “Ask Aksh” panel  •  Chrome Extension sidepanel  •  SignalR live progress</text>
+        <rect x="330" y="92" width="240" height="52" rx="10" fill="url(#akshGrad)" filter="url(#sh)"/>
+        <text x="355" y="114" fill="#ffffff" font-family="Geist,sans-serif" font-size="14" font-weight="700">✦ Aksh (MAF HarnessAgent)</text>
+        <text x="355" y="133" fill="#e0e7ff" font-family="Geist,sans-serif" font-size="11">plan → todo → tools → approval</text>
+        <rect x="20" y="168" width="270" height="140" rx="10" fill="#11131a" stroke="#10b981"/>
+        <text x="36" y="192" fill="#10b981" font-family="Geist,sans-serif" font-size="11" font-weight="700">HARNESS (from Microsoft)</text>
+        <text x="36" y="212" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12">• tool-calling loop + iteration cap</text>
+        <text x="36" y="230" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12">• Todo + plan/execute providers</text>
+        <text x="36" y="248" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12">• session memory + compaction</text>
+        <text x="36" y="266" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12">• approval policy + web search</text>
+        <text x="36" y="284" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12">• OpenTelemetry tracing</text>
+        <rect x="315" y="168" width="270" height="140" rx="10" fill="#11131a" stroke="#6366f1"/>
+        <text x="331" y="192" fill="#818cf8" font-family="Geist,sans-serif" font-size="11" font-weight="700">VEDHA TOOLS (our adapters)</text>
+        <text x="331" y="212" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12">• scrape_job • tailor_resume</text>
+        <text x="331" y="230" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12">• answer_screening • cover_letter</text>
+        <text x="331" y="248" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12">• prepare_queue • launch_apply</text>
+        <text x="331" y="266" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12">• ats_truth_check (blocking)</text>
+        <text x="331" y="284" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12">• recall_memory (pgvector + pg)</text>
+        <rect x="610" y="168" width="270" height="140" rx="10" fill="#11131a" stroke="#f59e0b"/>
+        <text x="626" y="192" fill="#f59e0b" font-family="Geist,sans-serif" font-size="11" font-weight="700">VEDHA GUARDRAILS (non-negotiable)</text>
+        <text x="626" y="212" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12">• Review Gateway: no silent submit</text>
+        <text x="626" y="230" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12">• truth invariants before queueing</text>
+        <text x="626" y="248" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12">• per-user session + data scope</text>
+        <text x="626" y="266" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12">• full audit: todos + tool log</text>
+        <text x="626" y="284" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12">• JD text = data, never orders</text>
+      </svg>
+      <div class="diagram-caption">Figure 1: Aksh = Microsoft harness runtime + Vedha domain tools + Vedha guardrails. The existing pipeline is reused, not rewritten.</div>
+    </div>
+
+    <h3>Component boundaries (what lives where)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Component</th><th>Project / Namespace</th><th>Owns</th><th>Must never</th></tr></thead>
+        <tbody>
+          <tr><td>Agent domain</td><td><code>ResumeTailor.Domain/Entities/Aksh*</code></td><td><code>AkshSession</code>, <code>AkshApproval</code>, <code>AkshMessage</code>, status enums. Pure C#.</td><td>Reference MAF, EF, or HTTP types (ADR-001).</td></tr>
+          <tr><td>Agent contracts</td><td><code>ResumeTailor.Application/Features/Aksh</code></td><td><code>IAkshAgentRunner</code>, tool-definition interfaces, session/approval commands + queries, token-ledger writer.</td><td>Construct HarnessAgent or chat clients.</td></tr>
+          <tr><td>Harness wiring</td><td><code>ResumeTailor.Infrastructure/Aksh</code></td><td><code>HarnessAgentFactory</code>, <code>AIFunction</code> adapters, skill files, file-memory store, OTel hooks. Sole MAF consumer.</td><td>Contain resume/ATS business rules (delegates to handlers).</td></tr>
+          <tr><td>HTTP surface</td><td><code>ResumeTailor.WebApi/Controllers/AkshController</code></td><td>Session/message/approval endpoints, SSE streaming, SignalR progress reuse.</td><td>Agent reasoning or tool logic.</td></tr>
+          <tr><td>Execution hands</td><td><code>extension/content.js</code> run-session loop</td><td>Observe→fill→validate→fix state machine, pacing client-side, receipts.</td><td>Submit without an approval receipt (spike §4B).</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Model access reuses the existing provider abstraction: the harness's <code>IChatClient</code> is built for the user's <code>PreferredAiProvider</code> (Gemini default; resilient cross-provider fallback preserved), so Aksh inherits multi-provider support and per-user encrypted keys with no new secret plumbing.</p>
+
+    <!-- ============ 4. FLOW ============ -->
+    <h2 id="flow">4. End-to-End Flow &amp; Sequence</h2>
+    <div class="step-list">
+      <div class="step"><div class="step-n">1</div><div><div class="step-t">Goal intake (chat)</div><p class="step-d">Candidate types <em>"Prepare my application for &lt;job URL&gt;"</em> in SPA or extension. WebApi opens a per-user <code>AkshSession</code> (status <code>Planning</code>) and streams the run over SSE + SignalR.</p></div></div>
+      <div class="step"><div class="step-n">2</div><div><div class="step-t">Plan mode → visible todo list</div><p class="step-d"><code>scrape JD → tailor resume → truth-check → cover letter → screening answers → queue package → supervised apply</code>. Candidate can edit/reorder before execution starts.</p></div></div>
+      <div class="step"><div class="step-n">3</div><div><div class="step-t">Execute via typed tools (never raw prompts)</div><p class="step-d">Each step calls an <code>AIFunction</code> adapter delegating to existing MediatR handlers (<code>DetectJobSourceQuery</code>, tailoring chain, <code>GenerateScreeningAnswersCommand</code>, <code>PrepareApplicationPackageCommand</code>). L0 deterministic shortcuts run first, zero tokens.</p></div></div>
+      <div class="step"><div class="step-n">4</div><div><div class="step-t">Blocking truth gate</div><p class="step-d"><code>check_truth</code> runs <code>IAtsScoringEngine.ValidateTruthPreservation</code> locally. Violation → safe fallback to master bullets + audit entry. Not skippable by the model.</p></div></div>
+      <div class="step"><div class="step-n">5</div><div><div class="step-t">Human approval (Review Gateway)</div><p class="step-d">Queue item presented with diffs + answers. <code>launch_apply</code> pauses the run; on approval, <code>ExecuteApplicationQueueItemCommand</code> runs through the extension-first executor (spike §4). Same <code>PausedForUserReview → Submitted</code> states.</p></div></div>
+      <div class="step"><div class="step-n">6</div><div><div class="step-t">Memory + audit + ledger</div><p class="step-d">Scratch notes in session file-memory; durable facts to Postgres/pgvector; todos + tool receipts + approvals persisted; input/output tokens metered into the session ledger.</p></div></div>
+    </div>
+
+    <div class="diagram-box">
+      <svg viewBox="0 0 940 300" width="940" height="300" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;">
+        <line x1="90" y1="40" x2="90" y2="280" stroke="#373d52" stroke-width="1.5"/>
+        <line x1="270" y1="40" x2="270" y2="280" stroke="#373d52" stroke-width="1.5"/>
+        <line x1="450" y1="40" x2="450" y2="280" stroke="#373d52" stroke-width="1.5"/>
+        <line x1="630" y1="40" x2="630" y2="280" stroke="#373d52" stroke-width="1.5"/>
+        <line x1="820" y1="40" x2="820" y2="280" stroke="#373d52" stroke-width="1.5"/>
+        <text x="90" y="28" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12" font-weight="700" text-anchor="middle">Candidate</text>
+        <text x="270" y="28" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12" font-weight="700" text-anchor="middle">AkshController</text>
+        <text x="450" y="28" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12" font-weight="700" text-anchor="middle">✦ Aksh (Harness)</text>
+        <text x="630" y="28" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12" font-weight="700" text-anchor="middle">Vedha Tools/Handlers</text>
+        <text x="820" y="28" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12" font-weight="700" text-anchor="middle">Extension/Worker</text>
+        <line x1="90" y1="60" x2="270" y2="60" stroke="#6366f1" stroke-width="2"/>
+        <text x="180" y="54" fill="#9aa1b5" font-family="JetBrains Mono,monospace" font-size="10" text-anchor="middle">POST /sessions{goal}</text>
+        <line x1="270" y1="95" x2="450" y2="95" stroke="#6366f1" stroke-width="2"/>
+        <text x="360" y="89" fill="#9aa1b5" font-family="JetBrains Mono,monospace" font-size="10" text-anchor="middle">RunAsync(goal)</text>
+        <line x1="450" y1="130" x2="270" y2="130" stroke="#10b981" stroke-width="2"/>
+        <text x="360" y="124" fill="#9aa1b5" font-family="JetBrains Mono,monospace" font-size="10" text-anchor="middle">plan preview (SSE)</text>
+        <line x1="450" y1="165" x2="630" y2="165" stroke="#6366f1" stroke-width="2"/>
+        <text x="540" y="159" fill="#9aa1b5" font-family="JetBrains Mono,monospace" font-size="10" text-anchor="middle">scrape→tailor→truth→answers</text>
+        <line x1="630" y1="200" x2="450" y2="200" stroke="#f59e0b" stroke-width="2"/>
+        <text x="540" y="194" fill="#9aa1b5" font-family="JetBrains Mono,monospace" font-size="10" text-anchor="middle">queue receipt + approval req</text>
+        <line x1="270" y1="225" x2="90" y2="225" stroke="#10b981" stroke-width="2"/>
+        <text x="180" y="219" fill="#9aa1b5" font-family="JetBrains Mono,monospace" font-size="10" text-anchor="middle">review UI + approve</text>
+        <line x1="450" y1="255" x2="820" y2="255" stroke="#06b6d4" stroke-width="2"/>
+        <text x="635" y="249" fill="#9aa1b5" font-family="JetBrains Mono,monospace" font-size="10" text-anchor="middle">launch_apply → observe/fill/verify → Submitted</text>
+      </svg>
+      <div class="diagram-caption">Figure 2: run sequence. Approval is a first-class message in the protocol, not a UI afterthought.</div>
+    </div>
+
+    <!-- ============ 5. DETAILED DESIGN ============ -->
+    <h2 id="detailed">5. Detailed Design (Entities, Contracts, Tools)</h2>
+
+    <h3>5a. Domain entities (new tables, additive migration)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Entity</th><th>Key columns</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>AkshSession</code></td><td><code>Id, UserId, Goal, JobUrl?, AutonomyLevel, Status, TodoJson, TokenInputTotal, TokenOutputTotal, CostMicros, CreatedAtUtc, UpdatedAtUtc</code></td><td>One row per goal. Blobs referenced by ID/hash, never inlined (cost §11).</td></tr>
+          <tr><td><code>AkshMessage</code></td><td><code>Id, SessionId, Role (user/assistant/tool), SummaryText, ArtifactRef?, Tokens, CreatedAtUtc</code></td><td>Receipts, not transcripts: tool outputs stored as artifact refs + short summaries.</td></tr>
+          <tr><td><code>AkshApproval</code></td><td><code>Id, SessionId, QueueItemId?, ToolName, PayloadJson, Status (Pending/Approved/Rejected/Expired), DecidedAtUtc</code></td><td>Approval is single-use and bound to exact tool + arguments (FIDES binding).</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Reused unchanged: <code>ApplicationQueueItem</code> (+ execution log), <code>GeneratedResume</code>, <code>ScreeningQuestionMemories</code>, <code>Applications</code> tracker, pgvector embeddings. Rollback = feature flag <code>Aksh:Enabled</code>; no existing table is altered.</p>
+
+    <h3>5b. Application contracts (signatures)</h3>
+<pre>public interface IAkshAgentRunner
+{
+    Task&lt;AkshSessionDto&gt; StartSessionAsync(Guid userId, string goal, string? jobUrl, AutonomyLevel autonomy, CancellationToken ct);
+    IAsyncEnumerable&lt;AkshStreamEvent&gt; StreamTurnAsync(Guid userId, Guid sessionId, string message, CancellationToken ct);
+    Task&lt;AkshApprovalDto&gt; DecideApprovalAsync(Guid userId, Guid approvalId, bool approve, string? editedAnswersJson, CancellationToken ct);
+    Task&lt;AkshAuditDto&gt; GetAuditAsync(Guid userId, Guid sessionId, CancellationToken ct);
+}
+public interface ITokenLedger { Task RecordAsync(Guid sessionId, string tool, int inputTokens, int outputTokens, string model, CancellationToken ct); }</pre>
+    <p>Stream events: <code>plan-delta</code>, <code>todo-update</code>, <code>tool-start/tool-end</code> (with receipt IDs), <code>draft</code> (resume diff, answers), <code>approval-request</code>, <code>progress</code> (bridged to <code>ITailoringProgressNotifier</code>), <code>error</code>, <code>done</code>.</p>
+
+    <h3>5c. Tool catalog (every tool → existing handler)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tool (<code>AIFunction</code>)</th><th>Delegates to</th><th>Side effects</th><th>Approval</th></tr></thead>
+        <tbody>
+          <tr><td><code>scrape_job(url)</code></td><td><code>DetectJobSourceQuery</code> (Crawl4AI → worker → AngleSharp chain)</td><td>none (reads)</td><td>auto</td></tr>
+          <tr><td><code>recall_memory(scope, query)</code></td><td>EF (<code>ScreeningQuestionMemories</code>, profile) + pgvector top-k</td><td>none (reads)</td><td>auto</td></tr>
+          <tr><td><code>tailor_resume(masterId, jdSchemaRef)</code></td><td>Existing tailoring chain (AI + truth fallback)</td><td>creates <code>GeneratedResume</code> draft</td><td>auto (draft only)</td></tr>
+          <tr><td><code>draft_cover_letter(resumeRef, jdRef)</code></td><td><code>IAiProvider.GenerateTextAsync</code> (Pro-tier routed)</td><td>draft text</td><td>auto (draft only)</td></tr>
+          <tr><td><code>answer_screening(company, questions)</code></td><td><code>GenerateScreeningAnswersCommand</code></td><td>writes memories (durable facts)</td><td>auto; memory writes logged</td></tr>
+          <tr><td><code>check_truth(masterRef, tailoredRef)</code></td><td><code>IAtsScoringEngine.ValidateTruthPreservation</code> (local, zero-token)</td><td>none — blocking gate</td><td>n/a (cannot be skipped)</td></tr>
+          <tr><td><code>prepare_package(masterId, jobUrl, jdText?)</code></td><td><code>PrepareApplicationPackageCommand</code></td><td>creates queue item (<code>Prepared</code>)</td><td>auto; autonomy-aware review flag (spike §4A)</td></tr>
+          <tr><td><code>launch_apply(queueItemId)</code></td><td><code>ExecuteApplicationQueueItemCommand</code> → extension-first executor</td><td>external submission</td><td><strong>always requires approval</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>5d. Infrastructure wiring</h3>
+<pre>// ResumeTailor.Infrastructure/Aksh/HarnessAgentFactory.cs
+services.AddKeyedSingleton&lt;AIAgent&gt;("aksh", (sp, _) => sp.GetRequiredService&lt;IChatClient&gt;()
+    .AsHarnessAgent(new HarnessAgentOptions {
+        Name = "aksh",
+        HarnessInstructions = "Plan visibly. Prefer Vedha tools over prose. Never invent facts. Never call launch_apply without an approval receipt.",
+        ChatOptions = new ChatOptions { Instructions = AkshSkills.Core, Tools = AkshToolCatalog.All },
+        MaxContextWindowTokens = 128_000, MaxOutputTokens = 16_384,
+        FileMemoryStore = new UserScopedFileStore(root, userId),   // per-user isolation
+    }));</pre>
+    <p>Skill files (versioned, in <code>Infrastructure/Aksh/Skills/</code>): <code>ats-doctrine.md</code>, <code>star-bullets.md</code>, <code>salary-fx.md</code>, <code>eeo-consent.md</code>, <code>wizard-playbook.md</code> (Workday patterns). Tools are allowlisted — no shell/file/network tools in the server harness.</p>
+
+    <!-- ============ 6. STATES ============ -->
+    <h2 id="states">6. Session Lifecycle &amp; State Transitions</h2>
+    <div class="diagram-box">
+      <svg viewBox="0 0 900 200" width="900" height="200" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;">
+        <rect x="20" y="70" width="110" height="56" rx="10" fill="#161922" stroke="#6366f1"/>
+        <text x="75" y="94" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12" font-weight="700" text-anchor="middle">Planning</text>
+        <text x="75" y="112" fill="#9aa1b5" font-family="Geist,sans-serif" font-size="10" text-anchor="middle">todo drafted</text>
+        <rect x="170" y="70" width="120" height="56" rx="10" fill="#161922" stroke="#06b6d4"/>
+        <text x="230" y="94" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12" font-weight="700" text-anchor="middle">Executing</text>
+        <text x="230" y="112" fill="#9aa1b5" font-family="Geist,sans-serif" font-size="10" text-anchor="middle">tools running</text>
+        <rect x="330" y="70" width="150" height="56" rx="10" fill="#161922" stroke="#f59e0b"/>
+        <text x="405" y="94" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12" font-weight="700" text-anchor="middle">AwaitingApproval</text>
+        <text x="405" y="112" fill="#9aa1b5" font-family="Geist,sans-serif" font-size="10" text-anchor="middle">review gateway</text>
+        <rect x="520" y="70" width="110" height="56" rx="10" fill="#161922" stroke="#9aa1b5"/>
+        <text x="575" y="94" fill="#f1f3f9" font-family="Geist,sans-serif" font-size="12" font-weight="700" text-anchor="middle">Paused</text>
+        <text x="575" y="112" fill="#9aa1b5" font-family="Geist,sans-serif" font-size="10" text-anchor="middle">governor/budget</text>
+        <rect x="670" y="70" width="95" height="56" rx="10" fill="#10b981"/>
+        <text x="717" y="101" fill="#fff" font-family="Geist,sans-serif" font-size="12" font-weight="700" text-anchor="middle">Done</text>
+        <rect x="790" y="70" width="95" height="56" rx="10" fill="#161922" stroke="#f43f5e"/>
+        <text x="837" y="101" fill="#f43f5e" font-family="Geist,sans-serif" font-size="12" font-weight="700" text-anchor="middle">Failed</text>
+        <line x1="130" y1="98" x2="170" y2="98" stroke="#6366f1" stroke-width="2"/>
+        <line x1="290" y1="98" x2="330" y2="98" stroke="#6366f1" stroke-width="2"/>
+        <line x1="480" y1="98" x2="520" y2="126" stroke="#f59e0b" stroke-width="2"/>
+        <text x="505" y="120" fill="#9aa1b5" font-family="Geist,sans-serif" font-size="10">approve→exec</text>
+        <line x1="405" y1="126" x2="230" y2="126" stroke="#f59e0b" stroke-width="2"/>
+        <line x1="630" y1="98" x2="670" y2="98" stroke="#10b981" stroke-width="2"/>
+      </svg>
+      <div class="diagram-caption">Figure 3: session states. Paused (governor/budget/manual) always resumes to Executing; Failed/Cancelled are terminal with reason logged.</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Transition</th><th>Trigger</th><th>Recorded</th></tr></thead>
+        <tbody>
+          <tr><td><code>Planning → Executing</code></td><td>Candidate confirms plan (or auto-starts for read-only goals)</td><td>todo snapshot</td></tr>
+          <tr><td><code>Executing → AwaitingApproval</code></td><td>Package ready; <code>launch_apply</code> requested</td><td><code>AkshApproval</code> (Pending, tool+args bound)</td></tr>
+          <tr><td><code>AwaitingApproval → Executing</code></td><td>Approval granted (single-use, consumed on dispatch)</td><td>decision + actor timestamp</td></tr>
+          <tr><td><code>Executing → Paused</code></td><td>Governor cap, token budget breach, worker offline, user abort</td><td>reason code (never bare "staged")</td></tr>
+          <tr><td><code>→ Completed / Failed / Cancelled</code></td><td>Submitted receipt / terminal error / user cancel</td><td>full audit replayable via <code>GET /audit</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ============ 7. API ============ -->
+    <h2 id="api">7. API &amp; Data Contracts</h2>
+<pre>POST /api/aksh/sessions
+  {"goal":"Apply to this LinkedIn posting","jobUrl":"https://…","autonomyLevel":"Supervised"}
+  → 201 {"sessionId":"…","status":"Planning","planPreview":[{"step":"scrape_job","detail":"…"},…]}
+
+POST /api/aksh/sessions/{id}/messages   (SSE: plan-delta, tool-start/end, draft, approval-request, progress, done)
+  {"message":"Use my EKS migration as the lead story"}
+GET  /api/aksh/sessions?status=active
+POST /api/aksh/approvals/{id}/decision
+  {"approve":true,"editedAnswers":[{"question":"…","answer":"…"}]} → run resumes; approval consumed
+GET  /api/aksh/sessions/{id}/audit      → todos + receipts + approvals + token ledger</pre>
+    <p>Errors follow the existing RFC-7807 problem-details envelope (<code>type/title/status/detail</code>), extended with <code>reasonCode</code> (<code>worker_offline</code>, <code>auth_wall</code>, <code>budget_breach</code>, <code>governor_cap</code>, <code>approval_expired</code>) so the UI never shows fake-success copy. Auth: existing JWT; every route scoped by <code>UserId</code> (IDOR tests in §13).</p>
+
+    <!-- ============ 8. EXTENSION LOOP ============ -->
+    <h2 id="ext">8. Extension Harness Loop (Observe→Fill→Validate→Fix)</h2>
+    <p>
+      Aksh's <code>launch_apply</code> executes primarily through the extension run-session in the candidate's own logged-in browser
+      (genuine TLS/IP/fingerprint/session — the lowest ban surface per 2026 detection research); the headless worker is fallback only.
+      Full design lives in the connected spike; the contract here:
+    </p>
+    <div class="step-list">
+      <div class="step"><div class="step-n">O</div><div><div class="step-t">Observe</div><p class="step-d">Snapshot field <em>descriptors</em> (label/type/options/required/validation state) — no PII in transit beyond values being filled. Reuses <code>SemanticDomFormMapper</code> semantics in-page.</p></div></div>
+      <div class="step"><div class="step-n">F</div><div><div class="step-t">Fill (human-like)</div><p class="step-d">Focus → char-by-char typing with jitter → blur → <code>input/change</code> events (extends <code>setNativeValue</code>); custom dropdowns via open→search→select→verify; uploads verified by widget state.</p></div></div>
+      <div class="step"><div class="step-n">V</div><div><div class="step-t">Validate</div><p class="step-d"><code>findActiveValidationErrors</code> re-scan + <code>MutationObserver</code> for async badges (covers Workday AJAX wizards); per-step receipts, never assumed success.</p></div></div>
+      <div class="step"><div class="step-n">X</div><div><div class="step-t">Fix (budgeted)</div><p class="step-d">Deterministic normalizers first, AI re-query for semantic rejects, ≤3 retries per field, then escalate with highlight. EEO/consent fields are never guessed.</p></div></div>
+    </div>
+
+    <!-- ============ 9. ALTERNATIVES ============ -->
+    <h2 id="alts">9. Alternatives Considered</h2>
+    <div class="grid-2">
+      <div class="card"><div class="card-title">A. Hand-rolled agent loop (rejected)</div><p>Full control, but re-implements planning, compaction, approvals, telemetry — the shipped MAF runtime. Highest maintenance.</p></div>
+      <div class="card"><div class="card-title">B. Python-side agent (rejected for now)</div><p>Pipeline, auth, and data live in .NET; a Python agent duplicates contracts and crosses a process boundary per tool call.</p></div>
+      <div class="card"><div class="card-title">C. MAF HarnessAgent in .NET (selected)</div><p>Supported runtime, in-process tools over existing handlers. We configure the harness; we own tools + guardrails.</p></div>
+      <div class="card"><div class="card-title">D. Do nothing (rejected)</div><p>Click-path bottleneck grows with every ATS adapter; stall root cause (spike) remains; no Neo parity.</p></div>
+    </div>
+    <div class="callout warn">
+      <div class="callout-title">⚠️ What Aksh Deliberately Does NOT Copy from "Neo-style" Agents</div>
+      <p>Unattended auto-submission. Preparation is aggressive; submission is conservative — every application passes the Review Gateway and explicit approval. Anti-ban (spike §3) and correctness (a wrong answer at machine speed is worse than none).</p>
+    </div>
+
+    <!-- ============ 10. SECURITY ============ -->
+    <h2 id="security">10. Security &amp; Prompt-Injection Defense (deterministic-first)</h2>
+    <p>
+      Injection is the #1 OWASP LLM risk: a posting can hide <em>"ignore previous instructions…"</em> in scraped text. A defensive system prompt alone is rejected as insufficient. Two layers:
+    </p>
+    <h3>Layer 1 — FIDES information-flow control (framework)</h3>
+    <p>
+      Integrity (trusted/untrusted) + confidentiality (public/private) labels on every content item; label-tracking middleware propagates the most
+      restrictive label; policy middleware blocks — or routes to approval — sensitive tools invoked from untrusted context <em>before</em> execution.
+      Untrusted blobs auto-hide behind variable references, processed only by a tool-free quarantined model. Mapping: JD text → untrusted; profile/resume/memories → trusted;
+      <code>launch_apply</code> refuses untrusted context (violations → Review Gateway); PII context capped from public sinks. Phase 0 confirms the .NET surface (docs skew Python); else Layer 2 stands alone.
+    </p>
+    <h3>Layer 2 — Vedha deterministic controls (hold regardless)</h3>
+    <ul>
+      <li><strong>Data-vs-instructions:</strong> JD text only as delimited data args; chat stays <code>user</code> role, never <code>system</code>.</li>
+      <li><strong>Quarantine parse:</strong> isolated tool-free extraction; only validated <code>JobDescriptionSchema</code> JSON re-enters context.</li>
+      <li><strong>Allowlist:</strong> named Vedha tools only; no shell/file/network in the server harness.</li>
+      <li><strong>Truth gate as security gate:</strong> injected fabrications fail closed to master bullets.</li>
+      <li><strong>Side-effect gating:</strong> only <code>launch_apply</code>, post-approval, idempotent, logged.</li>
+      <li><strong>Isolation + secrets:</strong> per-<code>UserId</code> sessions/memory/keys; <code>IEncryptionService</code>; <code>.env</code> never committed; output sanitized before render.</li>
+    </ul>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Data source</th><th>Label</th><th>May drive</th><th>May never drive</th></tr></thead>
+        <tbody>
+          <tr><td>System instructions, skill files, code</td><td>trusted</td><td>planning, any tool</td><td>—</td></tr>
+          <tr><td>Profile, master resume, memories (Postgres)</td><td>trusted</td><td>tailoring, answers, queue writes</td><td>—</td></tr>
+          <tr><td>Scraped JD, web search, chat input, tool errors</td><td>untrusted</td><td>summarization, schema extraction</td><td><code>launch_apply</code>, queue/memory writes sans approval</td></tr>
+          <tr><td>PII (phone, salary, visa)</td><td>private</td><td>answers, applications</td><td>public sinks, unredacted logs</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ============ 11. COST ============ -->
+    <h2 id="cost">11. Cost-Efficient History &amp; Token Discipline</h2>
+    <p>
+      History storage and history reasoning are separated — the key pays for reasoning, never remembering.
+      Verified 2026-10-10: Flash-Lite ≈ $0.25/M input, $1.50/M output, cached reads ≈ $0.025/M, Batch ≈ 50% off.
+    </p>
+    <div class="grid-2">
+      <div class="card"><div class="card-title">L0 — Deterministic (zero tokens)</div><p>Profile/memory-hash hits, truth invariants, validation regexes, audit rows. L0 runs before any LLM call.</p></div>
+      <div class="card"><div class="card-title">L1 — Hot session (zero tokens)</div><p>Turns + run state as Postgres rows, re-read from DB; transcripts never re-sent as reminders.</p></div>
+      <div class="card"><div class="card-title">L2 — Warm summaries (cheapest model)</div><p>Flash-Lite compaction keeps receipts (hash + output); blobs referenced by ID, not pasted.</p></div>
+      <div class="card"><div class="card-title">L3 — Cold semantic (embed once)</div><p>One embedding per artifact hash; local vectorizer fallback free; retrieval top-k only.</p></div>
+    </div>
+    <h3>Worked example — one full application ≈ $0.01</h3>
+<pre>JD schema      ~3.0k in / 0.5k out (lite)   ≈ $0.0015
+Tailoring      ~8.0k in / 2.0k out (lite)   ≈ $0.0050
+Cover letter   ~4.0k in / 0.6k out (lite)   ≈ $0.0019
+Answers+fixes  ~3.0k in / 1.0k out (lite)   ≈ $0.0023
+Summary/plan   ~1.0k in / 0.3k out (lite)   ≈ $0.0007
+TOTAL ≈ 19k in / 4.4k out  ≈ $0.011  →  repeat applications ≈ $0 via memory-hash hits</pre>
+    <ul>
+      <li><strong>Routing:</strong> Lite for extraction/Q&amp;A/summaries/fix-loops; Pro-tier only for STAR synthesis + cover letters; thinking budget 0.</li>
+      <li><strong>Cost-ordered failover:</strong> same-provider retry first; cross-provider only on quota failure.</li>
+      <li><strong>Ledger:</strong> <code>usageMetadata</code> per call → per-application/day spend, pause on breach, <em>"this application cost $0.011"</em> in UI.</li>
+      <li><strong>Batch + cache on math:</strong> nightly consolidation via Batch; context caching only past ~3–4 reads/hour break-even.</li>
+    </ul>
+
+    <!-- ============ 12. PLAN ============ -->
+    <h2 id="plan">12. Implementation Plan &amp; Acceptance Criteria</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Phase</th><th>Build</th><th>Acceptance criteria</th></tr></thead>
+        <tbody>
+          <tr><td><strong>0 — Spike ✅ DONE</strong></td><td>MAF 1.24.0 resolved (native net10.0 targets); <code>HarnessAgentFactory</code> + <code>recall_memory</code> tool + <code>AkshChatClientAdapter</code> shipped in <code>Infrastructure/Aksh</code>; worker on Patchright default</td><td><strong>MET 2026-10-10:</strong> build green, 58/58 tests (3 new), FIDES confirmed absent on .NET → Layer-2-only locked, MAAI001 noted (token caps stay provider-side)</td></tr>
+          <tr><td><strong>1 — Read-only Aksh ✅ DONE</strong></td><td><code>AkshController</code> + SSE streaming, session/message persistence, estimated token ledger, <code>Aksh:Enabled</code> + budget gates</td><td><strong>MET 2026-10-10:</strong> chat turns stream plan/status/message/ledger/done events; disabled/budget states explicit; 66/66 tests</td></tr>
+          <tr><td><strong>2 — Queue copilot ✅ DONE (backend)</strong></td><td>Full tool catalog over existing handlers; single-use tool+args-bound approvals; approve-with-edits; audit replay; autonomy setting + governor</td><td><strong>MET 2026-10-10:</strong> approval consume-on-use/expiry/governor/governor-re-entry tested; SPA approvals UI still open</td></tr>
+          <tr><td><strong>3 — Supervised execution (partial)</strong></td><td>Worker fallback hardening ✅ (Patchright default, jitter, human-type); extension run loop (spike §4B) + SPA UI still pending</td><td>Fixture wizard green receipt; unfixable → escalation; caps pause with reason</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Each phase independently shippable and rollback-safe: the button-driven pipeline is never modified, only called. Config additions (<code>Aksh:Enabled</code>, budgets) documented in <code>infra/.env.example</code> at build time with keys only — never secrets.</p>
+
+    <!-- ============ 13. VERIFY ============ -->
+    <h2 id="verify">13. Verification &amp; Test Matrix</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Level</th><th>Cases</th><th>Must hold</th></tr></thead>
+        <tbody>
+          <tr><td>Unit</td><td>plan formation; approval binding (replay/altered-args rejected); truth-gate block; per-user scoping; ledger arithmetic; governor caps</td><td><code>launch_apply</code> unrunnable without live approval; untrusted JD never drives writes</td></tr>
+          <tr><td>Integration</td><td>worker offline → explicit <code>worker_offline</code>; auth wall → <code>auth_wall</code>; budget breach pauses; SSE stream completeness</td><td>No fake-success copy anywhere; audit replay matches run</td></tr>
+          <tr><td>E2E</td><td>Existing tiers stay green; new L2 happy path; fixture wizard with injected validation errors</td><td>Fix-within-budget receipt; escalation with highlight on unfixable</td></tr>
+          <tr><td>Security</td><td>Injection-laced JD corpus; PII exfiltration probes; cross-user session access</td><td>Blocked pre-execution; findings in audit log; 403s on IDOR</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ============ 14. RISKS ============ -->
+    <h2 id="risks">14. Risks &amp; Edge Cases</h2>
+    <ul>
+      <li><strong>FIDES .NET parity — RESOLVED Phase 0:</strong> zero FIDES surface in MAF .NET 1.24.0 packages → Layer-2-only design locked; re-check at each MAF minor bump.</li>
+      <li><strong>Conservative labels:</strong> once-untrusted context stays untrusted → approval UX must explain <em>why</em> (Phase 2 copy work).</li>
+      <li><strong>Portal drift</strong> (LinkedIn/Workday DOM changes) → field-descriptor snapshots versioned; mapping failures escalate, never guessed.</li>
+      <li><strong>Ban surface on L3:</strong> opt-in per portal, governor-enforced; LinkedIn stays L2-only permanently.</li>
+      <li><strong>Cost overrun:</strong> ledger + budgets + kill switch; Batch consolidation is offline-only.</li>
+      <li><strong>Stale plans:</strong> JD or profile changed mid-run → re-plan prompt, never silent continuation.</li>
+    </ul>
+
+    <!-- ============ 15. GLOSSARY ============ -->
+    <h2 id="glossary">15. Glossary &amp; Revision History</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>Harness</td><td>Runtime around the model: loop, todos, memory, approvals, telemetry (MAF HarnessAgent).</td></tr>
+          <tr><td>Tool / receipt</td><td>Typed <code>AIFunction</code> over an existing handler / its persisted result ref + summary.</td></tr>
+          <tr><td>Skill</td><td>Versioned domain-knowledge file injected as instructions (ATS doctrine, STAR rules…).</td></tr>
+          <tr><td>FIDES</td><td>Framework label-based flow control: integrity × confidentiality enforced pre-execution.</td></tr>
+          <tr><td>Review Gateway</td><td>Existing pause-before-submit checkpoint; Aksh's approval sink.</td></tr>
+          <tr><td>Governor</td><td>Pacing + caps (delays, daily limits, session windows) from the spike.</td></tr>
+          <tr><td>L0–L3</td><td>Cost tiers: deterministic → hot rows → cheap-model summaries → cached vectors.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="analysis">16. Harness Implementation Analysis (vs Reference)</h2>
+    <p>
+      Audited 2026-10-10 against the reference implementations —
+      <code>microsoft/agent-framework</code> .NET Harness samples
+      (<code>Harness_Step01_Research</code>, <code>Step02_BackgroundAgents</code>, <code>Step03_DataProcessing</code>)
+      and the get-started/harness guide. Verdict: <strong>the wiring is conformant; three deviations from the reference
+      caused the observed greet-loop, and all three are now fixed.</strong>
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Reference pattern</th><th>Our implementation</th><th>Verdict</th></tr></thead>
+        <tbody>
+          <tr><td>Drive every turn with an explicit <code>AgentSession</code> (<code>CreateSessionAsync</code>); session-less runs are stateless</td><td>Runner passed <code>null</code> — todo/mode/history providers reset each turn</td><td>❌ was broken → ✅ fixed (explicit session per turn; cross-turn memory stays in Postgres by design)</td></tr>
+          <tr><td>Instructions carry a <em>mandatory planning workflow</em> (plan via todos → approval → execute)</td><td>Instructions were generic pleasantries with no workflow binding</td><td>❌ was broken → ✅ fixed (plan→ground→act→report→gate order, tested)</td></tr>
+          <tr><td>Generous <code>MaxOutputTokens</code> for tool-heavy turns (samples use 16k)</td><td>Only harness-level cap set; chat options had no output cap</td><td>⚠️ gap → ✅ fixed (16,384 in <code>ChatOptions</code>)</td></tr>
+          <tr><td><code>TodoCompletionLoopEvaluator</code> keeps executing until todos complete</td><td>Omitted: our deterministic intent layer already steps the plan; a loop evaluator risks unbounded runs here</td><td>➖ deliberate deviation, documented</td></tr>
+          <tr><td><code>FileSystemAgentFileStore</code> for file memory</td><td>File memory disabled; Postgres + pgvector are the memory of record (cost §11)</td><td>➖ deliberate deviation, documented</td></tr>
+          <tr><td>WebSearch + background agents for research fan-out</td><td>Web search disabled (job data comes from Vedha tools, not the open web — also an injection control)</td><td>➖ deliberate deviation, documented</td></tr>
+          <tr><td><code>MaxContextWindowTokens/MaxOutputTokens</code> set on harness options</td><td>Omitted: experimental in 1.24.0 (MAAI001 error); caps enforced provider-side + iteration cap</td><td>➖ constrained by framework, revisit per bump</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Additional finding: <code>CreateSessionAsync</code> on .NET takes no session ID (in-memory per agent instance),
+      so framework sessions cannot span web requests — confirming the ADR's Postgres-as-memory design rather than
+      contradicting it. Open follow-ups: persistent session store if MAF ships one; <code>FileAccessStore</code> only if
+      skill files move out of code review; loop evaluators only with a spend-bounded policy.
+    </p>
+
+    <h2 id="mcp">17. MCP Remote Tool Plane (Adopted Direction)</h2>
+    <p>
+      Decision (user-agreed 2026-10-10): expose Vedha capabilities over the <strong>Model Context Protocol</strong> as the
+      <em>remote</em> tool plane — with one correction on scope. In-process <code>AIFunction</code> adapters stay for hot,
+      DB-bound tools (sub-millisecond, shared request transaction, free ASP.NET auth). MCP wins where the tool lives
+      elsewhere, and it additionally lets <em>external</em> agents (Claude Desktop, Foundry agents, user scripts) drive Vedha.
+    </p>
+    <div class="grid-2">
+      <div class="card"><div class="card-title">Phase 3b — Worker tools over MCP</div><p>Replace the bespoke <code>/api/playwright/*</code> REST with MCP tools (<code>observe_dom</code>, <code>fill_field</code>, <code>verify_form</code>, <code>submit_application</code>) over Streamable HTTP; Aksh consumes them via MAF's MCP client. Same catalog, same approval gates, standard transport.</p></div>
+      <div class="card"><div class="card-title">Phase 4 — Public Vedha MCP server</div><p>External clients drive prepare/answer/queue flows with per-user bearer auth. Strategic unlock: Vedha as a tool provider, not just an app.</p></div>
+    </div>
+    <ul>
+      <li><strong>Non-negotiables carry over:</strong> per-user scoping (bearer passthrough, never a shared key), identical tool allowlist, <code>launch_apply</code> never auto-approved over MCP, no shell/file tools.</li>
+      <li><strong>Not adopted:</strong> replacing in-process tools with MCP (latency + auth complexity for zero user-visible gain); extension-as-MCP-server before the worker plane proves out.</li>
+    </ul>
+
+    <h2 id="native-tool-calling">18. Native Gemini Function-Calling Bridge &amp; Tool ReAct Loop (Rev 10)</h2>
+    <p>
+      Forensic analysis identified the failure mode preventing Microsoft Agent Framework (MAF) from autonomously driving Aksh tools:
+      <code>AkshChatClientAdapter</code> was calling <code>IAiProvider.GenerateTextAsync()</code>, which collapsed all history to the last user message,
+      completely stripped <code>ChatOptions.Tools</code>, and returned string text without emitting <code>FunctionCallContent</code>.
+      Because MAF never received tool calls, the ReAct loop never triggered.
+    </p>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">GeminiFunctionCallingClient</div>
+        <p>
+          Translates MEAI <code>ChatOptions.Tools</code> to Gemini <code>functionDeclarations</code>.
+          Omitted when no tools are present (preventing Gemini 400 Bad Request). Multi-turn <code>functionResponse</code> parts are
+          normalized to <code>role: "user"</code> per Gemini REST specifications. Returned <code>functionCall</code> parts are parsed
+          via <code>JsonDocument</code> into typed CLR primitives and emitted as <code>FunctionCallContent</code>.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-title">True Autonomous ReAct Loop</div>
+        <p>
+          With <code>AkshChatClientAdapter</code> returning <code>FunctionCallContent</code>, MAF's <code>HarnessAgent</code> dispatches
+          in-process <code>AIFunction</code>s (<code>scrape_job</code>, <code>prepare_package</code>, <code>launch_apply</code>), appends
+          <code>FunctionResultContent</code>, and cycles back to the model until execution converges. 91 unit tests verify end-to-end tool calling.
+        </p>
+      </div>
+    </div>
+
+    <div class="callout info">
+      <div class="callout-title">📌 Status &amp; Next Step</div>
+      <p><strong>ACCEPTED — Phase 0 complete, Phases 1–3 pending.</strong> Shipped: <code>Infrastructure/Aksh</code> (adapter, factory, recall_memory tool, DI), 3 spike tests green, worker Patchright-default swap with human-like input helpers. <em>Rev 1: initial ADR. Rev 2: MAF 1.24.0 + FIDES verification; §10 hardened. Rev 3: §11 cost/history + ledger. Rev 4: brand + logo; full detail pass. Rev 5: logo redesigned. Rev 6 (2026-10-10): ACCEPTED — Phase 0 outcomes recorded (FIDES absent on .NET 1.24.0 → Layer-2-only; MAAI001 experimental note. Rev 7 (2026-10-10): Phases 1–2 backend implemented — entities, runner, full tool catalog, bound approvals, autonomy, ledger, controller; 66/66 tests; extension loop + SPA UI remain. Rev 8 (2026-10-10): harness-vs-reference analysis (§16) — explicit sessions, mandatory workflow instructions, chat output cap; safe Markdown chat rendering; 81/81 tests. Rev 9 (2026-10-10): MCP remote tool plane adopted (§17, phased); Naukri finalize routed to worker with honest failure states. Rev 10 (2026-10-10): Native Gemini Function-Calling Bridge (§18) implemented in AkshChatClientAdapter + GeminiFunctionCallingClient; typed CLR args extraction; role "user" normalization; 91/91 unit tests green.</em></p>
+    </div>
+
+    <footer>
+      <div>Vedha AI Architecture • ADR-006 • 2026-10-10 (Rev 10)</div>
+      <div>Companion: <code>docs/specs/aksh-agent-harness-copilot-orchestrator.md</code> • <code>docs/plan/aksh-agent-harness-copilot-orchestrator.md</code> • <code>docs/specs/job-application-orchestrator.md</code> • <code>docs/plan/job-application-orchestrator.md</code> • <code>docs/bugfixes/copilot-pipeline-auto-apply-stall-and-extension-harness-spike.md</code></div>
+    </footer>
+  </div>
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = html.classList.toggle('dark');
+      html.classList.toggle('light', !isDark);
+      document.getElementById('themeBtn').textContent = isDark ? '🌙 Toggle Theme' : '☀️ Toggle Theme';
+    }
+  </script>
+</body>
+</html>

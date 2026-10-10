@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using ResumeTailor.Application.Common.Interfaces;
 using ResumeTailor.Domain.Common;
 using ResumeTailor.Domain.Entities;
+using ResumeTailor.Domain.Enums;
 
 namespace ResumeTailor.Application.Features.CandidateProfile;
 
@@ -32,6 +33,8 @@ public class CandidateProfileDto
     public string? EqualEmploymentVeteran { get; set; }
     public string? EqualEmploymentDisability { get; set; }
     public Dictionary<string, string> EvidenceKnowledgeBase { get; set; } = new();
+    public AutonomyLevel AutonomyLevel { get; set; } = AutonomyLevel.Supervised;
+    public int MaxApplicationsPerDay { get; set; } = 10;
 }
 
 public class ScreeningQuestionMemoryDto
@@ -68,7 +71,9 @@ public record UpdateCandidateProfileCommand(
     string? EqualEmploymentRace,
     string? EqualEmploymentVeteran,
     string? EqualEmploymentDisability,
-    Dictionary<string, string> EvidenceKnowledgeBase
+    Dictionary<string, string> EvidenceKnowledgeBase,
+    AutonomyLevel AutonomyLevel = AutonomyLevel.Supervised,
+    int MaxApplicationsPerDay = 10
 ) : IRequest<Result<CandidateProfileDto>>;
 
 public record GetScreeningMemoriesQuery(Guid UserId, string? Company) : IRequest<Result<List<ScreeningQuestionMemoryDto>>>;
@@ -154,6 +159,12 @@ public class CandidateProfileHandlers :
         profile.EqualEmploymentVeteran = request.EqualEmploymentVeteran;
         profile.EqualEmploymentDisability = request.EqualEmploymentDisability;
         profile.EvidenceKnowledgeBaseJson = JsonSerializer.Serialize(request.EvidenceKnowledgeBase ?? new Dictionary<string, string>());
+        profile.AutonomyLevel = Enum.IsDefined(typeof(AutonomyLevel), request.AutonomyLevel)
+            ? request.AutonomyLevel
+            : AutonomyLevel.Supervised;
+        profile.MaxApplicationsPerDay = request.MaxApplicationsPerDay < 1
+            ? 10
+            : Math.Min(request.MaxApplicationsPerDay, 100);
 
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -272,7 +283,9 @@ public class CandidateProfileHandlers :
             EqualEmploymentRace = profile.EqualEmploymentRace,
             EqualEmploymentVeteran = profile.EqualEmploymentVeteran,
             EqualEmploymentDisability = profile.EqualEmploymentDisability,
-            EvidenceKnowledgeBase = evidence
+            EvidenceKnowledgeBase = evidence,
+            AutonomyLevel = profile.AutonomyLevel,
+            MaxApplicationsPerDay = profile.MaxApplicationsPerDay
         };
     }
 

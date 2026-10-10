@@ -522,9 +522,14 @@ INSTRUCTIONS:
             PortfolioUrl = masterSchema.PersonalInfo.PortfolioUrl
         };
 
-        // Truth validation with safe fallback
+        // Truth validation with safe fallback AND a visible signal: fabricated
+        // sections are replaced with master copies, but the package must never
+        // look clean — the failure is logged on the item and forces manual
+        // review regardless of autonomy level (a SupervisedAuto run with a
+        // truth failure still pauses).
         var truthValidation = _atsEngine.ValidateTruthPreservation(masterSchema, tailoredSchema);
-        if (truthValidation.IsFailure)
+        var truthFailed = truthValidation.IsFailure;
+        if (truthFailed)
         {
             tailoredSchema.Experience = masterSchema.Experience;
             tailoredSchema.Education = masterSchema.Education;
@@ -585,7 +590,22 @@ INSTRUCTIONS:
         var qnaResult = await Handle(new GenerateScreeningAnswersCommand(request.UserId, company, questionsToAnswer, masterResume.Id), cancellationToken);
         var prefilledAnswers = qnaResult.IsSuccess ? qnaResult.Value! : new List<ScreeningQuestionAnswerDto>();
 
-        // 7. Enqueue Application Queue Item
+        // 7. Enqueue Application Queue Item (autonomy-aware Review Gateway:
+        // Supervised (default) always pauses for review; opt-in SupervisedAuto
+        // lets approved low-risk portals skip the first pause. LinkedIn/Naukri
+        // callers must keep Supervised regardless — enforced at the UI/policy layer.)
+        var autonomyProfile = await _context.CandidateProfiles
+            .FirstOrDefaultAsync(p => p.UserId == request.UserId, cancellationToken);
+        var startupLogs = new List<string>
+        {
+            $"[System] Application package prepared on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC",
+            $"[ATS Engine] Tailored resume generated with ATS score {atsScore.OverallScore}%",
+            $"[Memory Engine] {prefilledAnswers.Count(a => a.Source == "Memory")} questions answered from memory, {prefilledAnswers.Count(a => a.Source != "Memory")} grounded via Gemini AI."
+        };
+        if (truthFailed)
+        {
+            startupLogs.Add($"[Truth Gate] FAIL-CLOSED: tailored content failed truth preservation ({truthValidation.Error}); experience/education/projects reverted to master copies. Manual review REQUIRED.");
+        }
         var queueItem = new ApplicationQueueItem
         {
             UserId = request.UserId,
@@ -598,13 +618,8 @@ INSTRUCTIONS:
             CoverLetterText = coverLetterText,
             PrefilledAnswersJson = JsonSerializer.Serialize(prefilledAnswers),
             Status = PipelineExecutionStatus.Prepared,
-            RequiresManualReview = true, // Review Gateway
-            ExecutionLogsJson = JsonSerializer.Serialize(new List<string>
-            {
-                $"[System] Application package prepared on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC",
-                $"[ATS Engine] Tailored resume generated with ATS score {atsScore.OverallScore}%",
-                $"[Memory Engine] {prefilledAnswers.Count(a => a.Source == "Memory")} questions answered from memory, {prefilledAnswers.Count(a => a.Source != "Memory")} grounded via Gemini AI."
-            })
+            RequiresManualReview = truthFailed || autonomyProfile?.AutonomyLevel != AutonomyLevel.SupervisedAuto,
+            ExecutionLogsJson = JsonSerializer.Serialize(startupLogs)
         };
         _context.ApplicationQueueItems.Add(queueItem);
         await _context.SaveChangesAsync(cancellationToken);
