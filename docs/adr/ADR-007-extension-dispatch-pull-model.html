@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADR-007 — Backend-to-Extension Dispatch (Claim-Based Pull Model)</title>
+<style>
+  :root { --bg:#0b0d12; --card:#14161d; --line:#262932; --txt:#e6e8ee; --mut:#9aa0ae; --sky:#38bdf8; --grn:#34d399; --amb:#fbbf24; --rose:#fb7185; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; line-height:1.65; }
+  .wrap { max-width:960px; margin:0 auto; padding:40px 24px 80px; }
+  .crumb { color:var(--mut); font-size:13px; margin-bottom:12px; }
+  .crumb a { color:var(--sky); text-decoration:none; }
+  h1 { font-size:32px; margin:0 0 6px; letter-spacing:-.5px; }
+  .meta { display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 28px; }
+  .badge { font-size:12px; font-weight:700; padding:4px 12px; border-radius:999px; border:1px solid; }
+  .b-grn { color:var(--grn); border-color:#34d39955; background:#34d39914; }
+  .b-sky { color:var(--sky); border-color:#38bdf855; background:#38bdf814; }
+  .b-mut { color:var(--mut); border-color:#9aa0ae44; background:#9aa0ae14; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:24px; margin:20px 0; }
+  .card h2 { margin:0 0 12px; font-size:20px; }
+  .card h3 { margin:18px 0 8px; font-size:15px; color:var(--sky); }
+  p, li { color:#c9cdd8; font-size:15px; }
+  code { background:#0e1015; border:1px solid var(--line); border-radius:6px; padding:1px 7px; font-size:13.5px; color:var(--amb); }
+  table { width:100%; border-collapse:collapse; font-size:14px; margin-top:10px; }
+  th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--mut); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.06em; }
+  .human { background:#0e1420; border-left:3px solid var(--sky); padding:14px 18px; border-radius:0 12px 12px 0; margin:16px 0; font-size:15px; }
+  .flow { display:flex; flex-direction:column; gap:0; margin:12px 0; }
+  .step { display:flex; gap:14px; align-items:flex-start; }
+  .dot { flex:0 0 34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; background:#38bdf81c; border:1px solid #38bdf866; color:var(--sky); }
+  .step-body { padding:2px 0 20px; }
+  .step-body b { color:var(--txt); }
+  .conn { width:2px; background:var(--line); margin-left:16px; height:14px; }
+  svg.seq { width:100%; height:auto; background:#0e1015; border:1px solid var(--line); border-radius:12px; }
+  .verdict { border:1px solid #34d39955; background:#34d3990d; border-radius:12px; padding:16px 20px; margin-top:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="crumb"><a href="index.html">← ADR index</a> &nbsp;·&nbsp; Architecture Decision Record</div>
+  <h1>ADR-007 — Backend-to-Extension Dispatch</h1>
+  <div class="meta">
+    <span class="badge b-grn">ACCEPTED 2026-10-10</span>
+    <span class="badge b-sky">Phase 4</span>
+    <span class="badge b-mut">Supersedes: log-only copilot staging</span>
+  </div>
+
+  <div class="human">
+    <b>Plain English:</b> approving an application used to end at <i>“staged for review”</i> — words in a log, with no browser ever opening the form.
+    Now an approval <b>dispatches</b> the run: your browser extension notices it within a minute, claims it (so only one device ever runs it),
+    fills the real portal in your own logged-in tab, and reports every step back. If your laptop is closed, the run waits honestly and becomes
+    retryable on its own. Nothing ever claims success without a receipt.
+  </div>
+
+  <div class="card">
+    <h2>1. Context</h2>
+    <p>
+      The copilot pipeline (<code>JobApplicationOrchestrator</code> → providers) ends its <code>copilotReviewMode</code> branch with
+      <code>PausedForUserReview</code> plus log copy. The extension owns a working observe→fill→verify→fix harness
+      (<code>runAutonomousMultiStepFill</code>), but the two halves never met: the backend has no channel into the candidate's browser,
+      and the extension never learns a backend run exists. The spike (bugfix doc v1.0–v1.7) already established
+      <b>extension-first execution</b> as the ban-safe posture — dispatch is the missing link that makes it real.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>2. Decision — claim-based pull, not server push</h2>
+    <div class="flow">
+      <div class="step"><div class="dot">1</div><div class="step-body"><b>Dispatch.</b> A successful paused copilot run becomes <code>DispatchedToExtension</code> (new enum value <code>= 7</code>, appended only) when <code>Dispatch:Enabled</code>. Finalize runs and worker failures never dispatch.</div></div>
+      <div class="conn"></div>
+      <div class="step"><div class="dot">2</div><div class="step-body"><b>Poll.</b> The extension service worker fires a 60&nbsp;s <code>chrome.alarms</code> tick (new <code>alarms</code> permission) and asks <code>GET …/extension/runs/next</code> with its existing JWT. 204 = nothing waiting.</div></div>
+      <div class="conn"></div>
+      <div class="step"><div class="dot">3</div><div class="step-body"><b>Claim (atomic).</b> The first claimant wins via an <code>ExtensionRunClaims</code> ticket whose PK is <code>QueueItemId</code> — one live claim per item on every database, no raw SQL, no provider-specific GUID handling. Losers get 204 and move on.</div></div>
+      <div class="conn"></div>
+      <div class="step"><div class="dot">4</div><div class="step-body"><b>Execute.</b> The poller opens/focuses the posting tab, drives the existing harness, and maps its result to receipts: <code>started → step* → paused | submitted | failed | cancelled</code>.</div></div>
+      <div class="conn"></div>
+      <div class="step"><div class="dot">5</div><div class="step-body"><b>Receipts.</b> <code>POST …/runs/{id}/receipt</code> appends logs, advances queue + Aksh session state, and doubles as a heartbeat refreshing the 10-minute lease. Terminal receipts are idempotent; stale tokens get 409; cancelled/foreign runs get uniform 404.</div></div>
+      <div class="conn"></div>
+      <div class="step"><div class="dot">6</div><div class="step-body"><b>Lease sweep.</b> A <code>BackgroundService</code> releases claims older than 10 minutes back to dispatchable (terminal/cancelled runs are never resurrected). Tracker cancel blocks claims and aborts in-flight steps.</div></div>
+    </div>
+    <svg class="seq" viewBox="0 0 900 300" role="img" aria-label="Dispatch sequence">
+      <text x="20" y="28" fill="#9aa0ae" font-size="13">approve → DISPATCHED → poll → CLAIM → tab run → receipts → terminal</text>
+      <rect x="20" y="50" width="120" height="46" rx="10" fill="#14161d" stroke="#38bdf8"/><text x="80" y="78" fill="#e6e8ee" font-size="13" text-anchor="middle">WebApi</text>
+      <rect x="180" y="50" width="120" height="46" rx="10" fill="#14161d" stroke="#38bdf8"/><text x="240" y="78" fill="#e6e8ee" font-size="13" text-anchor="middle">Queue item</text>
+      <rect x="340" y="50" width="150" height="46" rx="10" fill="#14161d" stroke="#34d399"/><text x="415" y="78" fill="#e6e8ee" font-size="13" text-anchor="middle">Extension poller</text>
+      <rect x="530" y="50" width="150" height="46" rx="10" fill="#14161d" stroke="#34d399"/><text x="605" y="78" fill="#e6e8ee" font-size="13" text-anchor="middle">Posting tab</text>
+      <rect x="720" y="50" width="150" height="46" rx="10" fill="#14161d" stroke="#fbbf24"/><text x="795" y="78" fill="#e6e8ee" font-size="13" text-anchor="middle">Sweeper 5m</text>
+      <line x1="140" y1="73" x2="180" y2="73" stroke="#9aa0ae"/><text x="145" y="66" fill="#9aa0ae" font-size="11">status=7</text>
+      <line x1="300" y1="73" x2="340" y2="73" stroke="#9aa0ae"/><text x="303" y="66" fill="#9aa0ae" font-size="11">claim</text>
+      <line x1="490" y1="73" x2="530" y2="73" stroke="#9aa0ae"/><text x="492" y="66" fill="#9aa0ae" font-size="11">fill loop</text>
+      <line x1="605" y1="96" x2="605" y2="180" stroke="#9aa0ae" stroke-dasharray="5 4"/>
+      <rect x="470" y="190" width="270" height="46" rx="10" fill="#14161d" stroke="#38bdf8"/><text x="605" y="218" fill="#e6e8ee" font-size="13" text-anchor="middle">receipts → queue + session</text>
+      <line x1="795" y1="96" x2="795" y2="180" stroke="#fbbf24" stroke-dasharray="5 4"/>
+      <rect x="690" y="240" width="210" height="40" rx="10" fill="#14161d" stroke="#fbbf24"/><text x="795" y="265" fill="#e6e8ee" font-size="12" text-anchor="middle">expired lease → status=7</text>
+      <line x1="470" y1="213" x2="240" y2="213" stroke="#38bdf8"/><text x="300" y="206" fill="#38bdf8" font-size="11">terminal / heartbeat</text>
+    </svg>
+  </div>
+
+  <div class="card">
+    <h2>3. Alternatives considered</h2>
+    <table>
+      <tr><th>Option</th><th>Verdict</th><th>Why</th></tr>
+      <tr><td><b>SignalR push to extension</b></td><td>Rejected</td><td>MV3 service workers are killed after ~30 s idle — no persistent socket survives. The backend already pushes progress to the SPA over SignalR; the extension never adopted it, and adopting it means a reconnect/backoff subsystem for zero benefit over polling.</td></tr>
+      <tr><td><b>Raw-SQL atomic UPDATE…WHERE claim</b></td><td>Rejected</td><td>GUID parameter handling differs between Npgsql (native uuid) and SQLite (TEXT, driver-dependent format). The ticket-PK design gets atomicity from constraints instead of SQL text, and is covered by a race test on SQLite.</td></tr>
+      <tr><td><b>EF concurrency token on the queue row</b></td><td>Rejected</td><td>A <code>[ConcurrencyCheck]</code> rides every UPDATE of the row, so all existing flows would need <code>DbUpdateConcurrencyException</code> handling — a regression surface far larger than the feature.</td></tr>
+      <tr><td><b>Hangfire recurring sweep</b></td><td>Deferred</td><td>No Hangfire server exists anywhere in this tree (only dashboard env keys). A <code>BackgroundService</code> on the existing hosted-service pattern does the job with zero new packages. Revisit if job volumes demand durable scheduling.</td></tr>
+      <tr><td><b>Provider-side dispatch branches</b></td><td>Rejected</td><td>Every portal with a copilot branch is extension-runnable, so capability is uniform. The orchestrator-side predicate (<code>ShouldDispatchToExtension</code>, matrix-tested) keeps all 7 providers untouched and test-compatible.</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>4. Consequences</h2>
+    <h3>Positive</h3>
+    <ul>
+      <li>“Staged” becomes genuinely filled applications with per-field receipts; every gate fails closed with honest copy.</li>
+      <li>Additive only: 1 enum value, 2 columns, 1 table, 1 index, 2 endpoints, 1 flag — zero existing contracts changed, rollback is flag-off.</li>
+      <li>Multi-device safety and crash recovery fall out of the lease design rather than new code paths.</li>
+    </ul>
+    <h3>Costs &amp; risks accepted</h3>
+    <ul>
+      <li>60 s poll latency per run (alarm floor) — acceptable for a human-supervised flow; claim is instant once polled.</li>
+      <li>Extension update prompts for the new <code>alarms</code> permission — noted in release notes.</li>
+      <li>File-upload portals report <code>failed/upload_unsupported</code> in v1 rather than faking success; upload-capable packages are the defined v2.</li>
+      <li>Tracker “Applied” sync reuses the standard submitted path; extension-path analytics (claim latency, fill rates) are v2.</li>
+    </ul>
+    <div class="verdict"><b>Verification at acceptance:</b> 115/115 unit tests green (18 new dispatch tests incl. race, idempotency, IDOR, sweeper), backend build 0 errors, frontend build green, extension <code>node --check</code> clean, worker <code>py_compile</code> clean.</div>
+  </div>
+
+  <div class="card">
+    <h2>5. Linked records</h2>
+    <p>
+      Spec <code>docs/specs/extension-dispatch.md</code> · Plan <code>docs/plan/extension-dispatch.md</code> ·
+      Spike <code>docs/bugfixes/copilot-pipeline-auto-apply-stall-and-extension-harness-spike.md</code> ·
+      Prior decision <a href="ADR-006-aksh-agent-harness-copilot-orchestrator.html" style="color:var(--sky)">ADR-006 (Aksh harness)</a>.
+      Related fix folded in: popup <code>ABORT_AGENT</code> vs content <code>ABORT_AGENT_LOOP</code> mismatch normalized (kill switch must work for dispatched runs).
+    </p>
+  </div>
+</div>
+</body>
+</html>

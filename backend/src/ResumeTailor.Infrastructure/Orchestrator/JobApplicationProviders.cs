@@ -18,10 +18,13 @@ public class PlaywrightWorkerClient
 {
     private readonly HttpClient _httpClient;
     private readonly string _workerUrl;
+    // Full-apply browser runs take minutes (multi-step modals, paced input);
+    // the old 30-45s ceilings aborted legitimate runs mid-automation.
+    private static readonly TimeSpan WorkerCallTimeout = TimeSpan.FromMinutes(5);
 
     public PlaywrightWorkerClient(IHttpClientFactory? httpClientFactory = null, IConfiguration? configuration = null)
     {
-        _httpClient = httpClientFactory?.CreateClient() ?? new HttpClient { Timeout = TimeSpan.FromSeconds(45) };
+        _httpClient = httpClientFactory?.CreateClient() ?? new HttpClient { Timeout = WorkerCallTimeout };
         _workerUrl = configuration?["WorkerSettings:PlaywrightUrl"]
                      ?? configuration?["PLAYWRIGHT_WORKER_URL"]
                      ?? "http://vedha-worker:8000";
@@ -77,7 +80,7 @@ public class PlaywrightWorkerClient
 
                 using var content = new StringContent(JsonSerializer.Serialize(reqObj), Encoding.UTF8, "application/json");
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                cts.CancelAfter(TimeSpan.FromSeconds(30));
+                cts.CancelAfter(WorkerCallTimeout);
 
                 var response = await _httpClient.PostAsync($"{endpoint}/api/playwright/apply", content, cts.Token);
                 if (response.IsSuccessStatusCode)
@@ -134,6 +137,7 @@ public class GreenhouseProvider : IJobApplicationProvider
         string coverLetter,
         List<ScreeningAnswerPayload> prefilledAnswers,
         bool copilotReviewMode,
+        bool headed = false,
         Func<string, Task>? logCallback = null,
         CancellationToken cancellationToken = default)
     {
@@ -169,7 +173,7 @@ public class GreenhouseProvider : IJobApplicationProvider
 
         // Live submission via Playwright
         await Log("[Greenhouse Pipeline] Dispatching browser execution to Playwright Agent...");
-        var workerRes = await _workerClient.TryApplyAsync(targetUrl, profile, resumeData, resumePdfBytes, prefilledAnswers, false, false, cancellationToken);
+        var workerRes = await _workerClient.TryApplyAsync(targetUrl, profile, resumeData, resumePdfBytes, prefilledAnswers, false, headed, cancellationToken);
 
         if (workerRes != null)
         {
@@ -241,6 +245,7 @@ public class LeverProvider : IJobApplicationProvider
         string coverLetter,
         List<ScreeningAnswerPayload> prefilledAnswers,
         bool copilotReviewMode,
+        bool headed = false,
         Func<string, Task>? logCallback = null,
         CancellationToken cancellationToken = default)
     {
@@ -270,7 +275,7 @@ public class LeverProvider : IJobApplicationProvider
         }
 
         await Log("[Lever Pipeline] Dispatching browser execution to Playwright Agent...");
-        var workerRes = await _workerClient.TryApplyAsync(targetUrl, profile, resumeData, resumePdfBytes, prefilledAnswers, false, false, cancellationToken);
+        var workerRes = await _workerClient.TryApplyAsync(targetUrl, profile, resumeData, resumePdfBytes, prefilledAnswers, false, headed, cancellationToken);
 
         if (workerRes != null)
         {
@@ -328,6 +333,7 @@ public class AshbyProvider : IJobApplicationProvider
         string coverLetter,
         List<ScreeningAnswerPayload> prefilledAnswers,
         bool copilotReviewMode,
+        bool headed = false,
         Func<string, Task>? logCallback = null,
         CancellationToken cancellationToken = default)
     {
@@ -356,7 +362,7 @@ public class AshbyProvider : IJobApplicationProvider
         }
 
         await Log("[Ashby Pipeline] Dispatching browser execution to Playwright Agent...");
-        var workerRes = await _workerClient.TryApplyAsync(targetUrl, profile, resumeData, resumePdfBytes, prefilledAnswers, false, false, cancellationToken);
+        var workerRes = await _workerClient.TryApplyAsync(targetUrl, profile, resumeData, resumePdfBytes, prefilledAnswers, false, headed, cancellationToken);
         if (workerRes != null)
         {
             foreach (var wLog in workerRes.ExecutionLogs) await Log(wLog);
@@ -411,6 +417,7 @@ public class LinkedInCopilotProvider : IJobApplicationProvider
         string coverLetter,
         List<ScreeningAnswerPayload> prefilledAnswers,
         bool copilotReviewMode,
+        bool headed = false,
         Func<string, Task>? logCallback = null,
         CancellationToken cancellationToken = default)
     {
@@ -448,7 +455,7 @@ public class LinkedInCopilotProvider : IJobApplicationProvider
 
         // Live execution via Playwright Worker
         await Log("[LinkedIn Copilot] Candidate authorization confirmed. Dispatching browser execution to Playwright Agent...");
-        var workerRes = await _workerClient.TryApplyAsync(targetUrl, profile, resumeData, resumePdfBytes, prefilledAnswers, false, false, cancellationToken);
+        var workerRes = await _workerClient.TryApplyAsync(targetUrl, profile, resumeData, resumePdfBytes, prefilledAnswers, false, headed, cancellationToken);
 
         if (workerRes != null)
         {
@@ -513,6 +520,15 @@ public class LinkedInCopilotProvider : IJobApplicationProvider
 
 public class NaukriProvider : IJobApplicationProvider
 {
+    private readonly PlaywrightWorkerClient _workerClient;
+
+    public NaukriProvider() : this(null, null) { }
+
+    public NaukriProvider(IHttpClientFactory? httpClientFactory = null, IConfiguration? configuration = null)
+    {
+        _workerClient = new PlaywrightWorkerClient(httpClientFactory, configuration);
+    }
+
     public JobSource SupportedSource => JobSource.Naukri;
 
     public bool CanHandle(string url)
@@ -529,6 +545,7 @@ public class NaukriProvider : IJobApplicationProvider
         string coverLetter,
         List<ScreeningAnswerPayload> prefilledAnswers,
         bool copilotReviewMode,
+        bool headed = false,
         Func<string, Task>? logCallback = null,
         CancellationToken cancellationToken = default)
     {
@@ -563,14 +580,54 @@ public class NaukriProvider : IJobApplicationProvider
             };
         }
 
-        await Log("[Naukri Pipeline] Application prepared. Complete submission in Naukri browser session.");
+        // Live submission via Playwright worker (same path as every other provider).
+        // Naukri's SPA is hostile to headless automation: any worker failure must
+        // surface as an explicit failure — never as a fake "staged success".
+        await Log("[Naukri Pipeline] Dispatching browser execution to Playwright Agent...");
+        var workerRes = await _workerClient.TryApplyAsync(targetUrl, profile, resumeData, resumePdfBytes, prefilledAnswers, false, headed, cancellationToken);
+
+        if (workerRes == null)
+        {
+            await Log("[Naukri Pipeline] Playwright worker offline. Complete submission in your Naukri browser session or via the Vedha extension.");
+            return new ApplicationAutomationResult
+            {
+                Success = false,
+                Message = "Naukri submission could not start: Playwright worker is offline.",
+                FinalPageUrl = targetUrl,
+                PausedForUserReview = false,
+                ExecutionLogs = logs,
+                ErrorDetails = "Playwright worker unreachable (tried vedha-worker:8000 and localhost:8000). Start vedha-worker or use the extension copilot in your logged-in browser."
+            };
+        }
+
+        foreach (var wLog in workerRes.ExecutionLogs)
+        {
+            await Log(wLog);
+        }
+
+        if (workerRes.Status == "Submitted")
+        {
+            await Log("[Naukri Pipeline] Confirmed: Application successfully submitted to Naukri.");
+            return new ApplicationAutomationResult
+            {
+                Success = true,
+                Message = "Application successfully submitted to Naukri.",
+                FinalPageUrl = workerRes.FinalPageUrl,
+                PausedForUserReview = false,
+                ExecutionLogs = logs
+            };
+        }
+
         return new ApplicationAutomationResult
         {
-            Success = true,
-            Message = "Naukri application staged for candidate review.",
-            FinalPageUrl = targetUrl,
-            PausedForUserReview = true,
-            ExecutionLogs = logs
+            Success = workerRes.Success,
+            Message = workerRes.Success
+                ? workerRes.Message
+                : $"Naukri submission did not complete: {workerRes.Message}",
+            FinalPageUrl = workerRes.FinalPageUrl,
+            PausedForUserReview = workerRes.Status == "PausedForUserReview",
+            ExecutionLogs = logs,
+            ErrorDetails = workerRes.ErrorDetails
         };
     }
 }
@@ -603,6 +660,7 @@ public class WorkdayProvider : IJobApplicationProvider
         string coverLetter,
         List<ScreeningAnswerPayload> prefilledAnswers,
         bool copilotReviewMode,
+        bool headed = false,
         Func<string, Task>? logCallback = null,
         CancellationToken cancellationToken = default)
     {
@@ -634,7 +692,7 @@ public class WorkdayProvider : IJobApplicationProvider
         }
 
         await Log("[Workday Pipeline] Dispatching browser execution to Playwright Agent...");
-        var workerRes = await _workerClient.TryApplyAsync(targetUrl, profile, resumeData, resumePdfBytes, prefilledAnswers, false, false, cancellationToken);
+        var workerRes = await _workerClient.TryApplyAsync(targetUrl, profile, resumeData, resumePdfBytes, prefilledAnswers, false, headed, cancellationToken);
         if (workerRes != null)
         {
             foreach (var wLog in workerRes.ExecutionLogs) await Log(wLog);
@@ -702,6 +760,7 @@ public class GenericBrowserProvider : IJobApplicationProvider
         string coverLetter,
         List<ScreeningAnswerPayload> prefilledAnswers,
         bool copilotReviewMode,
+        bool headed = false,
         Func<string, Task>? logCallback = null,
         CancellationToken cancellationToken = default)
     {
@@ -776,7 +835,7 @@ public class GenericBrowserProvider : IJobApplicationProvider
         }
 
         await Log("[Generic AI Browser Agent] Dispatching browser execution to Playwright Agent...");
-        var workerRes = await _workerClient.TryApplyAsync(targetUrl, profile, resumeData, resumePdfBytes, prefilledAnswers, false, false, cancellationToken);
+        var workerRes = await _workerClient.TryApplyAsync(targetUrl, profile, resumeData, resumePdfBytes, prefilledAnswers, false, headed, cancellationToken);
         if (workerRes != null)
         {
             foreach (var wLog in workerRes.ExecutionLogs) await Log(wLog);

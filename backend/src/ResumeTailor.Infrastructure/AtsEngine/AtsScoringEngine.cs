@@ -94,12 +94,143 @@ public class AtsScoringEngine : IAtsScoringEngine
             }
         }
 
+        // 5. Verify Role Titles: tailored titles are routinely rewritten toward
+        // the JD, so exact equality is wrong — but a title sharing ZERO
+        // significant tokens with ANY master role is an invented promotion.
+        var masterRoleTokens = masterResume.Experience
+            .SelectMany(e => SignificantTokens(e.Role))
+            .ToHashSet();
+        foreach (var exp in tailoredResume.Experience)
+        {
+            var tailoredTokens = SignificantTokens(exp.Role);
+            if (tailoredTokens.Count > 0 && masterRoleTokens.Count > 0
+                && !tailoredTokens.Overlaps(masterRoleTokens))
+            {
+                violations.Add($"Tailored resume introduced unauthorized role title: '{exp.Role}' at '{exp.Company}' (shares no wording with any master role).");
+            }
+        }
+
+        // 6. Verify Employment Dates: dates are never legitimately rewritten.
+        // Matched by normalized company; start/end/IsCurrent must round-trip.
+        var masterDatesByCompany = masterResume.Experience
+            .Where(e => !string.IsNullOrEmpty(Normalize(e.Company)))
+            .GroupBy(e => Normalize(e.Company))
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(e => (
+                    Start: (e.StartDate ?? string.Empty).Trim(),
+                    End: (e.EndDate ?? string.Empty).Trim(),
+                    Current: e.IsCurrent)).ToList());
+        foreach (var exp in tailoredResume.Experience)
+        {
+            var norm = Normalize(exp.Company);
+            if (string.IsNullOrEmpty(norm) || !masterDatesByCompany.TryGetValue(norm, out var masterDates))
+            {
+                continue;
+            }
+
+            var tailored = (
+                Start: (exp.StartDate ?? string.Empty).Trim(),
+                End: (exp.EndDate ?? string.Empty).Trim(),
+                Current: exp.IsCurrent);
+            if (!masterDates.Any(d =>
+                string.Equals(d.Start, tailored.Start, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(d.End, tailored.End, StringComparison.OrdinalIgnoreCase)
+                && d.Current == tailored.Current))
+            {
+                violations.Add($"Tailored resume altered employment dates for '{exp.Company}' (was not in master history).");
+            }
+        }
+
+        // 7. Verify Skills: tailoring reorders and selects, never invents.
+        var masterSkills = masterResume.Skills
+            .SelectMany(c => c.Skills ?? new List<string>())
+            .Select(Normalize)
+            .Where(s => !string.IsNullOrEmpty(s))
+            .ToHashSet();
+        foreach (var cat in tailoredResume.Skills)
+        {
+            foreach (var skill in cat.Skills ?? new List<string>())
+            {
+                var norm = Normalize(skill);
+                if (!string.IsNullOrEmpty(norm) && !masterSkills.Contains(norm))
+                {
+                    violations.Add($"Tailored resume introduced unauthorized skill: '{skill}'.");
+                }
+            }
+        }
+
+        // 8. Verify Project Titles: bullets are rewritten, titles identify.
+        var masterProjects = masterResume.Projects
+            .Select(p => Normalize(p.Title))
+            .Where(t => !string.IsNullOrEmpty(t))
+            .ToHashSet();
+        foreach (var proj in tailoredResume.Projects)
+        {
+            var norm = Normalize(proj.Title);
+            if (!string.IsNullOrEmpty(norm) && !masterProjects.Contains(norm))
+            {
+                violations.Add($"Tailored resume introduced unauthorized project: '{proj.Title}'.");
+            }
+        }
+
+        // 9. Verify Education Details: degree/field/year values must come from
+        // the master set (reordered at most, never invented).
+        var masterDegrees = masterResume.Education.Select(e => Normalize(e.Degree)).Where(s => !string.IsNullOrEmpty(s)).ToHashSet();
+        var masterFields = masterResume.Education.Select(e => Normalize(e.FieldOfStudy)).Where(s => !string.IsNullOrEmpty(s)).ToHashSet();
+        var masterYears = masterResume.Education.Select(e => Normalize(e.GraduationYear)).Where(s => !string.IsNullOrEmpty(s)).ToHashSet();
+        foreach (var edu in tailoredResume.Education)
+        {
+            var degree = Normalize(edu.Degree);
+            if (!string.IsNullOrEmpty(degree) && !masterDegrees.Contains(degree))
+            {
+                violations.Add($"Tailored resume introduced unauthorized degree: '{edu.Degree}'.");
+            }
+
+            var field = Normalize(edu.FieldOfStudy);
+            if (!string.IsNullOrEmpty(field) && !masterFields.Contains(field))
+            {
+                violations.Add($"Tailored resume introduced unauthorized field of study: '{edu.FieldOfStudy}'.");
+            }
+
+            var year = Normalize(edu.GraduationYear);
+            if (!string.IsNullOrEmpty(year) && !masterYears.Contains(year))
+            {
+                violations.Add($"Tailored resume introduced unauthorized graduation year: '{edu.GraduationYear}'.");
+            }
+        }
+
         if (violations.Any())
         {
             return Result.Failure(string.Join(" ", violations));
         }
 
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Significant tokens for title overlap: normalized, stopwords removed,
+    /// single characters dropped. "Senior Full-Stack .NET Developer" and
+    /// "Senior Software Engineer" overlap on {senior}.
+    /// </summary>
+    private static HashSet<string> SignificantTokens(string? text)
+    {
+        var tokens = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return tokens;
+        }
+
+        foreach (Match m in Regex.Matches(text.ToLowerInvariant(), @"[a-z0-9#+]+"))
+        {
+            var token = m.Value;
+            if (token.Length > 2 && !StopWords.Contains(token))
+            {
+                tokens.Add(token);
+            }
+        }
+
+        return tokens;
     }
 
     public AtsScoreBreakdown CalculateScore(ResumeSchema resume, JobDescriptionSchema job)

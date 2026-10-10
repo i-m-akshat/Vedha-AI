@@ -44,6 +44,14 @@ public class Crawl4AiService : ICrawl4AiService
             return Result<Crawl4AiResultDto>.Failure("URL cannot be empty.");
         }
 
+        // The sidecar fetches server-side too: same SSRF enforcement as the
+        // native scraper before handing the URL over.
+        var (allowed, reason) = await Security.UrlSafetyGuard.IsUrlAllowedAsync(url, _logger, cancellationToken);
+        if (!allowed)
+        {
+            return Result<Crawl4AiResultDto>.Failure(reason ?? "URL is not allowed.");
+        }
+
         try
         {
             var baseEndpoint = _settings.BaseUrl.TrimEnd('/');

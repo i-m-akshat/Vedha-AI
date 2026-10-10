@@ -95,6 +95,7 @@ public interface IJobApplicationProvider
         string coverLetter,
         List<ScreeningAnswerPayload> prefilledAnswers,
         bool copilotReviewMode,
+        bool headed = false,
         Func<string, Task>? logCallback = null,
         CancellationToken cancellationToken = default);
 }

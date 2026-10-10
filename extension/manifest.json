@@ -5,6 +5,7 @@
   "description": "Instantly capture job descriptions and auto-fill career portals with verified profile data via Vedha AI.",
   "permissions": [
     "activeTab",
+    "alarms",
     "scripting",
     "sidePanel",
     "storage",

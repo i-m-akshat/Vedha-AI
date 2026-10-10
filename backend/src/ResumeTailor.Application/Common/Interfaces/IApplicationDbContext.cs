@@ -24,5 +24,13 @@ public interface IApplicationDbContext
     DbSet<IdempotentTransaction> IdempotentTransactions { get; }
     DbSet<RefreshToken> RefreshTokens { get; }
 
+    // Aksh agentic copilot
+    DbSet<AkshSession> AkshSessions { get; }
+    DbSet<AkshMessage> AkshMessages { get; }
+    DbSet<AkshApproval> AkshApprovals { get; }
+
+    // Phase 4 extension dispatch
+    DbSet<ExtensionRunClaim> ExtensionRunClaims { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

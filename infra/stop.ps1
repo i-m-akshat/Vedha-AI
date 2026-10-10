@@ -1,7 +1,7 @@
 # ResuMate / Vedha AI — Container Stop Script
 Write-Host "Stopping ResuMate / Vedha AI containers..." -ForegroundColor Cyan
 
-wsl -d podman-machine-default -u root podman stop vedha-backend vedha-frontend vedha-postgres vedha-redis
+wsl -d podman-machine-default -u root podman stop vedha-backend vedha-frontend vedha-worker vedha-crawler vedha-postgres vedha-redis vedha-nats vedha-minio
 
 # Stop background localhost proxy if running
 Get-CimInstance Win32_Process -Filter "CommandLine LIKE '%localhost_proxy.py%'" -ErrorAction SilentlyContinue | ForEach-Object {

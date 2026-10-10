@@ -296,9 +296,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
                           ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300'
                           : item.status === 'PausedForUserReview'
                           ? 'bg-amber-500/10 border border-amber-500/20 text-amber-300'
+                          : item.status === 'DispatchedToExtension'
+                          ? 'bg-sky-500/10 border border-sky-500/20 text-sky-300'
                           : 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-300'
                       }`}>
-                        {item.status === 'PausedForUserReview' ? 'Review Needed' : item.status}
+                        {item.status === 'PausedForUserReview' ? 'Review Needed' : item.status === 'DispatchedToExtension' ? 'Extension Run' : item.status}
                       </span>
                     </div>
                   </div>

@@ -40,11 +40,17 @@ export const OrchestratorQueuePage: React.FC<OrchestratorQueuePageProps> = ({ se
   } | null>(null);
 
   useEffect(() => {
-    const jobUrl = new URLSearchParams(window.location.search).get('jobUrl');
+    // Hash-routed deep link (#/orchestrator?jobUrl=...): window.location.search
+    // is always empty under hash routing, so read the query from the hash.
+    const hashQIndex = window.location.hash.indexOf('?');
+    const jobUrl =
+      hashQIndex >= 0
+        ? new URLSearchParams(window.location.hash.slice(hashQIndex + 1)).get('jobUrl')
+        : new URLSearchParams(window.location.search).get('jobUrl');
     if (!jobUrl) return;
 
     setJobUrlInput(jobUrl);
-    window.history.replaceState({}, document.title, window.location.pathname);
+    window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
   }, []);
 
   // Queries
@@ -138,6 +144,26 @@ export const OrchestratorQueuePage: React.FC<OrchestratorQueuePageProps> = ({ se
     }
   });
 
+  const cancelMutation = useMutation({
+    mutationFn: (id: string) => orchestratorApi.updateStatus(id, 'Cancelled'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orchestratorQueue'] });
+      if (selectedQueueItem) {
+        orchestratorApi.getQueueItem(selectedQueueItem.id).then(item => setSelectedQueueItem(item));
+      }
+      setExecutionFeedback({
+        type: 'info',
+        message: 'Dispatched run cancelled. The browser extension will not execute it.'
+      });
+    },
+    onError: (err: any) => {
+      setExecutionFeedback({
+        type: 'error',
+        message: err?.response?.data?.error || err?.message || 'Failed to cancel the run.'
+      });
+    }
+  });
+
   const handleStartPrepare = (e: React.FormEvent) => {
     e.preventDefault();
     if (!jobUrlInput.trim() || !masterResume?.id) return;
@@ -192,6 +218,15 @@ export const OrchestratorQueuePage: React.FC<OrchestratorQueuePageProps> = ({ se
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>Engine Ready</span>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setActivePage?.('ask-aksh')}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-colors"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Open in Ask Aksh</span>
+            </button>
           </div>
         </div>
 
@@ -459,6 +494,24 @@ export const OrchestratorQueuePage: React.FC<OrchestratorQueuePageProps> = ({ se
                   <CheckCircle2 className="w-4 h-4" />
                   <span>Submitted Successfully</span>
                 </div>
+              ) : selectedQueueItem.status === PipelineExecutionStatus.DispatchedToExtension ? (
+                <div className="w-full p-4 rounded-xl bg-sky-500/10 border border-sky-500/20 space-y-3">
+                  <div className="flex items-center gap-2 text-sky-300 font-semibold text-xs">
+                    <Clock className="w-4 h-4" />
+                    <span>Waiting for browser extension</span>
+                  </div>
+                  <p className="text-[11px] text-[#8e929b] leading-relaxed">
+                    Dispatched. Open the job posting in a tab with the Vedha extension active — it will claim and fill this run, then report back here.
+                  </p>
+                  <button
+                    onClick={() => cancelMutation.mutate(selectedQueueItem.id)}
+                    disabled={cancelMutation.isPending}
+                    className="w-full py-2 px-4 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/30 text-rose-300 font-semibold text-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {cancelMutation.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <AlertCircle className="w-4 h-4" />}
+                    <span>Cancel dispatched run</span>
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={() => executeMutation.mutate({
@@ -564,6 +617,10 @@ export const OrchestratorQueuePage: React.FC<OrchestratorQueuePageProps> = ({ se
                       ) : item.status === PipelineExecutionStatus.PausedForUserReview ? (
                         <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 font-semibold text-[11px] border border-amber-500/20">
                           Ready for Review
+                        </span>
+                      ) : item.status === PipelineExecutionStatus.DispatchedToExtension ? (
+                        <span className="px-2.5 py-1 rounded-full bg-sky-500/10 text-sky-300 font-semibold text-[11px] border border-sky-500/20">
+                          Waiting for Extension
                         </span>
                       ) : (
                         <span className="px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-300 font-semibold text-[11px] border border-indigo-500/20">

@@ -371,6 +371,7 @@
       <a href="#storage-s3"><span class="sec-num">06</span> MinIO S3 Object Topologies</a>
       <a href="#anti-bot"><span class="sec-num">07</span> Anti-Bot Stealth Architecture</a>
       <a href="#resilience"><span class="sec-num">08</span> Security & Failure Recovery</a>
+      <a href="#aksh-topology"><span class="sec-num">09</span> Aksh Agent & Token Topology</a>
     </nav>
 
     <div class="sidebar-footer">
@@ -710,6 +711,28 @@
             • NATS consumer dead-letter queue isolation.<br>
             • Automatic 3-tier scraping fallback (Crawl4AI -> Playwright -> AngleSharp).<br>
             • Automatic metric violation rollback to candidate master resume.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 9: AKSH INFRASTRUCTURE -->
+    <section id="aksh-topology">
+      <h2 class="section-heading">9. Aksh Agentic Execution Topology & Token Ledger Infrastructure</h2>
+      <p>
+        Aksh introduces an interactive agent plane operating alongside the existing asynchronous NATS queue pipeline:
+      </p>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Real-Time Server-Sent Events (SSE) Stream</div>
+          <p>
+            Client connections to <code>/api/aksh/sessions/{id}/messages</code> stream high-density JSON events (<code>session</code>, <code>plan</code>, <code>status</code>, <code>message</code> deltas, <code>approval-request</code>, <code>ledger</code>, and <code>done</code>) over HTTP/1.1 or HTTP/2 chunked transfer encoding, giving immediate candidate visibility into agent reasoning and tool executions.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-title">Token Ledger & Daily Budget Governor</div>
+          <p>
+            Every turn and tool invocation logs input/output tokens to <code>AkshSessions</code> and the token ledger audit table. Hard daily quotas (<code>Aksh:DailyTokenBudget</code>) auto-pause runs on budget breach, protecting candidate API quotas and preventing unbounded agent execution loops.
           </p>
         </div>
       </div>

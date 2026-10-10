@@ -21,6 +21,17 @@ JWT_EXPIRY_MINUTES=$(echo "${JWT_EXPIRY_MINUTES:-1440}" | tr -d '\r')
 GEMINI_API_KEY=$(echo "${GEMINI_API_KEY:-}" | tr -d '\r')
 DEFAULT_AI_PROVIDER=$(echo "${DEFAULT_AI_PROVIDER:-Gemini}" | tr -d '\r')
 DEFAULT_AI_MODEL=$(echo "${DEFAULT_AI_MODEL:-gemini-flash-lite-latest}" | tr -d '\r')
+AI_MAX_TOKENS=$(echo "${AI_MAX_TOKENS:-16384}" | tr -d '\r')
+Aksh__Enabled=$(echo "${Aksh__Enabled:-false}" | tr -d '\r')
+Aksh__DailyTokenBudget=$(echo "${Aksh__DailyTokenBudget:-200000}" | tr -d '\r')
+Aksh__Model=$(echo "${Aksh__Model:-}" | tr -d '\r')
+Aksh__MaxConcurrentRuns=$(echo "${Aksh__MaxConcurrentRuns:-3}" | tr -d '\r')
+Dispatch__Enabled=$(echo "${Dispatch__Enabled:-true}" | tr -d '\r')
+CRAWL4AI_API_TOKEN=$(echo "${CRAWL4AI_API_TOKEN:-vedha_crawler_token_2026}" | tr -d '\r')
+CRAWLER_ENABLED=$(echo "${CRAWLER_ENABLED:-true}" | tr -d '\r')
+AGENTQL_API_KEY=$(echo "${AGENTQL_API_KEY:-}" | tr -d '\r')
+RESIDENTIAL_PROXY_URL=$(echo "${RESIDENTIAL_PROXY_URL:-}" | tr -d '\r')
+WORKER_STEALTH_ENGINE=$(echo "${WORKER_STEALTH_ENGINE:-patchright}" | tr -d '\r')
 MINIO_ACCESS_KEY=$(echo "${MINIO_ACCESS_KEY:-minioadmin}" | tr -d '\r')
 MINIO_SECRET_KEY=$(echo "${MINIO_SECRET_KEY:-minioadmin}" | tr -d '\r')
 
@@ -132,6 +143,15 @@ podman run -d --name vedha-backend \
   -e AiSettings__GeminiApiKey="${GEMINI_API_KEY}" \
   -e AiSettings__DefaultProvider="${DEFAULT_AI_PROVIDER}" \
   -e AiSettings__DefaultModel="${DEFAULT_AI_MODEL}" \
+  -e AiSettings__MaxTokens="${AI_MAX_TOKENS}" \
+  -e Aksh__Enabled="${Aksh__Enabled}" \
+  -e Aksh__DailyTokenBudget="${Aksh__DailyTokenBudget}" \
+  -e Aksh__Model="${Aksh__Model}" \
+  -e Aksh__MaxConcurrentRuns="${Aksh__MaxConcurrentRuns}" \
+  -e Dispatch__Enabled="${Dispatch__Enabled}" \
+  -e Crawl4AiSettings__BaseUrl="http://vedha-crawler:11235" \
+  -e Crawl4AiSettings__Enabled="${CRAWLER_ENABLED}" \
+  -e Crawl4AiSettings__ApiToken="${CRAWL4AI_API_TOKEN}" \
   -e EnableSwagger="true" \
   localhost/infra-backend:latest
 
@@ -155,6 +175,9 @@ podman run -d --name vedha-worker \
   -e MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY}" \
   -e MINIO_SECRET_KEY="${MINIO_SECRET_KEY}" \
   -e MINIO_BUCKET="vedha-resumes" \
+  -e AGENTQL_API_KEY="${AGENTQL_API_KEY}" \
+  -e RESIDENTIAL_PROXY_URL="${RESIDENTIAL_PROXY_URL}" \
+  -e WORKER_STEALTH_ENGINE="${WORKER_STEALTH_ENGINE}" \
   localhost/infra-worker:latest
 
 echo "=== All containers started successfully ==="

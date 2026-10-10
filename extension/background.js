@@ -276,6 +276,21 @@ setInterval(syncAuthFromWebApp, 30000);
 // Sync on extension startup
 syncAuthFromWebApp();
 
+// ==========================================
+// Phase 4 Extension Dispatch Poller
+// ==========================================
+// Dynamic import (not static): background.js is also executed in classic-script
+// e2e harnesses (vm.runInContext) where static imports are a parse error.
+// Dynamic import() parses in both goals; rejection is caught. Chrome loads
+// this worker as a module per manifest, so resolution succeeds there.
+try {
+  if (cr?.alarms?.create) {
+    import("./dispatch.js")
+      .then((m) => { try { m.startDispatchPoller(); } catch (_) {} })
+      .catch(() => {});
+  }
+} catch (_) { /* harness without module support: poller stays inert */ }
+
 // Expose for testing
 if (typeof globalThis !== "undefined") {
   globalThis.__VEDHA_BACKGROUND__ = {

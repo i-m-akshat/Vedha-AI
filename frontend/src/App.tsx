@@ -13,14 +13,50 @@ import { PromptsPage } from './pages/PromptsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { CandidateProfilePage } from './pages/CandidateProfilePage';
 import { OrchestratorQueuePage } from './pages/OrchestratorQueuePage';
+import { AskAkshPage } from './pages/AskAkshPage';
 import { Loader2 } from 'lucide-react';
 import { LoginPage, RegisterPage } from './pages/AuthPages';
 
 const queryClient = new QueryClient();
 
+const KNOWN_PAGES: ActivePage[] = [
+  'dashboard',
+  'master-resume',
+  'candidate-profile',
+  'tailor-studio',
+  'result-studio',
+  'orchestrator',
+  'ask-aksh',
+  'tracker',
+  'history',
+  'analytics',
+  'prompts',
+  'settings',
+];
+
+/** Hash routing (#/ask-aksh?jobUrl=...): deep-linkable pages, working back/forward, refresh-safe. */
+function pageFromHash(): ActivePage | null {
+  const match = window.location.hash.match(/^#\/([a-z-]+)/i);
+  if (!match) return null;
+  const page = match[1].toLowerCase();
+  if ((KNOWN_PAGES as string[]).includes(page)) {
+    return page as ActivePage;
+  }
+  return null;
+}
+
+/** Query string living inside the hash (#/orchestrator?jobUrl=...), so page
+ * switches never drop deep links. window.location.search is always empty
+ * under hash routing — reading it was the old dead path. */
+export function hashQuery(): URLSearchParams {
+  const qIndex = window.location.hash.indexOf('?');
+  if (qIndex < 0) return new URLSearchParams();
+  return new URLSearchParams(window.location.hash.slice(qIndex + 1));
+}
+
 export const AppContent: React.FC = () => {
   const { isAuthenticated, isInitialized, fetchMe } = useAuthStore();
-  const [activePage, setActivePage] = useState<ActivePage>('dashboard');
+  const [activePage, setActivePage] = useState<ActivePage>(() => pageFromHash() ?? 'dashboard');
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
 
   useEffect(() => {
@@ -28,6 +64,24 @@ export const AppContent: React.FC = () => {
       fetchMe();
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    // Preserve any hash query (?jobUrl=...) across page switches.
+    const existing = hashQuery().toString();
+    const target = `#/${activePage}${existing ? `?${existing}` : ''}`;
+    if (window.location.hash !== target) {
+      window.location.hash = target;
+    }
+  }, [activePage]);
+
+  useEffect(() => {
+    const onHashChange = () => {
+      const page = pageFromHash();
+      if (page) setActivePage(page);
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
 
   if (isAuthenticated && !isInitialized) {
     return (
@@ -68,6 +122,8 @@ export const AppContent: React.FC = () => {
         return <ResultStudioPage setActivePage={setActivePage} />;
       case 'orchestrator':
         return <OrchestratorQueuePage setActivePage={setActivePage} />;
+      case 'ask-aksh':
+        return <AskAkshPage />;
       case 'tracker':
         return <TrackerPage />;
       case 'history':

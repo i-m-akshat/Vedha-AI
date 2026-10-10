@@ -222,7 +222,7 @@ describe('Tier 2: Boundary Value Analysis (F1 to F12)', () => {
       const errors = exports.findActiveValidationErrors(env.document.body);
 
       assert.ok(errors.length > 0);
-      assert.ok(errors[0].message.length >= 100, 'Error message captured');
+      assert.ok(errors[0].errorMessage.length >= 100, 'Error message captured');
       env.cleanup();
     });
 
@@ -239,7 +239,7 @@ describe('Tier 2: Boundary Value Analysis (F1 to F12)', () => {
       const errors = exports.findActiveValidationErrors(env.document.body);
 
       assert.ok(errors.length > 0);
-      assert.match(errors[0].message, /Zahl/i);
+      assert.match(errors[0].errorMessage, /Zahl/i);
       env.cleanup();
     });
 
@@ -256,7 +256,7 @@ describe('Tier 2: Boundary Value Analysis (F1 to F12)', () => {
       const errors = exports.findActiveValidationErrors(env.document.body);
 
       assert.ok(errors.length > 0);
-      const err = errors.find(e => e.element && e.element.id === 'multi_aria');
+      const err = errors.find(e => e.inputElement && e.inputElement.id === 'multi_aria');
       assert.ok(err, 'Must resolve actual error element among non-existent space-separated IDs');
       env.cleanup();
     });
@@ -752,7 +752,14 @@ describe('Tier 2: Boundary Value Analysis (F1 to F12)', () => {
       const exports = loadExtensionContentScript(env);
       const profile = exports.DEFAULT_CANDIDATE_PROFILE || {};
 
-      assert.ok(typeof profile.noticePeriodDays === 'number' || typeof profile.noticePeriodDays === 'string');
+      // Tri-state contract: null (unknown, fail-closed) or a real value.
+      // 0 is a legitimate grounded value (immediate joining) and must survive
+      // falsy-filtering; null must never become a fabricated number.
+      assert.ok(
+        profile.noticePeriodDays === null ||
+        typeof profile.noticePeriodDays === 'number' ||
+        typeof profile.noticePeriodDays === 'string'
+      );
       env.cleanup();
     });
   });

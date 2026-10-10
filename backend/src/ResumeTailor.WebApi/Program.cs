@@ -205,6 +205,55 @@ using (var scope = app.Services.CreateScope())
                         CREATE UNIQUE INDEX IF NOT EXISTS ""IX_RefreshTokens_Token"" ON ""RefreshTokens"" (""Token"");
                         CREATE INDEX IF NOT EXISTS ""IX_RefreshTokens_UserId"" ON ""RefreshTokens"" (""UserId"");
 
+                        CREATE TABLE IF NOT EXISTS ""AkshSessions"" (
+                            ""Id"" uuid NOT NULL CONSTRAINT ""PK_AkshSessions"" PRIMARY KEY,
+                            ""UserId"" uuid NOT NULL,
+                            ""Goal"" text NOT NULL,
+                            ""JobUrl"" text NULL,
+                            ""AutonomyLevel"" integer NOT NULL DEFAULT 0,
+                            ""Status"" integer NOT NULL DEFAULT 0,
+                            ""TodoJson"" text NOT NULL DEFAULT '[]',
+                            ""TokenInputTotal"" bigint NOT NULL DEFAULT 0,
+                            ""TokenOutputTotal"" bigint NOT NULL DEFAULT 0,
+                            ""ActiveTurnId"" uuid NULL,
+                            ""TurnStartedAtUtc"" timestamp with time zone NULL,
+                            ""CreatedAtUtc"" timestamp with time zone NOT NULL,
+                            ""UpdatedAtUtc"" timestamp with time zone NULL,
+                            CONSTRAINT ""FK_AkshSessions_Users_UserId"" FOREIGN KEY (""UserId"") REFERENCES ""Users"" (""Id"") ON DELETE CASCADE
+                        );
+                        CREATE INDEX IF NOT EXISTS ""IX_AkshSessions_UserId_Status"" ON ""AkshSessions"" (""UserId"", ""Status"");
+
+                        CREATE TABLE IF NOT EXISTS ""AkshMessages"" (
+                            ""Id"" uuid NOT NULL CONSTRAINT ""PK_AkshMessages"" PRIMARY KEY,
+                            ""SessionId"" uuid NOT NULL,
+                            ""Role"" text NOT NULL,
+                            ""ToolName"" text NULL,
+                            ""SummaryText"" text NOT NULL,
+                            ""ArtifactRef"" text NULL,
+                            ""InputTokens"" integer NOT NULL DEFAULT 0,
+                            ""OutputTokens"" integer NOT NULL DEFAULT 0,
+                            ""CreatedAtUtc"" timestamp with time zone NOT NULL,
+                            ""UpdatedAtUtc"" timestamp with time zone NULL,
+                            CONSTRAINT ""FK_AkshMessages_AkshSessions_SessionId"" FOREIGN KEY (""SessionId"") REFERENCES ""AkshSessions"" (""Id"") ON DELETE CASCADE
+                        );
+                        CREATE INDEX IF NOT EXISTS ""IX_AkshMessages_SessionId"" ON ""AkshMessages"" (""SessionId"");
+
+                        CREATE TABLE IF NOT EXISTS ""AkshApprovals"" (
+                            ""Id"" uuid NOT NULL CONSTRAINT ""PK_AkshApprovals"" PRIMARY KEY,
+                            ""SessionId"" uuid NOT NULL,
+                            ""QueueItemId"" uuid NULL,
+                            ""ToolName"" text NOT NULL,
+                            ""ArgumentsJson"" text NOT NULL,
+                            ""Status"" integer NOT NULL DEFAULT 0,
+                            ""DecidedAtUtc"" timestamp with time zone NULL,
+                            ""ConsumedAtUtc"" timestamp with time zone NULL,
+                            ""ExpiresAtUtc"" timestamp with time zone NOT NULL,
+                            ""CreatedAtUtc"" timestamp with time zone NOT NULL,
+                            ""UpdatedAtUtc"" timestamp with time zone NULL,
+                            CONSTRAINT ""FK_AkshApprovals_AkshSessions_SessionId"" FOREIGN KEY (""SessionId"") REFERENCES ""AkshSessions"" (""Id"") ON DELETE CASCADE
+                        );
+                        CREATE INDEX IF NOT EXISTS ""IX_AkshApprovals_SessionId_Status"" ON ""AkshApprovals"" (""SessionId"", ""Status"");
+
                         ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""CreditsBalance"" integer NOT NULL DEFAULT 50;
                         ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""MasterContextJson"" text NULL;
                         ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""CustomOpenAiKey"" text NULL;
@@ -213,6 +262,22 @@ using (var scope = app.Services.CreateScope())
                         ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""PreferredAiProvider"" integer NOT NULL DEFAULT 2;
                         ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""PreferredModel"" text NULL;
                         ALTER TABLE ""CandidateProfiles"" ADD COLUMN IF NOT EXISTS ""SalaryCurrency"" text NOT NULL DEFAULT 'INR';
+                        ALTER TABLE ""CandidateProfiles"" ADD COLUMN IF NOT EXISTS ""AutonomyLevel"" integer NOT NULL DEFAULT 0;
+                        ALTER TABLE ""CandidateProfiles"" ADD COLUMN IF NOT EXISTS ""MaxApplicationsPerDay"" integer NOT NULL DEFAULT 10;
+                        ALTER TABLE ""AkshSessions"" ADD COLUMN IF NOT EXISTS ""ActiveTurnId"" uuid NULL;
+                        ALTER TABLE ""AkshSessions"" ADD COLUMN IF NOT EXISTS ""TurnStartedAtUtc"" timestamp with time zone NULL;
+                        ALTER TABLE ""ApplicationQueueItems"" ADD COLUMN IF NOT EXISTS ""ClaimedAtUtc"" timestamp with time zone NULL;
+                        ALTER TABLE ""ApplicationQueueItems"" ADD COLUMN IF NOT EXISTS ""ClaimToken"" uuid NULL;
+                        CREATE INDEX IF NOT EXISTS ""IX_ApplicationQueueItems_UserId_Status"" ON ""ApplicationQueueItems"" (""UserId"", ""Status"");
+                        CREATE TABLE IF NOT EXISTS ""ExtensionRunClaims"" (
+                            ""QueueItemId"" uuid NOT NULL CONSTRAINT ""PK_ExtensionRunClaims"" PRIMARY KEY,
+                            ""UserId"" uuid NOT NULL,
+                            ""ClaimToken"" uuid NOT NULL,
+                            ""ClaimedAtUtc"" timestamp with time zone NOT NULL,
+                            ""CreatedAtUtc"" timestamp with time zone NOT NULL,
+                            ""UpdatedAtUtc"" timestamp with time zone NULL
+                        );
+                        CREATE INDEX IF NOT EXISTS ""IX_ExtensionRunClaims_UserId_ClaimedAtUtc"" ON ""ExtensionRunClaims"" (""UserId"", ""ClaimedAtUtc"");
                     ");
                 }
                 catch (Exception ex)
@@ -276,8 +341,67 @@ using (var scope = app.Services.CreateScope())
                         );
                         CREATE UNIQUE INDEX IF NOT EXISTS ""IX_RefreshTokens_Token"" ON ""RefreshTokens"" (""Token"");
                         CREATE INDEX IF NOT EXISTS ""IX_RefreshTokens_UserId"" ON ""RefreshTokens"" (""UserId"");
-                    ");
 
+                        CREATE TABLE IF NOT EXISTS ""AkshSessions"" (
+                            ""Id"" TEXT NOT NULL CONSTRAINT ""PK_AkshSessions"" PRIMARY KEY,
+                            ""UserId"" TEXT NOT NULL,
+                            ""Goal"" TEXT NOT NULL,
+                            ""JobUrl"" TEXT NULL,
+                            ""AutonomyLevel"" INTEGER NOT NULL DEFAULT 0,
+                            ""Status"" INTEGER NOT NULL DEFAULT 0,
+                            ""TodoJson"" TEXT NOT NULL DEFAULT '[]',
+                            ""TokenInputTotal"" INTEGER NOT NULL DEFAULT 0,
+                            ""TokenOutputTotal"" INTEGER NOT NULL DEFAULT 0,
+                            ""ActiveTurnId"" TEXT NULL,
+                            ""TurnStartedAtUtc"" TEXT NULL,
+                            ""CreatedAtUtc"" TEXT NOT NULL,
+                            ""UpdatedAtUtc"" TEXT NULL,
+                            CONSTRAINT ""FK_AkshSessions_Users_UserId"" FOREIGN KEY (""UserId"") REFERENCES ""Users"" (""Id"") ON DELETE CASCADE
+                        );
+                        CREATE INDEX IF NOT EXISTS ""IX_AkshSessions_UserId_Status"" ON ""AkshSessions"" (""UserId"", ""Status"");
+
+                        CREATE TABLE IF NOT EXISTS ""AkshMessages"" (
+                            ""Id"" TEXT NOT NULL CONSTRAINT ""PK_AkshMessages"" PRIMARY KEY,
+                            ""SessionId"" TEXT NOT NULL,
+                            ""Role"" TEXT NOT NULL,
+                            ""ToolName"" TEXT NULL,
+                            ""SummaryText"" TEXT NOT NULL,
+                            ""ArtifactRef"" TEXT NULL,
+                            ""InputTokens"" INTEGER NOT NULL DEFAULT 0,
+                            ""OutputTokens"" INTEGER NOT NULL DEFAULT 0,
+                            ""CreatedAtUtc"" TEXT NOT NULL,
+                            ""UpdatedAtUtc"" TEXT NULL,
+                            CONSTRAINT ""FK_AkshMessages_AkshSessions_SessionId"" FOREIGN KEY (""SessionId"") REFERENCES ""AkshSessions"" (""Id"") ON DELETE CASCADE
+                        );
+                        CREATE INDEX IF NOT EXISTS ""IX_AkshMessages_SessionId"" ON ""AkshMessages"" (""SessionId"");
+
+                        CREATE TABLE IF NOT EXISTS ""AkshApprovals"" (
+                            ""Id"" TEXT NOT NULL CONSTRAINT ""PK_AkshApprovals"" PRIMARY KEY,
+                            ""SessionId"" TEXT NOT NULL,
+                            ""QueueItemId"" TEXT NULL,
+                            ""ToolName"" TEXT NOT NULL,
+                            ""ArgumentsJson"" TEXT NOT NULL DEFAULT '{}',
+                            ""Status"" INTEGER NOT NULL DEFAULT 0,
+                            ""DecidedAtUtc"" TEXT NULL,
+                            ""ConsumedAtUtc"" TEXT NULL,
+                            ""ExpiresAtUtc"" TEXT NOT NULL,
+                            ""CreatedAtUtc"" TEXT NOT NULL,
+                            ""UpdatedAtUtc"" TEXT NULL,
+                            CONSTRAINT ""FK_AkshApprovals_AkshSessions_SessionId"" FOREIGN KEY (""SessionId"") REFERENCES ""AkshSessions"" (""Id"") ON DELETE CASCADE
+                        );
+                        CREATE INDEX IF NOT EXISTS ""IX_AkshApprovals_SessionId_Status"" ON ""AkshApprovals"" (""SessionId"", ""Status"");
+
+                        CREATE TABLE IF NOT EXISTS ""ExtensionRunClaims"" (
+                            ""QueueItemId"" TEXT NOT NULL CONSTRAINT ""PK_ExtensionRunClaims"" PRIMARY KEY,
+                            ""UserId"" TEXT NOT NULL,
+                            ""ClaimToken"" TEXT NOT NULL,
+                            ""ClaimedAtUtc"" TEXT NOT NULL,
+                            ""CreatedAtUtc"" TEXT NOT NULL,
+                            ""UpdatedAtUtc"" TEXT NULL
+                        );
+                        CREATE INDEX IF NOT EXISTS ""IX_ExtensionRunClaims_UserId_ClaimedAtUtc"" ON ""ExtensionRunClaims"" (""UserId"", ""ClaimedAtUtc"");
+                        CREATE INDEX IF NOT EXISTS ""IX_ApplicationQueueItems_UserId_Status"" ON ""ApplicationQueueItems"" (""UserId"", ""Status"");
+                    ");
                     var conn = dbContext.Database.GetDbConnection();
                     if (conn.State != System.Data.ConnectionState.Open) conn.Open();
 
@@ -345,6 +469,62 @@ using (var scope = app.Services.CreateScope())
                         {
                             using var addCol = conn.CreateCommand();
                             addCol.CommandText = "ALTER TABLE \"CandidateProfiles\" ADD COLUMN \"SalaryCurrency\" TEXT NOT NULL DEFAULT 'INR';";
+                            addCol.ExecuteNonQuery();
+                        }
+                        if (!profCols.Contains("AutonomyLevel"))
+                        {
+                            using var addCol = conn.CreateCommand();
+                            addCol.CommandText = "ALTER TABLE \"CandidateProfiles\" ADD COLUMN \"AutonomyLevel\" INTEGER NOT NULL DEFAULT 0;";
+                            addCol.ExecuteNonQuery();
+                        }
+                        if (!profCols.Contains("MaxApplicationsPerDay"))
+                        {
+                            using var addCol = conn.CreateCommand();
+                            addCol.CommandText = "ALTER TABLE \"CandidateProfiles\" ADD COLUMN \"MaxApplicationsPerDay\" INTEGER NOT NULL DEFAULT 10;";
+                            addCol.ExecuteNonQuery();
+                        }
+                    }
+
+                    using (var cmdAksh = conn.CreateCommand())
+                    {
+                        cmdAksh.CommandText = "PRAGMA table_info(\"AkshSessions\");";
+                        var akshCols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        using (var readerAksh = cmdAksh.ExecuteReader())
+                        {
+                            while (readerAksh.Read()) akshCols.Add(readerAksh.GetString(1));
+                        }
+                        if (!akshCols.Contains("ActiveTurnId"))
+                        {
+                            using var addCol = conn.CreateCommand();
+                            addCol.CommandText = "ALTER TABLE \"AkshSessions\" ADD COLUMN \"ActiveTurnId\" TEXT NULL;";
+                            addCol.ExecuteNonQuery();
+                        }
+                        if (!akshCols.Contains("TurnStartedAtUtc"))
+                        {
+                            using var addCol = conn.CreateCommand();
+                            addCol.CommandText = "ALTER TABLE \"AkshSessions\" ADD COLUMN \"TurnStartedAtUtc\" TEXT NULL;";
+                            addCol.ExecuteNonQuery();
+                        }
+                    }
+
+                    using (var cmdQueue = conn.CreateCommand())
+                    {
+                        cmdQueue.CommandText = "PRAGMA table_info(\"ApplicationQueueItems\");";
+                        var queueCols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        using (var readerQueue = cmdQueue.ExecuteReader())
+                        {
+                            while (readerQueue.Read()) queueCols.Add(readerQueue.GetString(1));
+                        }
+                        if (!queueCols.Contains("ClaimedAtUtc"))
+                        {
+                            using var addCol = conn.CreateCommand();
+                            addCol.CommandText = "ALTER TABLE \"ApplicationQueueItems\" ADD COLUMN \"ClaimedAtUtc\" TEXT NULL;";
+                            addCol.ExecuteNonQuery();
+                        }
+                        if (!queueCols.Contains("ClaimToken"))
+                        {
+                            using var addCol = conn.CreateCommand();
+                            addCol.CommandText = "ALTER TABLE \"ApplicationQueueItems\" ADD COLUMN \"ClaimToken\" TEXT NULL;";
                             addCol.ExecuteNonQuery();
                         }
                     }

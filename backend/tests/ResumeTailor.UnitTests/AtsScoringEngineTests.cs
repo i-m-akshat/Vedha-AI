@@ -71,6 +71,103 @@ public class AtsScoringEngineTests
     }
 
     [Fact]
+    public void ValidateTruthPreservation_JdStyleTitleRewrite_WithSharedTokens_ShouldPass()
+    {
+        var master = new ResumeSchema
+        {
+            Experience = new List<WorkExperienceItem>
+            {
+                new() { Company = "Acme", Role = "Senior Software Engineer" }
+            }
+        };
+
+        var tailored = new ResumeSchema
+        {
+            Experience = new List<WorkExperienceItem>
+            {
+                new() { Company = "Acme", Role = "Senior Full-Stack .NET Developer" }
+            }
+        };
+
+        _engine.ValidateTruthPreservation(master, tailored).IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ValidateTruthPreservation_InventedTitle_WithZeroOverlap_ShouldFail()
+    {
+        var master = new ResumeSchema
+        {
+            Experience = new List<WorkExperienceItem>
+            {
+                new() { Company = "Acme", Role = "QA Analyst" }
+            }
+        };
+
+        var tailored = new ResumeSchema
+        {
+            Experience = new List<WorkExperienceItem>
+            {
+                new() { Company = "Acme", Role = "Vice President of Engineering" }
+            }
+        };
+
+        var result = _engine.ValidateTruthPreservation(master, tailored);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("unauthorized role title");
+    }
+
+    [Fact]
+    public void ValidateTruthPreservation_AlteredDates_ShouldFail()
+    {
+        var master = new ResumeSchema
+        {
+            Experience = new List<WorkExperienceItem>
+            {
+                new() { Company = "Acme", Role = "Developer", StartDate = "Jan 2020", EndDate = "Dec 2022" }
+            }
+        };
+
+        var tailored = new ResumeSchema
+        {
+            Experience = new List<WorkExperienceItem>
+            {
+                new() { Company = "Acme", Role = "Developer", StartDate = "Jan 2018", EndDate = "Dec 2022" }
+            }
+        };
+
+        var result = _engine.ValidateTruthPreservation(master, tailored);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("employment dates");
+    }
+
+    [Fact]
+    public void ValidateTruthPreservation_InventedSkill_Project_Degree_ShouldFail()
+    {
+        var master = new ResumeSchema
+        {
+            Skills = new List<SkillCategory> { new() { CategoryName = "Languages", Skills = new List<string> { "C#" } } },
+            Projects = new List<ProjectItem> { new() { Title = "Billing Service" } },
+            Education = new List<EducationItem> { new() { Institution = "State Uni", Degree = "BSc", FieldOfStudy = "CS", GraduationYear = "2020" } },
+        };
+
+        var tailored = new ResumeSchema
+        {
+            Skills = new List<SkillCategory> { new() { CategoryName = "Languages", Skills = new List<string> { "C#", "Quantum Cobol" } } },
+            Projects = new List<ProjectItem> { new() { Title = "Billing Service" }, new() { Title = "Moon Lander" } },
+            Education = new List<EducationItem> { new() { Institution = "State Uni", Degree = "PhD", FieldOfStudy = "CS", GraduationYear = "2020" } },
+        };
+
+        var result = _engine.ValidateTruthPreservation(master, tailored);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("unauthorized skill");
+        result.Error.Should().Contain("unauthorized project");
+        result.Error.Should().Contain("unauthorized degree");
+    }
+
+    [Fact]
     public void CalculateScore_ShouldComputeKeywordMatchesAndMissingSkills()
     {
         // Arrange

@@ -145,4 +145,50 @@ public class OrchestratorTests
         mapped.FirstOrDefault(f => f.Label == "Expected Compensation / Salary")?.InferredMappedValue.Should().Be("$165,000 / year");
         mapped.FirstOrDefault(f => f.Label == "Attach Resume / CV")?.InferredMappedValue.Should().Be("[ATS-Tailored-Resume.pdf]");
     }
+
+    [Theory]
+    // Regression: the finalize check used to read queueItem.Status AFTER it had
+    // been overwritten to RunningAutomation, so previously-paused items re-paused
+    // instead of finalizing. wasPausedForReview is now captured pre-overwrite.
+    [InlineData(true, true, true, false)]   // paused + copilot + review flag -> finalize, no pause
+    [InlineData(true, false, true, false)]  // paused + explicit finalize -> finalize, no pause
+    [InlineData(false, false, true, false)] // explicit finalize (copilot off) -> finalize, no pause
+    [InlineData(false, true, true, true)]   // fresh copilot run, review demanded -> pause
+    [InlineData(false, true, false, true)]  // fresh copilot run (copilotMode itself pauses) -> pause
+    public void ResolveEffectiveReviewMode_Matrix(bool wasPausedForReview, bool copilotMode, bool requiresManualReview, bool expected)
+    {
+        JobApplicationOrchestrator.ResolveEffectiveReviewMode(wasPausedForReview, copilotMode, requiresManualReview)
+            .Should().Be(expected);
+    }
+
+    [Fact]
+    public void NormalizeResumeSchema_EliminatesNulls_FromAiShapedJson()
+    {
+        // Regression: explicit JSON nulls ("personalInfo": null) used to throw
+        // NullReference 500s down the execute path (providers dereference unconditionally).
+        var schema = System.Text.Json.JsonSerializer.Deserialize<ResumeSchema>(
+            """{"personalInfo":null,"summary":null,"experience":null,"projects":null,"skills":null,"education":null,"certifications":null,"achievements":null}""");
+
+        var normalized = JobApplicationOrchestrator.NormalizeResumeSchema(schema);
+
+        normalized.PersonalInfo.Should().NotBeNull();
+        normalized.PersonalInfo.FullName.Should().Be(string.Empty);
+        normalized.Summary.Should().Be(string.Empty);
+        normalized.Experience.Should().NotBeNull().And.BeEmpty();
+        normalized.Projects.Should().NotBeNull();
+        normalized.Skills.Should().NotBeNull();
+        normalized.Education.Should().NotBeNull();
+        normalized.Certifications.Should().NotBeNull();
+        normalized.Achievements.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void NormalizeResumeSchema_HandlesNullRoot()
+    {
+        var normalized = JobApplicationOrchestrator.NormalizeResumeSchema(null);
+
+        normalized.Should().NotBeNull();
+        normalized.PersonalInfo.Should().NotBeNull();
+        normalized.Skills.Should().NotBeNull();
+    }
 }

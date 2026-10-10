@@ -23,6 +23,10 @@ Write-Host "Building frontend image (localhost/infra-frontend:latest)..." -Foreg
 podman build -t localhost/infra-frontend:latest -f "$PSScriptRoot\Dockerfile.frontend" $repoRoot
 if ($LASTEXITCODE -ne 0) { throw "Podman frontend build failed." }
 
+Write-Host "Building worker image (localhost/infra-worker:latest)..." -ForegroundColor Cyan
+podman build -t localhost/infra-worker:latest -f "$PSScriptRoot\Dockerfile.worker" $repoRoot
+if ($LASTEXITCODE -ne 0) { throw "Podman worker build failed." }
+
 # 3. Load Environment Variables from infra/.env
 $envMap = @{}
 $envPath = Join-Path $PSScriptRoot ".env"
@@ -42,6 +46,14 @@ $geminiKey    = if ($envMap["GEMINI_API_KEY"]) { $envMap["GEMINI_API_KEY"] } els
 $aiProvider   = if ($envMap["DEFAULT_AI_PROVIDER"]) { $envMap["DEFAULT_AI_PROVIDER"] } else { "Gemini" }
 $aiModel      = if ($envMap["DEFAULT_AI_MODEL"]) { $envMap["DEFAULT_AI_MODEL"] } else { "gemini-flash-lite-latest" }
 $aiMaxTokens  = if ($envMap["AI_MAX_TOKENS"]) { $envMap["AI_MAX_TOKENS"] } else { "16384" }
+$agentqlKey   = if ($envMap["AGENTQL_API_KEY"]) { $envMap["AGENTQL_API_KEY"] } else { "" }
+$resProxy     = if ($envMap["RESIDENTIAL_PROXY_URL"]) { $envMap["RESIDENTIAL_PROXY_URL"] } else { "" }
+$stealthEngine = if ($envMap["WORKER_STEALTH_ENGINE"]) { $envMap["WORKER_STEALTH_ENGINE"] } else { "patchright" }
+$akshEnabled  = if ($envMap["Aksh__Enabled"]) { $envMap["Aksh__Enabled"] } else { "false" }
+$akshBudget   = if ($envMap["Aksh__DailyTokenBudget"]) { $envMap["Aksh__DailyTokenBudget"] } else { "200000" }
+$akshModel    = if ($envMap["Aksh__Model"]) { $envMap["Aksh__Model"] } else { "" }
+$akshMaxRuns  = if ($envMap["Aksh__MaxConcurrentRuns"]) { $envMap["Aksh__MaxConcurrentRuns"] } else { "3" }
+$dispatchEnabled = if ($envMap["Dispatch__Enabled"]) { $envMap["Dispatch__Enabled"] } else { "true" }
 
 # 4. Ensure Network exists
 $networks = podman network ls --format "{{.Name}}" 2>$null
@@ -124,6 +136,11 @@ podman run -d --name vedha-backend --network infra_vedha-network --network-alias
     -e AiSettings__DefaultProvider="$aiProvider" `
     -e AiSettings__DefaultModel="$aiModel" `
     -e AiSettings__MaxTokens="$aiMaxTokens" `
+    -e Aksh__Enabled="$akshEnabled" `
+    -e Aksh__DailyTokenBudget="$akshBudget" `
+    -e Aksh__Model="$akshModel" `
+    -e Aksh__MaxConcurrentRuns="$akshMaxRuns" `
+    -e Dispatch__Enabled="$dispatchEnabled" `
     -e Crawl4AiSettings__BaseUrl="http://crawler:11235" `
     -e Crawl4AiSettings__Enabled="true" `
     -e Crawl4AiSettings__ApiToken="$crawlerToken" `
@@ -135,6 +152,21 @@ Write-Host "Starting vedha-frontend..." -ForegroundColor Cyan
 podman rm -f vedha-frontend 2>$null | Out-Null
 podman run -d --name vedha-frontend --network infra_vedha-network -p 3000:80 localhost/infra-frontend:latest
 if ($LASTEXITCODE -ne 0) { throw "Failed to start vedha-frontend container." }
+
+Write-Host "Starting vedha-worker..." -ForegroundColor Cyan
+podman rm -f vedha-worker 2>$null | Out-Null
+podman run -d --name vedha-worker --network infra_vedha-network --network-alias worker --network-alias vedha-worker `
+    -p 8000:8000 `
+    -e NATS_URL="nats://nats:4222" `
+    -e MINIO_ENDPOINT="minio:9000" `
+    -e MINIO_ACCESS_KEY="minioadmin" `
+    -e MINIO_SECRET_KEY="minioadmin" `
+    -e MINIO_BUCKET="vedha-resumes" `
+    -e AGENTQL_API_KEY="$agentqlKey" `
+    -e RESIDENTIAL_PROXY_URL="$resProxy" `
+    -e WORKER_STEALTH_ENGINE="$stealthEngine" `
+    localhost/infra-worker:latest
+if ($LASTEXITCODE -ne 0) { throw "Failed to start vedha-worker container." }
 
 # 7. Start Transparent Localhost Proxy
 $proxyRunning = Get-CimInstance Win32_Process -Filter "CommandLine LIKE '%localhost_proxy.py%'" -ErrorAction SilentlyContinue
