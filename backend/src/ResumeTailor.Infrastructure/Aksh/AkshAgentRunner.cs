@@ -355,8 +355,20 @@ public class AkshAgentRunner : IAkshAgentRunner
                 session.Status = AkshSessionStatus.Paused;
                 await ReleaseTurnAsync(_context, session.Id, turnId, CancellationToken.None);
                 await _context.SaveChangesAsync(CancellationToken.None);
-                terminalError = new AkshStreamEvent("error", new { reasonCode = ex.ReasonCode, message = "The AI model failed mid-turn. Nothing was submitted — your plan and receipts are intact. Please try again." });
-                streamOpen = false;
+                // Logged with session + reason so a pasted log line diagnoses
+                // the turn without exposing keys or PII (message only).
+                _services.GetRequiredService<ILogger<AkshAgentRunner>>().LogWarning(
+                    "Aksh model failure (reasonCode={ReasonCode}) for session {SessionId}: {Message}",
+                    ex.ReasonCode, session.Id, ex.Message);
+                terminalError = new AkshStreamEvent("error", new
+                {
+                    reasonCode = ex.ReasonCode,
+                    message = ex.ReasonCode switch
+                    {
+                        "function_calling_unavailable" => "The AI tool-calling channel failed. Your plan and receipts are intact — sending your message again retries the turn. If it persists, check the model name in Settings.",
+                        _ => "The AI model failed mid-turn. Nothing was submitted — your plan and receipts are intact. Please try again.",
+                    }
+                });
             }
             catch (Exception ex)
             {
@@ -397,11 +409,19 @@ public class AkshAgentRunner : IAkshAgentRunner
             InputTokens = inputTokens,
             OutputTokens = outputTokens,
         });
-        // Single-writer ledger: session totals are owned by RecordEstimatedAsync
-        // below. The runner must NOT increment them here too (that double-counted
-        // every chat turn ~2x and fired the budget gate early).
+        // Single-writer ledger, exactly once per turn: measured provider usage
+        // (function-calling path with usageMetadata) wins; char-estimates are
+        // the fallback for text-path turns. Never both — that double-counted.
         await _context.SaveChangesAsync(cancellationToken);
-        await _ledger.RecordEstimatedAsync(userId, session.Id, "chat_turn", null, prompt.Length, answerText.Length, true, cancellationToken);
+        var measured = userClient.TakeUsage();
+        if (measured != null)
+        {
+            await _ledger.RecordActualAsync(userId, session.Id, "chat_turn", measured.Model, measured.PromptTokens, measured.CompletionTokens, true, cancellationToken);
+        }
+        else
+        {
+            await _ledger.RecordEstimatedAsync(userId, session.Id, "chat_turn", null, prompt.Length, answerText.Length, true, cancellationToken);
+        }
 
         // Only live approvals surface as gates: expired ones resolve to
         // approval_expired at decide time and must not be offered.

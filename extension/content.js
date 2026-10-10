@@ -849,7 +849,10 @@
     await sleep(randomBetween(50, 100));
     target.dispatchEvent(new PointerEvent("pointerup", opts));
     target.dispatchEvent(new MouseEvent("mouseup", opts));
-    target.dispatchEvent(new MouseEvent("click", opts));
+    // Single activation: the native click below dispatches exactly one click
+    // event (bubbles to React roots) AND performs the default action
+    // (navigation, submit). A synthetic 'click' here as well would double-fire
+    // handlers — double submits, double toggles. Pacing evidence stays above.
     target.click();
     await sleep(randomBetween(400, 700));
   }

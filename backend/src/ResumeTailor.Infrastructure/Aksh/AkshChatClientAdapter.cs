@@ -31,6 +31,30 @@ public sealed class AkshChatClientAdapter : IChatClient
     private string? ModelName { get; init; }
 
     /// <summary>
+    /// Measured usage accrued across this client's calls. A turn fans out to
+    /// several back-and-forth model calls (ReAct loop); the runner takes
+    /// (reads + clears) the accrual once per turn and records actuals — or
+    /// char-estimates when nothing accrued. Exactly-once per turn by construction.
+    /// </summary>
+    private GeminiUsage? _accruedUsage;
+
+    public GeminiUsage? TakeUsage()
+    {
+        var usage = _accruedUsage;
+        _accruedUsage = null;
+        return usage;
+    }
+
+    private static GeminiUsage? AddUsage(GeminiUsage? acc, GeminiUsage? next)
+    {
+        // Null measurements never create zero-usage rows: without measured
+        // numbers the runner must fall back to char-estimates, not record 0/0.
+        if (next == null) return acc;
+        if (acc == null) return next;
+        return acc with { Model = next.Model ?? acc.Model, PromptTokens = acc.PromptTokens + next.PromptTokens, CompletionTokens = acc.CompletionTokens + next.CompletionTokens };
+    }
+
+    /// <summary>
     /// Returns a client bound to the given user's provider, stored API key, and model.
     /// Nulls fall back to global defaults, preserving the no-key-configured behavior.
     /// </summary>
@@ -53,7 +77,6 @@ public sealed class AkshChatClientAdapter : IChatClient
         var list = messages.ToList();
 
         // Native function calling (Gemini): forward tool declarations so the model
-        // can emit FunctionCallContent and the harness ReAct loop executes tools.
         var toolsRequested = options?.Tools?.OfType<AIFunction>().Any() == true
             && (ProviderType is null || ProviderType == AiProviderType.Gemini);
         if (toolsRequested)
@@ -66,6 +89,7 @@ public sealed class AkshChatClientAdapter : IChatClient
                     list, options, CustomApiKey, ModelName, cancellationToken);
                 if (toolResult.IsSuccess && toolResult.Value != null)
                 {
+                    _accruedUsage = AddUsage(_accruedUsage, functionClient.LastUsage);
                     return new ChatResponse(toolResult.Value);
                 }
 

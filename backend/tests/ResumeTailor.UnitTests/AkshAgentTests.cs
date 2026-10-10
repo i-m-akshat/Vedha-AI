@@ -526,6 +526,25 @@ public class AkshAgentTests : IDisposable
     }
 
     [Fact]
+    public async Task TokenLedger_Actuals_StoreExactCounts_WithoutEstimateMarker()
+    {
+        var userId = NewUser("actual@test.local");
+        var session = new AkshSession { UserId = userId, Goal = "Apply", Status = AkshSessionStatus.Planning };
+        Db.AkshSessions.Add(session);
+        await Db.SaveChangesAsync();
+
+        var ledger = new ResumeTailor.Infrastructure.Aksh.TokenLedger(_provider.GetRequiredService<IServiceScopeFactory>());
+        await ledger.RecordActualAsync(userId, session.Id, "chat_turn", "gemini-flash-lite-latest", 1234, 56, true);
+
+        var reloaded = await Db.AkshSessions.FindAsync(session.Id);
+        reloaded!.TokenInputTotal.Should().Be(1234);
+        reloaded.TokenOutputTotal.Should().Be(56);
+        var log = Db.UsageLogs.Should().ContainSingle(u => u.Action == "Aksh:chat_turn").Subject;
+        log.Model.Should().Be("gemini-flash-lite-latest");
+        log.Model.Should().NotContain("est.");
+    }
+
+    [Fact]
     public async Task Sessions_And_Audit_AreUserScoped()
     {
         var userId = NewUser("scoped@test.local");

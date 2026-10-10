@@ -10,6 +10,9 @@ using ResumeTailor.Domain.Common;
 
 namespace ResumeTailor.Infrastructure.Aksh;
 
+/// <summary>Measured provider usage for one Gemini call (usageMetadata).</summary>
+public sealed record GeminiUsage(string? Model, int PromptTokens, int CompletionTokens);
+
 /// <summary>
 /// Native Gemini function-calling bridge (ADR-006 flaw-fix): translates MEAI
 /// <see cref="ChatOptions"/> tools into Gemini <c>functionDeclarations</c>,
@@ -37,6 +40,12 @@ public class GeminiFunctionCallingClient
         _encryptionService = encryptionService;
         _logger = logger;
     }
+
+    /// <summary>
+    /// Measured usage of the most recent call (null when the response carried
+    /// no usageMetadata). Consumers record actuals OR estimates, never both.
+    /// </summary>
+    public GeminiUsage? LastUsage { get; private set; }
 
     public async Task<Result<ChatMessage>> GenerateWithToolsAsync(
         IList<ChatMessage> messages,
@@ -77,25 +86,33 @@ public class GeminiFunctionCallingClient
                         break;
                     case FunctionCallContent call:
                         role = "model";
-                        parts.Add(new
+                        // Echo API-issued ids only (see parse site): synthetic
+                        // local_* ids are never sent — the key is omitted, not null.
+                        var callDict = new Dictionary<string, object?>
                         {
-                            functionCall = new
-                            {
-                                name = call.Name,
-                                args = ToJsonNode(call.Arguments),
-                            }
-                        });
+                            ["name"] = call.Name,
+                            ["args"] = ToJsonNode(call.Arguments),
+                        };
+                        if (!string.IsNullOrWhiteSpace(call.CallId)
+                            && !call.CallId.StartsWith("local_", StringComparison.Ordinal))
+                        {
+                            callDict["id"] = call.CallId;
+                        }
+                        parts.Add(new { functionCall = callDict });
                         break;
                     case FunctionResultContent result:
                         role = "user";
-                        parts.Add(new
+                        var responseDict = new Dictionary<string, object?>
                         {
-                            functionResponse = new
-                            {
-                                name = ResolveResultName(messages, result),
-                                response = new { result = ToJsonNode(result.Result) },
-                            }
-                        });
+                            ["name"] = ResolveResultName(messages, result),
+                            ["response"] = new { result = ToJsonNode(result.Result) },
+                        };
+                        if (!string.IsNullOrWhiteSpace(result.CallId)
+                            && !result.CallId.StartsWith("local_", StringComparison.Ordinal))
+                        {
+                            responseDict["id"] = result.CallId;
+                        }
+                        parts.Add(new { functionResponse = responseDict });
                         break;
                 }
             }
@@ -144,6 +161,9 @@ public class GeminiFunctionCallingClient
 
         var httpClient = _httpClientFactory.CreateClient();
 
+        // Fresh usage per call: never let a previous turn's numbers leak in.
+        LastUsage = null;
+
         // Rounds: 0 = initial attempt, 1 = single retry after a tool-loop
         // glitch (UNEXPECTED_TOOL_CALL / MALFORMED_FUNCTION_CALL with empty
         // content — known transient flash-lite behavior). Bounded: never loops.
@@ -187,13 +207,14 @@ public class GeminiFunctionCallingClient
                 return Result<ChatMessage>.Failure($"Gemini API error ({response?.StatusCode}): {Truncate(responseContent ?? string.Empty, 300)}");
             }
 
-            try
-            {
-                var node = JsonNode.Parse(responseContent!);
-                var firstCandidate = node?["candidates"]?[0];
-                var finishReason = firstCandidate?["finishReason"]?.ToString();
-                var blockReason = node?["promptFeedback"]?["blockReason"]?.ToString();
-                var parts = firstCandidate?["content"]?["parts"]?.AsArray();
+        try
+        {
+            var node = JsonNode.Parse(responseContent!);
+            var firstCandidate = node?["candidates"]?[0];
+            var finishReason = firstCandidate?["finishReason"]?.ToString();
+            var blockReason = node?["promptFeedback"]?["blockReason"]?.ToString();
+            LastUsage = ReadUsage(node, model);
+            var parts = firstCandidate?["content"]?["parts"]?.AsArray();
                 if (parts == null || parts.Count == 0)
                 {
                     // STOP with no parts and no safety signal is benign (terse turn),
@@ -239,36 +260,45 @@ public class GeminiFunctionCallingClient
                         continue;
                     }
 
-                    var call = part?["functionCall"];
-                    if (call != null)
+                var call = part?["functionCall"];
+                if (call != null)
+                {
+                    var name = call["name"]?.ToString() ?? string.Empty;
+                    if (string.IsNullOrWhiteSpace(name))
                     {
-                        var name = call["name"]?.ToString() ?? string.Empty;
-                        if (string.IsNullOrWhiteSpace(name))
-                        {
-                            continue;
-                        }
-
-                        var args = new Dictionary<string, object?>();
-                        if (call["args"] is JsonObject argsObj)
-                        {
-                            using var rawDoc = JsonDocument.Parse(argsObj.ToJsonString());
-                            foreach (var prop in rawDoc.RootElement.EnumerateObject())
-                            {
-                                args[prop.Name] = prop.Value.ValueKind switch
-                                {
-                                    JsonValueKind.String => prop.Value.GetString(),
-                                    JsonValueKind.Number when prop.Value.TryGetInt64(out var l) => l,
-                                    JsonValueKind.Number => prop.Value.GetDouble(),
-                                    JsonValueKind.True => true,
-                                    JsonValueKind.False => false,
-                                    JsonValueKind.Null => null,
-                                    _ => prop.Value.Clone()
-                                };
-                            }
-                        }
-
-                        contents_out.Add(new FunctionCallContent($"call_{Guid.NewGuid():N}"[..16], name, args));
+                        continue;
                     }
+
+                    // API-issued ids ride verbatim as our CallId so the matching
+                    // functionResponse echoes the exact id (Gemini 3 requirement).
+                    // Synthetic ids are prefixed and NEVER echoed: sending an id
+                    // the API never issued risks confusing strict models.
+                    var apiId = call["id"]?.ToString();
+                    var callId = !string.IsNullOrWhiteSpace(apiId)
+                        ? apiId!
+                        : $"local_{Guid.NewGuid():N}";
+
+                    var args = new Dictionary<string, object?>();
+                    if (call["args"] is JsonObject argsObj)
+                    {
+                        using var rawDoc = JsonDocument.Parse(argsObj.ToJsonString());
+                        foreach (var prop in rawDoc.RootElement.EnumerateObject())
+                        {
+                            args[prop.Name] = prop.Value.ValueKind switch
+                            {
+                                JsonValueKind.String => prop.Value.GetString(),
+                                JsonValueKind.Number when prop.Value.TryGetInt64(out var l) => l,
+                                JsonValueKind.Number => prop.Value.GetDouble(),
+                                JsonValueKind.True => true,
+                                JsonValueKind.False => false,
+                                JsonValueKind.Null => null,
+                                _ => prop.Value.Clone()
+                            };
+                        }
+                    }
+
+                    contents_out.Add(new FunctionCallContent(callId, name, args));
+                }
                 }
 
                 if (contents_out.Count == 0)
@@ -310,6 +340,34 @@ public class GeminiFunctionCallingClient
 
         return string.Equals(finishReason, "UNEXPECTED_TOOL_CALL", StringComparison.OrdinalIgnoreCase)
             || string.Equals(finishReason, "MALFORMED_FUNCTION_CALL", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static GeminiUsage? ReadUsage(JsonNode? root, string model)
+    {
+        try
+        {
+            var meta = root?["usageMetadata"];
+            if (meta == null)
+            {
+                return null;
+            }
+
+            static int Count(JsonNode? parent, string name)
+                => parent?[name] != null && int.TryParse(parent[name]!.ToString(), out var v) && v >= 0 ? v : 0;
+
+            var prompt = Count(meta, "promptTokenCount");
+            var completion = Count(meta, "candidatesTokenCount");
+            if (prompt == 0 && completion == 0)
+            {
+                return null;
+            }
+
+            return new GeminiUsage(model, prompt, completion);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static string ResolveResultName(IList<ChatMessage> messages, FunctionResultContent result)

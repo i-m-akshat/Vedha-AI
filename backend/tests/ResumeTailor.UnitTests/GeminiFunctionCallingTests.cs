@@ -217,4 +217,117 @@ public class GeminiFunctionCallingTests
         result.Error.Should().Contain("transient tool-loop glitch");
         handler.RequestCount.Should().Be(2);
     }
+
+    [Fact]
+    public async Task UsageMetadata_IsCaptured_ForLedgerActuals()
+    {
+        var handler = new StubHandler("""
+            {"usageMetadata": {"promptTokenCount": 1234, "candidatesTokenCount": 56, "totalTokenCount": 1290},
+             "candidates": [{"content": {"role": "model", "parts": [{"text": "Hello!"}]}, "finishReason": "STOP"}]}
+            """);
+        var client = CreateClient(handler);
+
+        var result = await client.GenerateWithToolsAsync(
+            new List<ChatMessage> { new(ChatRole.User, "hi") },
+            new ChatOptions { Instructions = "test" });
+
+        result.IsSuccess.Should().BeTrue();
+        client.LastUsage.Should().NotBeNull();
+        client.LastUsage!.PromptTokens.Should().Be(1234);
+        client.LastUsage!.CompletionTokens.Should().Be(56);
+    }
+
+    [Fact]
+    public async Task MissingUsageMetadata_LeavesUsageNull_ForEstimateFallback()
+    {
+        var handler = new StubHandler("""
+            {"candidates": [{"content": {"role": "model", "parts": [{"text": "Hello!"}]}, "finishReason": "STOP"}]}
+            """);
+        var client = CreateClient(handler);
+
+        var result = await client.GenerateWithToolsAsync(
+            new List<ChatMessage> { new(ChatRole.User, "hi") },
+            new ChatOptions { Instructions = "test" });
+
+        result.IsSuccess.Should().BeTrue();
+        client.LastUsage.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ApiIssuedCallId_RidesVerbatim_And_EchoesInResponse()
+    {
+        var handler = new StubHandler("""
+            {"candidates": [{"content": {"role": "model", "parts": [{"functionCall": {"name": "recall_memory", "args": {"query": "visa"}, "id": "api-call-007"}}]}, "finishReason": "STOP"}]}
+            """);
+        var client = CreateClient(handler);
+        var options = new ChatOptions
+        {
+            Instructions = "test",
+            Tools = new List<AITool> { RecallTool() },
+        };
+
+        var result = await client.GenerateWithToolsAsync(
+            new List<ChatMessage> { new(ChatRole.User, "visa?") }, options);
+
+        result.IsSuccess.Should().BeTrue();
+        var call = result.Value!.Contents.OfType<FunctionCallContent>().Single();
+        call.CallId.Should().Be("api-call-007");
+
+        // Second turn: history carries the call + result; the emitted
+        // functionResponse must echo the exact API id (Gemini 3 mapping rule).
+        var handler2 = new StubHandler("""
+            {"candidates": [{"content": {"role": "model", "parts": [{"text": "done"}]}, "finishReason": "STOP"}]}
+            """);
+        var client2 = CreateClient(handler2);
+        var history = new List<ChatMessage>
+        {
+            new(ChatRole.User, "visa?"),
+            new(ChatRole.Assistant, [new FunctionCallContent("api-call-007", "recall_memory",
+                new Dictionary<string, object?> { ["query"] = "visa" })]),
+            new(ChatRole.Tool, [new FunctionResultContent("api-call-007", "No")]),
+        };
+
+        var result2 = await client2.GenerateWithToolsAsync(history, options);
+
+        result2.IsSuccess.Should().BeTrue();
+        handler2.LastRequestBody.Should().Contain("api-call-007");
+    }
+
+    [Fact]
+    public async Task SyntheticCallId_IsNeverEchoed()
+    {
+        var handler = new StubHandler("""
+            {"candidates": [{"content": {"role": "model", "parts": [{"functionCall": {"name": "recall_memory", "args": {}}}]}, "finishReason": "STOP"}]}
+            """);
+        var client = CreateClient(handler);
+        var options = new ChatOptions
+        {
+            Instructions = "test",
+            Tools = new List<AITool> { RecallTool() },
+        };
+
+        var result = await client.GenerateWithToolsAsync(
+            new List<ChatMessage> { new(ChatRole.User, "hi") }, options);
+
+        result.IsSuccess.Should().BeTrue();
+        var call = result.Value!.Contents.OfType<FunctionCallContent>().Single();
+        call.CallId.Should().StartWith("local_");
+
+        var handler2 = new StubHandler("""
+            {"candidates": [{"content": {"role": "model", "parts": [{"text": "done"}]}, "finishReason": "STOP"}]}
+            """);
+        var client2 = CreateClient(handler2);
+        var history = new List<ChatMessage>
+        {
+            new(ChatRole.User, "hi"),
+            new(ChatRole.Assistant, [new FunctionCallContent(call.CallId, "recall_memory",
+                new Dictionary<string, object?>())]),
+            new(ChatRole.Tool, [new FunctionResultContent(call.CallId, "x")]),
+        };
+
+        var result2 = await client2.GenerateWithToolsAsync(history, options);
+
+        result2.IsSuccess.Should().BeTrue();
+        handler2.LastRequestBody.Should().NotContain(call.CallId);
+    }
 }

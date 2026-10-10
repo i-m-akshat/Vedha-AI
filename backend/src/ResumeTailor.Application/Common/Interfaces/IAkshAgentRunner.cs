@@ -48,4 +48,19 @@ public interface ITokenLedger
         int outputChars,
         bool success,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Records MEASURED provider usage (e.g. Gemini usageMetadata). Stored
+    /// WITHOUT the "(est.)" marker so estimates and actuals stay distinguishable.
+    /// Callers must record a turn exactly once — actuals OR estimates, never both.
+    /// </summary>
+    Task RecordActualAsync(
+        Guid userId,
+        Guid? sessionId,
+        string tool,
+        string? model,
+        int promptTokens,
+        int completionTokens,
+        bool success,
+        CancellationToken cancellationToken = default);
 }

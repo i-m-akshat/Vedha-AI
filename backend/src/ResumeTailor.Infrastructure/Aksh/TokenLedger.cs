@@ -58,4 +58,42 @@ public class TokenLedger : ITokenLedger
 
         await db.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task RecordActualAsync(
+        Guid userId,
+        Guid? sessionId,
+        string tool,
+        string? model,
+        int promptTokens,
+        int completionTokens,
+        bool success,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopes.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+
+        db.UsageLogs.Add(new UsageLog
+        {
+            UserId = userId,
+            Action = "Aksh:" + tool,
+            Provider = null,
+            Model = model ?? "default",
+            PromptTokens = Math.Max(0, promptTokens),
+            CompletionTokens = Math.Max(0, completionTokens),
+            LatencyMs = 0,
+            IsSuccess = success,
+        });
+
+        if (sessionId.HasValue)
+        {
+            var session = await db.AkshSessions.FindAsync(new object[] { sessionId.Value }, cancellationToken);
+            if (session != null && session.UserId == userId)
+            {
+                session.TokenInputTotal += Math.Max(0, promptTokens);
+                session.TokenOutputTotal += Math.Max(0, completionTokens);
+            }
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
 }
