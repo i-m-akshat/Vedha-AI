@@ -486,12 +486,29 @@ export const AskAkshPage: React.FC = () => {
 
           <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-4">
             {thread.length === 0 && (
-              <div className="flex flex-1 flex-col items-center justify-center gap-6 py-8 text-center max-w-lg mx-auto">
-                <div className="flex flex-col items-center gap-2.5">
-                  <AkshMark size={44} className="opacity-90" />
-                  <h2 className="text-base font-bold text-zinc-900 dark:text-white tracking-tight">How can Aksh accelerate your search today?</h2>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm">
-                    Select a workflow or enter any question to tailor resumes, simulate interviews, or review compensation.
+              <div className="flex flex-1 flex-col items-center justify-center gap-5 py-6 text-center max-w-xl mx-auto">
+                <div className="relative group">
+                  <div className="w-56 h-40 sm:w-64 sm:h-44 rounded-3xl overflow-hidden bg-gradient-to-b from-[#FDF5EE] to-[#FBF0E6] dark:from-[#231F2E] dark:to-[#181622] border border-[#D9704F]/20 dark:border-[#D9704F]/30 p-2 shadow-sm flex items-center justify-center transition-transform duration-300 group-hover:scale-[1.02]">
+                    <img
+                      src="/assets/aksh-copilot-illustration.png"
+                      alt="Aksh AI Career Copilot & Interview Coach"
+                      className="w-full h-full object-contain filter drop-shadow-sm"
+                    />
+                  </div>
+                  <div className="absolute -bottom-2 -right-2 px-3 py-0.5 rounded-full bg-[#5B7B6B] text-white text-[10px] font-semibold shadow-sm border border-white dark:border-[#16151F]">
+                    <span>Career Strategy & Prep</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <AkshMark size={20} className="shrink-0" />
+                    <h2 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white tracking-tight">
+                      Meet Aksh, Your Strategic Career Copilot
+                    </h2>
+                  </div>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-md leading-relaxed">
+                    Tailor resumes with Google XYZ metrics, simulate high-bar STAR behavioral interviews, or negotiate compensation with data-backed benchmarks.
                   </p>
                 </div>
 
@@ -568,34 +585,34 @@ export const AskAkshPage: React.FC = () => {
               ) : (
                 <div key={b.id} className="flex gap-3 group">
                   <AkshMark size={26} className="mt-1 shrink-0" />
-                  <div className="relative max-w-[85%] rounded-2xl rounded-tl-sm border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#16151F] px-4 py-3 text-sm text-zinc-900 dark:text-[#ededed] leading-relaxed shadow-sm">
-                    <Markdown text={b.text} />
-                    {streaming && <span className="ml-1 inline-block w-1.5 animate-pulse text-zinc-500 dark:text-zinc-300">▍</span>}
-                    {b.text && !streaming && (
-                      <button
-                        onClick={() => copyToClipboard(b.text, b.id)}
-                        className="absolute top-2 right-2 p-1 text-zinc-400 hover:text-zinc-900 dark:hover:text-white opacity-0 group-hover:opacity-100 transition-opacity rounded cursor-pointer"
-                        title="Copy to clipboard"
-                      >
-                        {copiedId === b.id ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                      </button>
-                    )}
-                  </div>
+                  {!b.text && streaming ? (
+                    <div className="flex items-center justify-between gap-4 rounded-2xl rounded-tl-sm border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#16151F] p-3.5 max-w-lg shadow-sm transition-all">
+                      <AkshFunLoader
+                        size="compact"
+                        message={getStageDisplay(agentStatus).title}
+                        submessage={agentStatus?.detail || (activeSkill ? `Active Skill: ${activeSkill.name}` : undefined)}
+                      />
+                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 font-semibold shrink-0 uppercase tracking-wider">
+                        {getStageDisplay(agentStatus).badge}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="relative max-w-[85%] rounded-2xl rounded-tl-sm border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#16151F] px-4 py-3 text-sm text-zinc-900 dark:text-[#ededed] leading-relaxed shadow-sm">
+                      <Markdown text={b.text} />
+                      {streaming && <span className="ml-1 inline-block w-1.5 animate-pulse text-zinc-500 dark:text-zinc-300">▍</span>}
+                      {b.text && !streaming && (
+                        <button
+                          onClick={() => copyToClipboard(b.text, b.id)}
+                          className="absolute top-2 right-2 p-1 text-zinc-400 hover:text-zinc-900 dark:hover:text-white opacity-0 group-hover:opacity-100 transition-opacity rounded cursor-pointer"
+                          title="Copy to clipboard"
+                        >
+                          {copiedId === b.id ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               ),
-            )}
-
-            {streaming && (
-              <div className="flex items-center justify-between gap-3 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#16151F] p-3.5 max-w-lg ml-9 mb-2 shadow-md transition-all">
-                <AkshFunLoader
-                  size="compact"
-                  message={getStageDisplay(agentStatus).title}
-                  submessage={agentStatus?.detail || (activeSkill ? `Active Skill: ${activeSkill.name}` : undefined)}
-                />
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-semibold shrink-0 uppercase tracking-wider">
-                  {getStageDisplay(agentStatus).badge}
-                </span>
-              </div>
             )}
             <div ref={threadEndRef} />
           </div>

@@ -21,6 +21,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { Button, Card, Badge, Input, Textarea, Modal } from '../components/ui';
+import { AkshFunLoader } from '../components/ui/AkshFunLoader';
 import { useResumeStore } from '../stores/useTailorStore';
 import { 
   ResumeSchema, 
@@ -394,13 +395,25 @@ export const MasterResumePage: React.FC = () => {
     setSchema({ ...schema, skills: cats });
   };
 
+  if (isLoading && !masterResume) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] w-full">
+        <AkshFunLoader
+          size="md"
+          message="Loading Master Resume..."
+          submessage="Retrieving structured schema, career experiences, and verified versions..."
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header & Controls */}
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h2 className="flex items-center gap-2 text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-            <FileText className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            <FileText className="w-5 h-5 text-[#D9704F]" />
             Master Resume Center
           </h2>
           <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
@@ -565,13 +578,31 @@ export const MasterResumePage: React.FC = () => {
               Please wait while multimodal AI extracts and structures work history, skills, and metrics.
             </p>
           </div>
+        ) : !masterResume ? (
+          <div className="py-4 space-y-4 max-w-md mx-auto">
+            <div className="relative mx-auto w-52 h-36 sm:w-60 sm:h-40 rounded-2xl overflow-hidden bg-gradient-to-b from-[#FDF5EE] to-[#FBF0E6] dark:from-[#231F2E] dark:to-[#181622] border border-[#D9704F]/20 dark:border-[#D9704F]/30 p-2 shadow-sm flex items-center justify-center">
+              <img
+                src="/assets/resume-tailor-illustration.png"
+                alt="Master Resume Single Source of Truth"
+                className="w-full h-full object-contain filter drop-shadow-sm hover:scale-105 transition-transform duration-300"
+              />
+            </div>
+            <div className="space-y-1">
+              <div className="text-sm font-bold text-slate-800 dark:text-zinc-100">
+                Drop your Master Resume here or click to browse
+              </div>
+              <div className="text-xs text-slate-500 dark:text-zinc-400">
+                Supports <strong>PDF, DOCX, Markdown (.md)</strong> • Multimodal AI parses experiences, skills, and metrics into your ATS-grade single source of truth.
+              </div>
+            </div>
+          </div>
         ) : (
           <>
-            <div className="flex items-center justify-center w-12 h-12 mx-auto mb-3 text-indigo-600 border border-indigo-200 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 dark:border-indigo-500/20 dark:text-indigo-400">
+            <div className="flex items-center justify-center w-12 h-12 mx-auto mb-3 text-[#D9704F] border border-[#D9704F]/20 rounded-2xl bg-[#D9704F]/10 dark:bg-[#D9704F]/15 dark:border-[#D9704F]/30">
               <UploadCloud className="w-6 h-6" />
             </div>
             <div className="text-sm font-semibold text-slate-800 dark:text-zinc-200">
-              {masterResume ? 'Upload New Master Resume Document' : 'Drop your Master Resume here or click to browse'}
+              Upload New Master Resume Document
             </div>
             <div className="mt-1 text-xs text-slate-500 dark:text-zinc-500">
               Supports <strong>PDF (including Scanned/Designer), DOCX, Markdown (.md)</strong> • Powered by Multimodal AI

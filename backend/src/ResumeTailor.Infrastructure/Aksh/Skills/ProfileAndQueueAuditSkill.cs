@@ -30,6 +30,7 @@ public class ProfileAndQueueAuditSkill : IAkshSkill
             "1. When the candidate inquires about application status, call `get_application_queue` to list recent items (submitted, paused, queued, failed).\n" +
             "2. When candidate asks about profile fields, call `get_candidate_profile`.\n" +
             "3. When candidate inquires about stored screening answers, call `recall_memory`.\n" +
-            "4. Summarize statuses clearly with company names, roles, timestamps, and actionable next steps.";
+            "4. Summarize statuses clearly with company names, roles, timestamps, and actionable next steps.\n" +
+            "5. Never disclose internal tool function names to the candidate; speak only of pipeline application statuses and profile details.";
     }
 }

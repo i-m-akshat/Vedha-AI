@@ -447,16 +447,27 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
 
       {/* Empty State: Ready to Tailor */}
       {!isLoadingHistory && !tailoredResult && (
-        <div className="p-8 sm:p-12 rounded-2xl bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] shadow-sm space-y-8">
-          <div className="text-center max-w-xl mx-auto space-y-2">
-            <div className="w-12 h-12 rounded-2xl bg-[#FDF2EE] dark:bg-[#2A1B16] border border-[#FAD9CE] dark:border-[#542B20] text-[#D9704F] dark:text-[#F39A7E] flex items-center justify-center mx-auto">
-              <Sparkles className="w-6 h-6" />
+        <div className="p-8 sm:p-12 rounded-3xl bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] shadow-sm space-y-8">
+          <div className="text-center max-w-xl mx-auto space-y-3">
+            <div className="relative inline-block group">
+              <div className="w-56 h-40 sm:w-64 sm:h-44 rounded-3xl overflow-hidden bg-gradient-to-b from-[#FDF5EE] to-[#FBF0E6] dark:from-[#231F2E] dark:to-[#181622] border border-[#D9704F]/20 dark:border-[#D9704F]/30 p-2 shadow-sm flex items-center justify-center transition-transform duration-300 group-hover:scale-[1.02]">
+                <img
+                  src="/assets/resume-tailor-illustration.png"
+                  alt="Resume Tailoring & Optimization"
+                  className="w-full h-full object-contain filter drop-shadow-sm"
+                />
+              </div>
+              <div className="absolute -bottom-2 -right-2 px-2.5 py-0.5 rounded-full bg-[#D9704F] text-white text-[10px] font-bold shadow-sm border border-white dark:border-[#16151F] flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-amber-200" />
+                <span>95%+ ATS Match</span>
+              </div>
             </div>
-            <h2 className="text-xl font-bold text-zinc-900 dark:text-white tracking-tight">
+
+            <h2 className="text-xl font-bold text-zinc-900 dark:text-white tracking-tight pt-1">
               Ready to Tailor Your Resume
             </h2>
-            <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
-              Enter a job posting URL or paste the job description above. Our AI aligns your experience, highlights critical keywords, and tunes your bullets for 95%+ ATS matching.
+            <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-lg mx-auto">
+              Enter a job posting URL or paste the job description above. Our AI aligns your experience, highlights critical keywords, and tunes your bullets with Google XYZ metrics.
             </p>
           </div>
 

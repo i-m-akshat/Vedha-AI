@@ -3,7 +3,6 @@ import {
   Play, 
   Pause, 
   RefreshCw, 
-  SlidersHorizontal, 
   CheckCircle2, 
   Clock, 
   ChevronRight, 
@@ -17,15 +16,14 @@ import {
   ShieldCheck, 
   Search,
   Bell,
-  MoreHorizontal,
   BookmarkCheck,
   Award,
   AlertCircle,
   FileCheck,
-  Briefcase
+  Briefcase,
+  Plus
 } from 'lucide-react';
 import { 
-  AutumnHeroVector, 
   AutumnTreeLeavesVector, 
   AutumnUmbrellaVector, 
   AutumnWalkingStepsVector, 
@@ -54,9 +52,6 @@ interface DashboardPageProps {
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) => {
   const { user } = useAuthStore();
-  const [dailyCap, setDailyCap] = useState(50);
-  const [minAts, setMinAts] = useState(88);
-  const [isPaused, setIsPaused] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'queue' | 'interviews'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -104,9 +99,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
 
   const totalAppsCount = analytics?.totalApplications || recentApps.length;
   const avgScore = analytics?.averageAtsScore ? `${analytics.averageAtsScore}%` : '95%';
-  const activeCount = queueItems.filter(q => q.status !== 'Submitted' && q.status !== 'Failed').length + 
-    autonomousRuns.filter(a => a.status === 'pending' || a.status === 'generating_resume' || a.status === 'applying').length;
-
   const savedCount = recentApps.filter(a => String(a.status).toLowerCase().includes('saved')).length;
   const appliedCount = recentApps.filter(a => String(a.status).toLowerCase().includes('applied')).length;
   const interviewsCount = recentApps.filter(a => 
@@ -162,97 +154,274 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
   }
 
   return (
-    <div className="flex flex-col w-full gap-8 font-sans text-zinc-900 dark:text-[#ededed]">
+    <div className="flex flex-col w-full gap-7 font-sans text-zinc-900 dark:text-[#ededed]">
       
-      {/* Top Bar: Terracotta Squircle Notification + Pill Search Bar + Date Sprint Tag */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3 flex-1 max-w-2xl">
-          {/* Terracotta Notification Squircle with Dot */}
-          <button 
-            onClick={() => setActivePage('tracker')}
-            className="w-11 h-11 rounded-2xl bg-[#D9704F] hover:bg-[#C85F3E] text-white flex items-center justify-center relative shadow-sm cursor-pointer active:scale-95 transition-all shrink-0"
-            title="Notifications & Activity"
-          >
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-white ring-2 ring-[#D9704F]"></span>
-          </button>
-
-          {/* Pill Search Bar */}
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-zinc-400 absolute left-4 top-3 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search jobs, target roles, or companies..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 rounded-full bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] text-xs text-zinc-900 dark:text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-[#D9704F]/30 shadow-sm transition-all"
-            />
+      {/* Top Header: Candidate Greeting & Key Action Buttons */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#D9704F]/10 border border-[#D9704F]/20 text-[#D9704F]">
+              Career Workspace
+            </span>
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#5B7B6B]/10 border border-[#5B7B6B]/20 text-[#5B7B6B] dark:text-[#88B2A0]">
+              Active Sprint
+            </span>
           </div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white mt-1">
+            Welcome back, {candidateName.split(' ')[0]}
+          </h1>
+          <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
+            {recentApps.length > 0 
+              ? `${recentApps.length} active application(s) tracked across your recruitment pipeline.` 
+              : 'Upload your Master Resume to unlock automated tailoring and auto-apply dispatch.'}
+          </p>
         </div>
 
-        {/* Sprint Tag & Quick Actions */}
-        <div className="flex items-center gap-3 self-end sm:self-auto">
-          <div className="hidden md:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FDF2EE] dark:bg-[#2A1B16] border border-[#FAD9CE] dark:border-[#542B20] text-xs font-semibold text-[#D9704F] dark:text-[#F39A7E]">
-            <span className="w-2 h-2 rounded-full bg-[#D9704F] animate-pulse"></span>
-            <span>Autumn Career Sprint</span>
-          </div>
+        {/* Action Controls */}
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          <button
+            onClick={() => setActivePage('tailor-studio')}
+            className="px-4 py-2.5 rounded-xl bg-[#D9704F] hover:bg-[#C85F3E] text-white text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Tailor Resume</span>
+          </button>
 
           <button
-            onClick={() => setIsPaused(!isPaused)}
-            className={`px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer shadow-sm active:scale-[0.98] ${
-              isPaused 
-                ? 'bg-amber-400 hover:bg-amber-300 text-zinc-950 font-bold' 
-                : 'bg-white dark:bg-[#16151F] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-zinc-800 dark:text-zinc-200 border border-black/[0.06] dark:border-white/[0.08]'
-            }`}
+            onClick={() => setActivePage('tracker')}
+            className="px-4 py-2.5 rounded-xl bg-white dark:bg-[#16151F] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] text-zinc-800 dark:text-zinc-200 text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
           >
-            {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
-            <span>{isPaused ? 'Resume Dispatch' : 'Pause Dispatch'}</span>
+            <BookmarkCheck className="w-4 h-4 text-[#D9704F]" />
+            <span>Job Tracker</span>
+          </button>
+
+          <button
+            onClick={loadData}
+            disabled={isLoading}
+            className="p-2.5 rounded-xl bg-white dark:bg-[#16151F] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white shadow-sm transition-all cursor-pointer active:scale-95"
+            title="Refresh dashboard data"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
 
-      {/* Hero Showcase Card: Autumn Day Scenic Illustration + Dynamic Terracotta Banner */}
-      <section className="relative overflow-hidden rounded-[32px] border border-black/[0.06] dark:border-white/[0.08] bg-[#FDF4ED] dark:bg-[#181622] shadow-sm transition-all">
-        {/* Top: Autumn Day Scenic Vector Artwork */}
-        <div className="w-full overflow-hidden">
-          <AutumnHeroVector className="w-full h-44 sm:h-56 object-cover" />
+      {/* Hero Showcase Card: Editorial Career Vector Illustrations + Terracotta Status Bar */}
+      <section className="relative overflow-hidden rounded-[32px] border border-black/[0.06] dark:border-white/[0.08] bg-gradient-to-r from-[#FDF5EE] via-[#F8ECE1] to-[#F4E3D2] dark:from-[#1D1B29] dark:via-[#191724] dark:to-[#14121E] shadow-sm transition-all">
+        {/* Top: Dual Editorial Vector Showcase (Resume Studio & Job Tracker) */}
+        <div className="w-full px-6 py-6 sm:py-8 flex flex-col sm:flex-row items-center justify-around gap-6 overflow-hidden">
+          {/* Card 1: Resume Tailoring & Google XYZ Bullets */}
+          <div className="flex items-center gap-4 max-w-sm">
+            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-white dark:bg-[#16151F] p-1.5 shadow-sm border border-[#D9704F]/20 flex items-center justify-center shrink-0">
+              <img
+                src="/assets/resume-tailor-illustration.png"
+                alt="Resume Studio"
+                className="w-full h-full object-contain filter drop-shadow-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] font-semibold text-[#D9704F] bg-[#D9704F]/10 px-2 py-0.5 rounded-full border border-[#D9704F]/20">
+                AI Resume Tailoring
+              </span>
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-white leading-snug">
+                Google XYZ-Formula Alignment
+              </h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                Tune bullet points with quantifiable business impact and 95%+ ATS matching.
+              </p>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="hidden sm:block w-px h-20 bg-black/[0.08] dark:bg-white/[0.08]" />
+
+          {/* Card 2: Application Pipeline & Auto-Apply */}
+          <div className="flex items-center gap-4 max-w-sm">
+            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-white dark:bg-[#16151F] p-1.5 shadow-sm border border-[#5B7B6B]/20 flex items-center justify-center shrink-0">
+              <img
+                src="/assets/job-tracker-illustration.png"
+                alt="Pipeline Tracker"
+                className="w-full h-full object-contain filter drop-shadow-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] font-semibold text-[#5B7B6B] dark:text-[#7EA895] bg-[#5B7B6B]/10 px-2 py-0.5 rounded-full border border-[#5B7B6B]/20">
+                Pipeline Automation
+              </span>
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-white leading-snug">
+                End-to-End Application Tracking
+              </h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                Stage applications from Saved to Offer with 100% human-in-the-loop review.
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Bottom Banner: Terracotta #D9704F Bar with Real Dynamic System Stats */}
-        <div className="bg-[#D9704F] p-6 sm:p-7 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        {/* Bottom Banner: Terracotta #D9704F Bar with Real System Status */}
+        <div className="bg-[#D9704F] p-5 sm:p-6 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="flex items-center gap-2 text-white/80 text-xs font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
-              <span>Career Workspace • {isPaused ? 'Dispatch Paused' : 'Active Dispatch Mode'}</span>
+            <div className="text-white/80 text-xs font-medium">
+              Autonomous Core • Zero-Hallucination Shield Active
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-              Welcome back, {candidateName.split(' ')[0]}
-            </h1>
-            <p className="text-xs sm:text-sm text-white/90 max-w-xl leading-relaxed">
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight">
               {reviewPendingItems.length > 0
-                ? `${reviewPendingItems.length} application(s) awaiting your verification before dispatch. 100% human-in-the-loop guarantee.`
+                ? `${reviewPendingItems.length} Application(s) Awaiting Your Review`
                 : queueItems.length > 0
-                ? `${queueItems.length} calibrated application(s) ready in queue. All systems operating with zero-hallucination shield.`
+                ? `${queueItems.length} Calibrated Application(s) in Auto-Dispatch Queue`
                 : masterResume
-                ? `Master Resume active with ${totalExperiences} role(s) and ${totalSkills} skill(s). Ready to tailor for any opening.`
-                : 'Upload your Master Resume to unlock automated tailoring, cover letter generation, and auto-apply dispatch.'}
+                ? `Master Resume Calibrated with ${totalExperiences} Role(s) & ${totalSkills} Skill(s)`
+                : 'Master Resume Not Yet Uploaded'}
+            </h2>
+            <p className="text-xs text-white/90 max-w-xl leading-relaxed">
+              {reviewPendingItems.length > 0
+                ? 'Pre-filled questions are generated. Inspect and approve before dispatch with 100% human-in-the-loop safety.'
+                : queueItems.length > 0
+                ? 'Applications will submit automatically according to your daily pacing and safety thresholds.'
+                : masterResume
+                ? 'Ready to tailor Google XYZ-benchmarked resumes for any job posting with 95%+ ATS alignment.'
+                : 'Upload your base PDF or DOCX resume to start tailoring and auto-applying to target positions.'}
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5">
-            <button
-              onClick={() => setActivePage('tailor-studio')}
-              className="px-5 py-2.5 rounded-full bg-white hover:bg-amber-50 text-[#D9704F] text-xs font-bold transition-all shadow-md cursor-pointer active:scale-95"
-            >
-              Tailor New Resume
-            </button>
+          <div className="flex items-center gap-2.5 shrink-0">
+            {reviewPendingItems.length > 0 ? (
+              <button
+                onClick={() => setActivePage('ask-aksh')}
+                className="px-5 py-2.5 rounded-full bg-white hover:bg-amber-50 text-[#D9704F] text-xs font-bold transition-all shadow-md cursor-pointer active:scale-95"
+              >
+                Review Applications
+              </button>
+            ) : (
+              <button
+                onClick={() => setActivePage('tailor-studio')}
+                className="px-5 py-2.5 rounded-full bg-white hover:bg-amber-50 text-[#D9704F] text-xs font-bold transition-all shadow-md cursor-pointer active:scale-95"
+              >
+                Tailor New Opening
+              </button>
+            )}
+
             <button
               onClick={() => setActivePage('orchestrator')}
               className="px-4 py-2.5 rounded-full bg-white/20 hover:bg-white/30 text-white text-xs font-semibold transition-all cursor-pointer active:scale-95"
-              title="Open Auto-Apply Queue"
             >
-              Auto-Apply Queue ({queueItems.length})
+              Queue ({queueItems.length})
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 4 Consolidated Executive KPI Cards (Zero Duplication) */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* KPI 1: Master Resume Center */}
+        <div 
+          onClick={() => setActivePage('master-resume')}
+          className="p-5 rounded-[24px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] shadow-sm hover:shadow transition-all cursor-pointer group flex flex-col justify-between gap-3"
+        >
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10 rounded-2xl bg-[#D9704F]/10 text-[#D9704F] flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+              <FileText className="w-5 h-5" />
+            </div>
+            <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${
+              masterResume 
+                ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20' 
+                : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20'
+            }`}>
+              {masterResume ? 'Calibrated' : 'Missing'}
+            </span>
+          </div>
+          <div>
+            <div className="text-xl font-bold font-mono text-zinc-900 dark:text-white leading-tight">
+              {masterResume ? `v${masterResume.versionNumber}` : 'No Resume'}
+            </div>
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-0.5">
+              {masterResume ? `${totalExperiences} Roles · ${totalSkills} Skills` : 'Upload Master Resume'}
+            </div>
+          </div>
+          <div className="text-[11px] font-medium text-[#D9704F] flex items-center gap-1 pt-1 border-t border-black/[0.05] dark:border-white/[0.06]">
+            <span>Manage Master Profile</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </div>
+        </div>
+
+        {/* KPI 2: Pipeline Applications */}
+        <div 
+          onClick={() => setActivePage('tracker')}
+          className="p-5 rounded-[24px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] shadow-sm hover:shadow transition-all cursor-pointer group flex flex-col justify-between gap-3"
+        >
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10 rounded-2xl bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+              <Send className="w-5 h-5" />
+            </div>
+            <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-500/20">
+              Pipeline
+            </span>
+          </div>
+          <div>
+            <div className="text-xl font-bold font-mono text-zinc-900 dark:text-white leading-tight">
+              {String(recentApps.length).padStart(2, '0')}
+            </div>
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-0.5">
+              {savedCount} Saved · {appliedCount} Applied
+            </div>
+          </div>
+          <div className="text-[11px] font-medium text-sky-600 dark:text-sky-400 flex items-center gap-1 pt-1 border-t border-black/[0.05] dark:border-white/[0.06]">
+            <span>Open Kanban Board</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </div>
+        </div>
+
+        {/* KPI 3: Interviews & Offers */}
+        <div 
+          onClick={() => setActivePage('tracker')}
+          className="p-5 rounded-[24px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] shadow-sm hover:shadow transition-all cursor-pointer group flex flex-col justify-between gap-3"
+        >
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+              <TrendingUp className="w-5 h-5" />
+            </div>
+            <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
+              Callbacks
+            </span>
+          </div>
+          <div>
+            <div className="text-xl font-bold font-mono text-zinc-900 dark:text-white leading-tight">
+              {String(interviewsCount).padStart(2, '0')}
+            </div>
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-0.5">
+              {offersCount > 0 ? `${offersCount} Offer(s) Received` : 'Active Interview Rounds'}
+            </div>
+          </div>
+          <div className="text-[11px] font-medium text-amber-600 dark:text-amber-400 flex items-center gap-1 pt-1 border-t border-black/[0.05] dark:border-white/[0.06]">
+            <span>View Interview Stages</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </div>
+        </div>
+
+        {/* KPI 4: ATS Resonance Benchmark */}
+        <div 
+          onClick={() => setActivePage('tailor-studio')}
+          className="p-5 rounded-[24px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] shadow-sm hover:shadow transition-all cursor-pointer group flex flex-col justify-between gap-3"
+        >
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10 rounded-2xl bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20">
+              Match
+            </span>
+          </div>
+          <div>
+            <div className="text-xl font-bold font-mono text-zinc-900 dark:text-white leading-tight">
+              {avgScore}
+            </div>
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-0.5">
+              Google XYZ Formula Aligned
+            </div>
+          </div>
+          <div className="text-[11px] font-medium text-purple-600 dark:text-purple-400 flex items-center gap-1 pt-1 border-t border-black/[0.05] dark:border-white/[0.06]">
+            <span>Target Score ≥ 90%</span>
+            <ChevronRight className="w-3.5 h-3.5" />
           </div>
         </div>
       </section>
@@ -308,314 +477,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
         </div>
       </section>
 
-      {/* Real Pipeline Stages Snapshot (Replacing fake Day Schedule) */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-bold text-zinc-900 dark:text-white tracking-tight">Application Pipeline</h2>
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-black/[0.04] dark:bg-white/[0.08] text-zinc-500 dark:text-zinc-400">
-              Active Stages
-            </span>
-          </div>
-          <button 
-            onClick={() => setActivePage('tracker')}
-            className="text-xs text-[#D9704F] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
-          >
-            <span>Kanban Board</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {/* Pending Review Alert if any item is paused for HITL */}
-        {reviewPendingItems.length > 0 && (
-          <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 flex items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2.5">
-              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-              <div>
-                <span className="font-bold text-amber-900 dark:text-amber-200">
-                  {reviewPendingItems.length} Application(s) Waiting for Your Approval:
-                </span>{' '}
-                <span className="text-amber-800 dark:text-amber-300">
-                  Pre-filled answers are generated. Review and approve before submission.
-                </span>
-              </div>
-            </div>
-            <button
-              onClick={() => setActivePage('ask-aksh')}
-              className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold transition-all shrink-0 cursor-pointer active:scale-95"
-            >
-              Review Now
-            </button>
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {/* Stage 1: Saved */}
-          <div 
-            onClick={() => setActivePage('tracker')}
-            className="p-4 rounded-[22px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] flex items-center gap-3.5 shadow-sm hover:shadow transition-all cursor-pointer group"
-          >
-            <div className="w-10 h-10 rounded-2xl bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <BookmarkCheck className="w-5 h-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-lg font-bold font-mono text-zinc-900 dark:text-white leading-tight">
-                {String(savedCount).padStart(2, '0')}
-              </div>
-              <div className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Saved Jobs</div>
-            </div>
-          </div>
-
-          {/* Stage 2: Applied */}
-          <div 
-            onClick={() => setActivePage('tracker')}
-            className="p-4 rounded-[22px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] flex items-center gap-3.5 shadow-sm hover:shadow transition-all cursor-pointer group"
-          >
-            <div className="w-10 h-10 rounded-2xl bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <Send className="w-5 h-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-lg font-bold font-mono text-sky-950 dark:text-sky-100 leading-tight">
-                {String(appliedCount).padStart(2, '0')}
-              </div>
-              <div className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Applied</div>
-            </div>
-          </div>
-
-          {/* Stage 3: Interviewing */}
-          <div 
-            onClick={() => setActivePage('tracker')}
-            className="p-4 rounded-[22px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] flex items-center gap-3.5 shadow-sm hover:shadow transition-all cursor-pointer group"
-          >
-            <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <TrendingUp className="w-5 h-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-lg font-bold font-mono text-amber-950 dark:text-amber-100 leading-tight">
-                {String(interviewsCount).padStart(2, '0')}
-              </div>
-              <div className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Interviews</div>
-            </div>
-          </div>
-
-          {/* Stage 4: Offers */}
-          <div 
-            onClick={() => setActivePage('tracker')}
-            className="p-4 rounded-[22px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] flex items-center gap-3.5 shadow-sm hover:shadow transition-all cursor-pointer group"
-          >
-            <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <Award className="w-5 h-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-lg font-bold font-mono text-emerald-950 dark:text-emerald-100 leading-tight">
-                {String(offersCount).padStart(2, '0')}
-              </div>
-              <div className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Offers</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Six Pastel Category & Metric Cards */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        
-        {/* Card 1: Mint (In-Progress Queue) */}
-        <div className="card-pastel-mint rounded-[22px] p-5 border flex flex-col justify-between gap-4 transition-all hover:translate-y-[-2px] shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold">
-              <Clock className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-200/60 dark:bg-emerald-800/40 text-emerald-800 dark:text-emerald-200 font-semibold">
-              Queue
-            </span>
-          </div>
-          <div>
-            <div className="text-3xl font-extrabold font-mono text-emerald-950 dark:text-emerald-100 tracking-tight">
-              {String(activeCount).padStart(2, '0')}
-            </div>
-            <div className="text-xs font-medium text-emerald-800 dark:text-emerald-300 mt-1">In-Progress Queue</div>
-          </div>
-          <div className="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 pt-2 border-t border-emerald-200/50 dark:border-emerald-800/30 flex items-center justify-between">
-            <span>Status</span>
-            <span>{activeCount > 0 ? `${activeCount} Active` : 'Idle'}</span>
-          </div>
-        </div>
-
-        {/* Card 2: Sky Blue (Total Tracked) */}
-        <div className="card-pastel-sky rounded-[22px] p-5 border flex flex-col justify-between gap-4 transition-all hover:translate-y-[-2px] shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-2xl bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 flex items-center justify-center font-bold">
-              <FileText className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-sky-200/60 dark:bg-sky-800/40 text-sky-800 dark:text-sky-200 font-semibold">
-              Tracked
-            </span>
-          </div>
-          <div>
-            <div className="text-3xl font-extrabold font-mono text-sky-950 dark:text-sky-100 tracking-tight">
-              {totalAppsCount}
-            </div>
-            <div className="text-xs font-medium text-sky-800 dark:text-sky-300 mt-1">Total Tracked</div>
-          </div>
-          <div className="text-[10px] font-mono text-sky-700 dark:text-sky-400 pt-2 border-t border-sky-200/50 dark:border-sky-800/30 flex items-center justify-between">
-            <span>Daily Cap</span>
-            <span>{dailyCap} / day</span>
-          </div>
-        </div>
-
-        {/* Card 3: Lavender (Average ATS Score) */}
-        <div className="card-pastel-lavender rounded-[22px] p-5 border flex flex-col justify-between gap-4 transition-all hover:translate-y-[-2px] shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-2xl bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-200/60 dark:bg-purple-800/40 text-purple-800 dark:text-purple-200 font-semibold">
-              Score
-            </span>
-          </div>
-          <div>
-            <div className="text-3xl font-extrabold font-mono text-purple-950 dark:text-purple-100 tracking-tight">
-              {avgScore}
-            </div>
-            <div className="text-xs font-medium text-purple-800 dark:text-purple-300 mt-1">Average ATS Score</div>
-          </div>
-          <div className="text-[10px] font-mono text-purple-700 dark:text-purple-400 pt-2 border-t border-purple-200/50 dark:border-purple-800/30 flex items-center justify-between">
-            <span>Alignment</span>
-            <span>Target ≥ 90%</span>
-          </div>
-        </div>
-
-        {/* Card 4: Terracotta / Peach (Interview Callbacks) */}
-        <div className="card-pastel-peach rounded-[22px] p-5 border flex flex-col justify-between gap-4 transition-all hover:translate-y-[-2px] shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold">
-              <TrendingUp className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-200/60 dark:bg-amber-800/40 text-amber-800 dark:text-amber-200 font-semibold">
-              Callbacks
-            </span>
-          </div>
-          <div>
-            <div className="text-3xl font-extrabold font-mono text-amber-950 dark:text-amber-100 tracking-tight">
-              {interviewsCount}
-            </div>
-            <div className="text-xs font-medium text-amber-800 dark:text-amber-300 mt-1">Interviews &amp; Offers</div>
-          </div>
-          <div className="text-[10px] font-mono text-amber-700 dark:text-amber-400 pt-2 border-t border-amber-200/50 dark:border-amber-800/30 flex items-center justify-between">
-            <button onClick={() => setActivePage('tracker')} className="hover:underline flex items-center gap-1 cursor-pointer">
-              <span>View Board</span>
-              <ChevronRight className="w-3 h-3" />
-            </button>
-            <span>Active</span>
-          </div>
-        </div>
-
-        {/* Card 5: Buttercup (Ask Aksh AI Copilot) */}
-        <div 
-          onClick={() => setActivePage('ask-aksh')}
-          className="card-pastel-butter rounded-[22px] p-5 border flex flex-col justify-between gap-4 transition-all hover:translate-y-[-2px] shadow-sm cursor-pointer"
-        >
-          <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-2xl bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300 flex items-center justify-center font-bold">
-              <Bot className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-yellow-200/60 dark:bg-yellow-800/40 text-yellow-800 dark:text-yellow-200 font-semibold">
-              Copilot
-            </span>
-          </div>
-          <div>
-            <div className="text-xl font-extrabold font-mono text-yellow-950 dark:text-yellow-100 tracking-tight truncate">
-              Ask Aksh
-            </div>
-            <div className="text-xs font-medium text-yellow-800 dark:text-yellow-300 mt-1">Career Agent</div>
-          </div>
-          <div className="text-[10px] font-mono text-yellow-700 dark:text-yellow-400 pt-2 border-t border-yellow-200/50 dark:border-yellow-800/30 flex items-center justify-between">
-            <span>Harness Agent</span>
-            <span className="flex items-center gap-0.5 font-semibold">Launch →</span>
-          </div>
-        </div>
-
-        {/* Card 6: Rose (HITL Verification & Quality) */}
-        <div className="card-pastel-rose rounded-[22px] p-5 border flex flex-col justify-between gap-4 transition-all hover:translate-y-[-2px] shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-2xl bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 flex items-center justify-center font-bold">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-200/60 dark:bg-rose-800/40 text-rose-800 dark:text-rose-200 font-semibold">
-              HITL
-            </span>
-          </div>
-          <div>
-            <div className="text-3xl font-extrabold font-mono text-rose-950 dark:text-rose-100 tracking-tight">
-              100%
-            </div>
-            <div className="text-xs font-medium text-rose-800 dark:text-rose-300 mt-1">Safety Shield</div>
-          </div>
-          <div className="text-[10px] font-mono text-rose-700 dark:text-rose-400 pt-2 border-t border-rose-200/50 dark:border-rose-800/30 flex items-center justify-between">
-            <span>Integrity</span>
-            <span>Zero Hallucination</span>
-          </div>
-        </div>
-
-      </section>
-
-      {/* Segmented Control & Calibration Deck */}
-      <section className="p-5 sm:p-6 rounded-[24px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] flex flex-col md:flex-row items-start md:items-center justify-between gap-5 shadow-sm">
-        <div className="flex flex-wrap items-center gap-6 text-xs w-full md:w-auto">
-          {/* Daily Limit Slider */}
-          <div className="flex items-center gap-3">
-            <span className="text-zinc-500 dark:text-zinc-400 font-medium">Daily Dispatch Cap:</span>
-            <input
-              type="range"
-              min="10"
-              max="100"
-              value={dailyCap}
-              onChange={(e) => setDailyCap(Number(e.target.value))}
-              className="w-28 accent-[#D9704F] cursor-pointer"
-            />
-            <span className="font-mono font-semibold px-2.5 py-0.5 rounded-full bg-black/[0.04] dark:bg-white/[0.08] text-zinc-800 dark:text-zinc-200 border border-black/[0.05] dark:border-white/[0.06]">
-              {dailyCap} apps/day
-            </span>
-          </div>
-
-          {/* Min ATS Slider */}
-          <div className="flex items-center gap-3">
-            <span className="text-zinc-500 dark:text-zinc-400 font-medium">Minimum Match Threshold:</span>
-            <input
-              type="range"
-              min="70"
-              max="98"
-              value={minAts}
-              onChange={(e) => setMinAts(Number(e.target.value))}
-              className="w-28 accent-[#D9704F] cursor-pointer"
-            />
-            <span className="font-mono font-semibold px-2.5 py-0.5 rounded-full bg-black/[0.04] dark:bg-white/[0.08] text-zinc-800 dark:text-zinc-200 border border-black/[0.05] dark:border-white/[0.06]">
-              {minAts}%
-            </span>
-          </div>
-        </div>
-
-        {/* Quick Calibration Buttons */}
-        <div className="flex items-center gap-2 self-end md:self-auto">
-          <button
-            onClick={() => setActivePage('candidate-profile')}
-            className="px-4 py-2 rounded-full bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/[0.1] border border-black/[0.06] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-200 text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            <span>Profile &amp; Skills</span>
-          </button>
-          
-          <button
-            onClick={loadData}
-            disabled={isLoading}
-            className="px-4 py-2 rounded-full bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/[0.1] border border-black/[0.06] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-200 text-xs font-semibold transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-sm active:scale-95"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </button>
-        </div>
-      </section>
-
       {/* Main Split: Real Applications History (8 cols) vs Real Candidate & Master Resume Hub (4 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
@@ -642,7 +503,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
                     : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
                 }`}
               >
-                Queue ({queueItems.length})
+                Auto-Apply Queue ({queueItems.length})
               </button>
               <button
                 onClick={() => setActiveTab('interviews')}
@@ -661,10 +522,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
               <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-2.5 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Search jobs..."
+                placeholder="Search jobs, roles, or companies..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 pr-3 py-1.5 text-xs rounded-full bg-black/[0.03] dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] focus:border-[#D9704F] dark:focus:border-[#D9704F] text-zinc-900 dark:text-white placeholder-zinc-400 outline-none w-44 sm:w-56 transition-all"
+                className="pl-8 pr-3 py-1.5 text-xs rounded-full bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] focus:border-[#D9704F] dark:focus:border-[#D9704F] text-zinc-900 dark:text-white placeholder-zinc-400 outline-none w-48 sm:w-60 transition-all shadow-sm"
               />
             </div>
           </div>
@@ -699,7 +560,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-semibold text-zinc-900 dark:text-white text-sm">{companyName}</span>
-                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-black/[0.04] dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-black/[0.05] dark:border-white/[0.06]">
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-black/[0.04] dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-black/[0.05] dark:border-white/[0.06] font-medium">
                               {source}
                             </span>
                           </div>
@@ -708,10 +569,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-semibold font-mono">
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
                           97% Match
                         </span>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium font-mono ${
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                           status === 'Submitted' 
                             ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300'
                             : status === 'PausedForUserReview'
@@ -724,7 +585,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
                     </div>
 
                     <div className="flex flex-wrap items-center justify-between pt-3 border-t border-black/[0.05] dark:border-white/[0.06] text-xs gap-3">
-                      <div className="text-zinc-400 dark:text-zinc-500 text-[11px] font-mono">
+                      <div className="text-zinc-400 dark:text-zinc-500 text-[11px]">
                         {dateStr}
                       </div>
                       
@@ -783,7 +644,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
           {/* Main Candidate Card */}
           <div className="p-6 sm:p-7 rounded-[32px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] space-y-6 shadow-sm">
             
-            {/* 1. Profile Header with AutumnAvatarVector, Name, Role, and Terracotta Pill */}
+            {/* 1. Profile Header with AutumnAvatarVector, Name, Role */}
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3.5">
                 <AutumnAvatarVector className="w-14 h-14 shrink-0" />
@@ -798,7 +659,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
                 </div>
               </div>
 
-              {/* Terracotta Pill Button */}
               <button
                 onClick={() => setActivePage('candidate-profile')}
                 className="px-3.5 py-1.5 rounded-full bg-[#D9704F] hover:bg-[#C85F3E] text-white text-xs font-semibold shadow-sm transition-all cursor-pointer active:scale-95 shrink-0"
@@ -807,26 +667,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
               </button>
             </div>
 
-            {/* Quick Metrics Bar */}
-            <div className="grid grid-cols-2 gap-2 text-center">
-              <div className="p-3 rounded-2xl bg-[#FAF6F2] dark:bg-zinc-800/40 border border-black/[0.04] dark:border-white/[0.06]">
-                <div className="text-xl font-bold font-mono text-zinc-900 dark:text-white">{totalAppsCount}</div>
-                <div className="text-[10px] text-zinc-500 dark:text-zinc-400">Total Tracked</div>
-              </div>
-              <div className="p-3 rounded-2xl bg-[#FAF6F2] dark:bg-zinc-800/40 border border-black/[0.04] dark:border-white/[0.06]">
-                <div className="text-xl font-bold font-mono text-[#D9704F] dark:text-[#F39A7E]">{avgScore}</div>
-                <div className="text-[10px] text-zinc-500 dark:text-zinc-400">ATS Match Avg</div>
-              </div>
-            </div>
-
-            {/* 2. Real Master Resume Status Hub (Replacing Fake October Targets) */}
+            {/* 2. Real Master Resume Status Hub */}
             <div className="space-y-3 pt-2 border-t border-black/[0.05] dark:border-white/[0.06]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-white font-mono">
+                  <h4 className="text-xs font-bold text-zinc-900 dark:text-white">
                     Master Resume
                   </h4>
-                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-semibold ${
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
                     masterResume 
                       ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' 
                       : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
@@ -857,7 +705,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-zinc-400 dark:text-zinc-500 font-mono pt-1">
+                  <div className="flex items-center justify-between text-[10px] text-zinc-400 dark:text-zinc-500 pt-1">
                     <span>Last Updated: {masterResume.updatedAtUtc ? new Date(masterResume.updatedAtUtc).toLocaleDateString() : 'Active'}</span>
                     <span className="text-emerald-600 dark:text-emerald-400 font-semibold">100% Calibrated</span>
                   </div>
@@ -877,10 +725,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
               )}
             </div>
 
-            {/* 3. Real Target Preferences (Replacing Fake Dog/Umbrella Icons) */}
+            {/* 3. Real Target Preferences */}
             <div className="space-y-3 pt-2 border-t border-black/[0.05] dark:border-white/[0.06]">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-white font-mono">
+                <h4 className="text-xs font-bold text-zinc-900 dark:text-white">
                   Career Preferences
                 </h4>
                 <button 
@@ -893,25 +741,25 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
 
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="p-2.5 rounded-xl bg-[#FAF7F2] dark:bg-[#1C1B27] border border-black/[0.04] dark:border-white/[0.06]">
-                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase tracking-wider font-mono block">Work Auth</span>
+                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500 block">Work Auth</span>
                   <span className="font-semibold text-zinc-800 dark:text-zinc-200 truncate block mt-0.5">
                     {candidateProfile?.workAuthorizationStatus || 'Verified'}
                   </span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-[#FAF7F2] dark:bg-[#1C1B27] border border-black/[0.04] dark:border-white/[0.06]">
-                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase tracking-wider font-mono block">Remote</span>
+                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500 block">Remote</span>
                   <span className="font-semibold text-zinc-800 dark:text-zinc-200 truncate block mt-0.5">
                     {candidateProfile?.remotePreference || 'Remote / Hybrid'}
                   </span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-[#FAF7F2] dark:bg-[#1C1B27] border border-black/[0.04] dark:border-white/[0.06]">
-                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase tracking-wider font-mono block">Expected Comp</span>
+                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500 block">Expected Comp</span>
                   <span className="font-semibold text-zinc-800 dark:text-zinc-200 truncate block mt-0.5">
                     {candidateProfile?.expectedSalary ? `${candidateProfile.salaryCurrency || '$'}${candidateProfile.expectedSalary}` : 'Flexible'}
                   </span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-[#FAF7F2] dark:bg-[#1C1B27] border border-black/[0.04] dark:border-white/[0.06]">
-                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase tracking-wider font-mono block">Notice Period</span>
+                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500 block">Notice Period</span>
                   <span className="font-semibold text-zinc-800 dark:text-zinc-200 truncate block mt-0.5">
                     {candidateProfile?.noticePeriodDays ? `${candidateProfile.noticePeriodDays} Days` : 'Immediate'}
                   </span>
@@ -934,7 +782,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
               <h2 className="text-sm font-bold text-zinc-900 dark:text-white tracking-tight">
                 Live Activity Feed
               </h2>
-              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Real-Time</span>
+              <span className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500">Real-Time</span>
             </div>
 
             <div className="space-y-3.5 pt-1">
@@ -955,9 +803,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
                         {run.companyName ? `${run.companyName} (${run.jobTitle || 'Application'})` : 'Job Application'}
                       </div>
                       <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                        Status: <strong className="text-zinc-800 dark:text-zinc-200 font-mono">{run.status}</strong>
+                        Status: <strong className="text-zinc-800 dark:text-zinc-200">{run.status}</strong>
                       </div>
-                      <div className="text-[10px] font-mono text-zinc-400 dark:text-zinc-500 mt-0.5">
+                      <div className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-0.5">
                         {run.createdAtUtc ? new Date(run.createdAtUtc).toLocaleTimeString() : 'Recent'}
                       </div>
                     </div>
@@ -974,7 +822,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
                         {app.companyName} — {app.jobTitle}
                       </div>
                       <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                        Stage: <strong className="text-zinc-800 dark:text-zinc-200 font-mono">{app.status}</strong>
+                        Stage: <strong className="text-zinc-800 dark:text-zinc-200">{app.status}</strong>
                       </div>
                     </div>
                   </div>

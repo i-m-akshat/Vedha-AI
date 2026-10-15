@@ -97,8 +97,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
               </div>
             </div>
 
-            <div className="hidden xl:flex items-center gap-2 rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-black/[0.03] dark:bg-zinc-900/60 px-3 py-1 text-[11px] text-zinc-600 dark:text-zinc-400 font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <div className="hidden xl:flex items-center gap-1.5 rounded-full border border-[#5B7B6B]/25 bg-[#5B7B6B]/10 px-2.5 py-0.5 text-[11px] text-[#5B7B6B] dark:text-[#88B2A0] font-semibold">
               <span>Applications Active</span>
             </div>
           </div>

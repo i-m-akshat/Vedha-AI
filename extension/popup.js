@@ -781,7 +781,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       preparePackageBtn.disabled = true;
-      preparePackageBtnLabel.innerText = "Preparing package with Gemini AI...";
+      preparePackageBtnLabel.innerText = "Preparing tailored package...";
       showStatus("🚀 Generating tailored resume, cover letter & answers in backend queue...", "info", 0);
 
       try {
@@ -831,7 +831,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       runAtsAnalysisBtn.disabled = true;
       runAtsAnalysisBtn.innerText = "Analyzing alignment...";
-      if (atsVerdict) atsVerdict.innerText = "Evaluating candidate fit with Gemini AI...";
+      if (atsVerdict) atsVerdict.innerText = "Evaluating candidate fit with Vedha AI...";
       if (atsScoreCircle) atsScoreCircle.innerText = "...";
 
       try {
@@ -918,7 +918,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       generateCoverLetterBtn.disabled = true;
       generateCoverLetterBtn.innerText = "⏳ Drafting...";
       if (coverLetterText) {
-        coverLetterText.value = "Drafting tailored, ATS-grounded cover letter using Gemini AI and your Master Resume...";
+        coverLetterText.value = "Drafting tailored, ATS-grounded cover letter with Vedha AI...";
       }
 
       const tone = coverLetterTone?.value || "Professional and confident";

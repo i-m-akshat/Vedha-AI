@@ -1021,10 +1021,10 @@
       top: 20px;
       left: 50%;
       transform: translateX(-50%);
-      background: #090d16;
-      color: #f8fafc;
-      border: 2px solid #0ea5e9;
-      box-shadow: 0 10px 30px rgba(14, 165, 233, 0.4), 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+      background: #16151F;
+      color: #FAF8F5;
+      border: 1px solid rgba(217, 112, 79, 0.45);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 1px rgba(217, 112, 79, 0.6);
       padding: 16px 22px;
       border-radius: 12px;
       z-index: 2147483647;
@@ -1040,18 +1040,18 @@
 
     hud.innerHTML = `
       <div style="display: flex; align-items: center; justify-content: space-between;">
-        <span style="font-weight: 700; color: #38bdf8; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+        <span style="font-weight: 700; color: #D9704F; font-size: 13px; display: flex; align-items: center; gap: 6px;">
           ✨ Vedha AI Copilot Review Gateway
         </span>
-        <button id="vedha-hud-close-btn" style="background: none; border: none; color: #94a3b8; font-size: 16px; cursor: pointer;">&times;</button>
+        <button id="vedha-hud-close-btn" style="background: none; border: none; color: #A8A39D; font-size: 16px; cursor: pointer;">&times;</button>
       </div>
-      <div style="color: #e2e8f0; font-size: 12px; line-height: 1.4;">
+      <div style="color: #FAF8F5; font-size: 12px; line-height: 1.45;">
         All screening questions and resume details have been pre-filled for <strong>${targetRole || "this position"}</strong> at <strong>${targetCompany || "target company"}</strong>.
-        Please inspect your answers and click LinkedIn's <strong>"Submit application"</strong> button below.
+        Please inspect your answers and click the employer's <strong>"Submit application"</strong> button.
       </div>
       <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px;">
-        <button id="vedha-hud-sync-btn" style="background: #0284c7; color: white; border: none; padding: 7px 14px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 5px;">
-          ✅ Confirm & Sync as Submitted
+        <button id="vedha-hud-sync-btn" style="background: #D9704F; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 8px rgba(217, 112, 79, 0.3);">
+          ✅ Confirm &amp; Sync as Submitted
         </button>
       </div>
     `;

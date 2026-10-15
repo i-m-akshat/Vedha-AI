@@ -378,6 +378,11 @@
       <a href="#frontend-state"><span class="sec-num">07</span> Frontend Stores (Zustand)</a>
       <a href="#extension-internals"><span class="sec-num">08</span> Extension Internals</a>
       <a href="#aksh-agent"><span class="sec-num">09</span> Aksh Agent Harness & Tool Calling</a>
+      <a href="#aesthetic-ui-engine"><span class="sec-num">10</span> Aesthetic UI Engine</a>
+      <a href="#signalr-pacing"><span class="sec-num">11</span> SignalR Pacing & Telemetry</a>
+      <a href="#brand-identity-resilience"><span class="sec-num">12</span> Brand Identity & Error Recovery</a>
+      <a href="#vector-art-and-dashboard-ba"><span class="sec-num">13</span> Vector Suite & BA Audit</a>
+      <a href="#aksh-security-and-extension"><span class="sec-num">14</span> Aksh Security & Extension Redesign</a>
     </nav>
 
     <div class="sidebar-footer">
@@ -1332,6 +1337,147 @@ builder.Entity&lt;RefreshToken&gt;(b =>
           <li><strong>Copyable Diagnostic Payload:</strong> Generates a full diagnostic JSON/text payload including timestamp, URL, User-Agent, stack trace, and component stack trace for effortless issue reporting.</li>
           <li><strong>Fallback Trail 404 (NotFoundPage.tsx):</strong> Elegant fallback component for unmapped routes, guiding candidates back to the Autumn sprint.</li>
         </ul>
+      </div>
+    </section>
+
+    <!-- SECTION 14: VECTOR EDITORIAL ART SUITE & BA DASHBOARD RE-ENGINEERING -->
+    <section id="vector-art-and-dashboard-ba">
+      <h2 class="section-heading">14. Vector Editorial Art Suite & Business Analyst Dashboard Overhaul</h2>
+      <p>
+        To eliminate generic AI stereotypes, the application features custom editorial vector illustrations and a high-density, business-aligned dashboard structure designed per Business Analyst principles.
+      </p>
+
+      <div class="diagram-box">
+        <div class="diagram-title">Figure 14.1: Vector Illustration Hierarchy & Page Integration Map</div>
+        <svg viewBox="0 0 880 200" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: auto;">
+          <defs>
+            <linearGradient id="terragrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#D9704F"/>
+              <stop offset="100%" stop-color="#C85F3E"/>
+            </linearGradient>
+            <linearGradient id="sagegrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#5B7B6B"/>
+              <stop offset="100%" stop-color="#3D5A4C"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Vector Asset 1 -->
+          <rect x="30" y="30" width="250" height="140" rx="12" fill="var(--bg-code)" stroke="#D9704F" stroke-width="1.5" />
+          <text x="155" y="60" text-anchor="middle" fill="#D9704F" font-weight="700" font-size="12">aksh-copilot-illustration.png</text>
+          <text x="155" y="85" text-anchor="middle" fill="var(--text-muted)" font-size="10">AI Interview & Career Copilot</text>
+          <text x="155" y="110" text-anchor="middle" fill="var(--text-main)" font-size="9">AskAkshPage.tsx Starter Canvas</text>
+          <text x="155" y="130" text-anchor="middle" fill="var(--text-muted)" font-size="8.5">• Replaces generic mark with warm hero card</text>
+          <text x="155" y="145" text-anchor="middle" fill="var(--text-muted)" font-size="8.5">• STAR behavioral interview & comp coaching</text>
+
+          <!-- Vector Asset 2 -->
+          <rect x="315" y="30" width="250" height="140" rx="12" fill="var(--bg-code)" stroke="#5B7B6B" stroke-width="1.5" />
+          <text x="440" y="60" text-anchor="middle" fill="#5B7B6B" font-weight="700" font-size="12">job-tracker-illustration.png</text>
+          <text x="440" y="85" text-anchor="middle" fill="var(--text-muted)" font-size="10">Kanban Recruitment Pipeline</text>
+          <text x="440" y="110" text-anchor="middle" fill="var(--text-main)" font-size="9">TrackerPage.tsx Hero Banner</text>
+          <text x="440" y="130" text-anchor="middle" fill="var(--text-muted)" font-size="8.5">• Visual stage tracking (Saved to Offer)</text>
+          <text x="440" y="145" text-anchor="middle" fill="var(--text-muted)" font-size="8.5">• Zero-state onboarding & quick actions</text>
+
+          <!-- Vector Asset 3 -->
+          <rect x="600" y="30" width="250" height="140" rx="12" fill="var(--bg-code)" stroke="#EFA84B" stroke-width="1.5" />
+          <text x="725" y="60" text-anchor="middle" fill="#EFA84B" font-weight="700" font-size="12">resume-tailor-illustration.png</text>
+          <text x="725" y="85" text-anchor="middle" fill="var(--text-muted)" font-size="10">Structured Resume Tailoring</text>
+          <text x="725" y="110" text-anchor="middle" fill="var(--text-main)" font-size="9">TailorStudioPage & MasterResumePage</text>
+          <text x="725" y="130" text-anchor="middle" fill="var(--text-muted)" font-size="8.5">• 95%+ ATS keyword alignment state</text>
+          <text x="725" y="145" text-anchor="middle" fill="var(--text-muted)" font-size="8.5">• Master single source of truth dropzone</text>
+        </svg>
+      </div>
+
+      <div class="grid-2" style="margin-top: 1.5rem;">
+        <div class="card">
+          <div class="card-title">1. Business Analyst Dashboard Streamlining (DashboardPage.tsx)</div>
+          <p style="font-size: 0.875rem; color: var(--text-muted); line-height: 1.7;">
+            A rigorous audit of the dashboard removed 14 redundant cards that repeated statistics across 3 different places. In their place, a high-density 4-metric executive KPI row was introduced:
+          </p>
+          <ul style="padding-left: 1.25rem; margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-main); line-height: 1.8;">
+            <li><strong>Master Resume Health:</strong> Calibrated/Missing status, active version, role/skill count, and direct link to Manage.</li>
+            <li><strong>Pipeline Applications:</strong> Total tracked with distinct Saved and Applied breakdowns.</li>
+            <li><strong>Interviews & Offers:</strong> Active callback rounds and confirmed offers received.</li>
+            <li><strong>ATS Match Benchmark:</strong> Average alignment score with Google XYZ formula compliance.</li>
+            <li><strong>Removed Clutter:</strong> Purged duplicate sliders (Daily Cap, Min ATS), duplicate search bars, and 6 redundant pastel metric boxes.</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <div class="card-title">2. Executive Workspace Loader & AI Cliché Elimination</div>
+          <p style="font-size: 0.875rem; color: var(--text-muted); line-height: 1.7;">
+            Re-engineered <code>LoadingScreen.tsx</code> and <code>AkshFunLoader.tsx</code> to meet senior product design standards:
+          </p>
+          <ul style="padding-left: 1.25rem; margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-main); line-height: 1.8;">
+            <li><strong>Terracotta V Leaf Emblem:</strong> Replaced cartoon bouncing robots with an elegant brand squircle emblem and ambient breathing halo.</li>
+            <li><strong>Continuous Progress Track:</strong> Smooth, uninterrupted gradient shimmer in <code>#D9704F</code>, <code>#EFA84B</code>, and <code>#5B7B6B</code>.</li>
+            <li><strong>Purged Pulsing Badges:</strong> Eliminated all blinking dots (<code>w-1.5 h-1.5 rounded-full animate-pulse</code>) and generic AI-template tags across <code>AppLayout.tsx</code> and <code>DashboardPage.tsx</code>.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 15: AKSH PERSONA SECURITY, ANTI-PROMPT-LEAKAGE & CHROME EXTENSION AUTUMN DESIGN -->
+    <section id="aksh-security-and-extension">
+      <h2 class="section-heading">15. Aksh Persona Security, Anti-Leakage Guardrails & Chrome Extension Autumn Alignment</h2>
+      <p>
+        Production-grade conversational AI systems must maintain strict identity containment and prevent prompt leakage, function-signature extraction, and vendor disclosure. Concurrently, peripheral components such as browser extensions must share identical design tokens with the primary web application.
+      </p>
+
+      <div class="diagram-box">
+        <div class="diagram-title">Figure 15.1: Dual Guardrail Boundary & Chrome Extension Autumn Architecture</div>
+        <svg viewBox="0 0 880 220" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: auto;">
+          <!-- Left: Aksh Security Shield -->
+          <rect x="30" y="25" width="390" height="170" rx="12" fill="var(--bg-code)" stroke="#D9704F" stroke-width="1.5" />
+          <text x="225" y="55" text-anchor="middle" fill="#D9704F" font-weight="700" font-size="13">Aksh Persona & Anti-Leakage Shield</text>
+          
+          <rect x="50" y="75" width="350" height="30" rx="6" fill="#1B1926" stroke="rgba(255,255,255,0.08)" />
+          <text x="65" y="95" fill="#FAF8F5" font-size="10.5" font-family="var(--font-mono)">Identity Mandate: Strictly "Aksh AI, Vedha AI Career Copilot"</text>
+
+          <rect x="50" y="115" width="350" height="30" rx="6" fill="#1B1926" stroke="rgba(255,255,255,0.08)" />
+          <text x="65" y="135" fill="#EFA84B" font-size="10.5" font-family="var(--font-mono)">Tool Masking: Forbid raw APIs (todos_add, mode_set, etc.)</text>
+
+          <rect x="50" y="155" width="350" height="30" rx="6" fill="#1B1926" stroke="rgba(255,255,255,0.08)" />
+          <text x="65" y="175" fill="#5B7B6B" font-size="10.5" font-family="var(--font-mono)">Capability Mapping: Superpowers strictly as user-facing skills</text>
+
+          <!-- Right: Chrome Extension Architecture -->
+          <rect x="460" y="25" width="390" height="170" rx="12" fill="var(--bg-code)" stroke="#5B7B6B" stroke-width="1.5" />
+          <text x="655" y="55" text-anchor="middle" fill="#5B7B6B" font-weight="700" font-size="13">Chrome Extension Autumn Alignment</text>
+
+          <rect x="480" y="75" width="350" height="30" rx="6" fill="#1B1926" stroke="rgba(255,255,255,0.08)" />
+          <text x="495" y="95" fill="#FAF8F5" font-size="10.5" font-family="var(--font-mono)">Theme Tokens: #16151F (Obsidian), #FAF8F5 (Linen), #D9704F</text>
+
+          <rect x="480" y="115" width="350" height="30" rx="6" fill="#1B1926" stroke="rgba(255,255,255,0.08)" />
+          <text x="495" y="135" fill="#EFA84B" font-size="10.5" font-family="var(--font-mono)">Anti-Cliché: Calm radar beacon, refined double-ring ATS circle</text>
+
+          <rect x="480" y="155" width="350" height="30" rx="6" fill="#1B1926" stroke="rgba(255,255,255,0.08)" />
+          <text x="495" y="175" fill="#5B7B6B" font-size="10.5" font-family="var(--font-mono)">Review Gateway HUD: Terracotta accent & high-contrast cards</text>
+        </svg>
+      </div>
+
+      <div class="grid-2" style="margin-top: 1.5rem;">
+        <div class="card">
+          <div class="card-title">1. Aksh Identity & Anti-Leakage Shield (AkshPrompts.cs & AkshAgentRunner.cs)</div>
+          <p style="font-size: 0.875rem; color: var(--text-muted); line-height: 1.7;">
+            Conversational agents operating over orchestration tools are inherently vulnerable to prompt extraction and foundation-model disclosure. To protect intellectual property and enterprise security:
+          </p>
+          <ul style="padding-left: 1.25rem; margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-main); line-height: 1.8;">
+            <li><strong>Vendor Identity Cloaking:</strong> When prompted with queries like <em>"which model are you using?"</em> or <em>"who trained you?"</em>, Aksh strictly identifies as <strong>Aksh AI, the proprietary career copilot for Vedha AI</strong>. All underlying foundation vendor names (Google, OpenAI, Anthropic, Gemini, GPT, Claude) are strictly forbidden from being spoken.</li>
+            <li><strong>Function Masking & Skill Translation:</strong> When the candidate inquires <em>"what are your skills?"</em>, Aksh presents high-level capabilities (ATS Resume Optimization, STAR Behavioral Mock Interviews, Compensation Benchmarking, Pipeline Staging) rather than dumping internal tool signatures (<code>mode_set</code>, <code>todos_add</code>, <code>get_master_resume</code>).</li>
+            <li><strong>Anti-Prompt-Injection Refusal:</strong> Attempts to extract system prompts or override instructions are gracefully deflected back to career mentorship.</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <div class="card-title">2. Chrome Extension Autumn Redesign (popup.html & content.js)</div>
+          <p style="font-size: 0.875rem; color: var(--text-muted); line-height: 1.7;">
+            The Chrome Extension has been decoupled from legacy generic AI tropes:
+          </p>
+          <ul style="padding-left: 1.25rem; margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-main); line-height: 1.8;">
+            <li><strong>Palette Synchronization:</strong> Replaced generic indigo (<code>#6366f1</code>) and dark slate with Autumn Obsidian (<code>#16151F</code>), Warm Linen (<code>#FAF8F5</code>), Terracotta (<code>#D9704F</code>), and Sage (<code>#5B7B6B</code>).</li>
+            <li><strong>Eliminated AI Clichés:</strong> Replaced vibrating pulse rings with calm, steady status beacons; replaced glowing neon ATS circle shadows with crisp editorial double rings.</li>
+            <li><strong>Review Gateway HUD Synchronization:</strong> The in-page floating review HUD in <code>content.js</code> now sports the obsidian/terracotta theme with crisp typography and high contrast.</li>
+          </ul>
+        </div>
       </div>
     </section>
 

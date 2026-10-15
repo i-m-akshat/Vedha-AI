@@ -24,7 +24,7 @@ export const AkshFunLoader: React.FC<AkshFunLoaderProps> = ({
 }) => {
   const [msgIndex, setMsgIndex] = useState(0);
 
-  // Rotate through playful messages every 2.4s if no custom message is fixed
+  // Rotate through messages every 2.4s if no custom message is fixed
   useEffect(() => {
     if (message) return;
     const interval = setInterval(() => {
@@ -38,17 +38,9 @@ export const AkshFunLoader: React.FC<AkshFunLoaderProps> = ({
   if (size === 'compact') {
     return (
       <div className={`inline-flex items-center gap-3 ${className}`}>
-        <div className="relative w-8 h-8 shrink-0">
-          {/* Pulsing glow ring */}
-          <div className="absolute inset-0 rounded-xl bg-[#D9704F]/20 animate-ping" />
-          {/* Bot Face Squircle */}
-          <div className="relative w-full h-full rounded-xl bg-gradient-to-br from-[#D9704F] to-[#C85F3E] flex items-center justify-center shadow-sm">
-            {/* Blinking eyes */}
-            <div className="flex items-center gap-1">
-              <span className="w-1 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-              <span className="w-1 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-            </div>
-          </div>
+        <div className="relative w-7 h-7 shrink-0 flex items-center justify-center">
+          {/* Subtle spinning track */}
+          <div className="w-6 h-6 rounded-full border-2 border-[#D9704F]/20 border-t-[#D9704F] animate-spin" />
         </div>
         <div className="flex flex-col min-w-0">
           <span className="text-xs font-semibold text-zinc-900 dark:text-white truncate">
@@ -67,79 +59,50 @@ export const AkshFunLoader: React.FC<AkshFunLoaderProps> = ({
   const isSmall = size === 'sm';
   const isLarge = size === 'lg';
 
-  const avatarDimensions = isSmall ? 'w-10 h-10' : isLarge ? 'w-20 h-20' : 'w-14 h-14';
-  const eyeDimensions = isSmall ? 'w-1 h-1.5' : isLarge ? 'w-2 h-3' : 'w-1.5 h-2.5';
-  const eyeGap = isSmall ? 'gap-1' : isLarge ? 'gap-2.5' : 'gap-1.5';
+  const containerDimensions = isSmall ? 'w-12 h-12' : isLarge ? 'w-18 h-18' : 'w-14 h-14';
+  const iconDimensions = isSmall ? 'w-6 h-6' : isLarge ? 'w-9 h-9' : 'w-7 h-7';
 
   return (
     <div className={`flex flex-col items-center justify-center text-center p-4 ${className}`}>
-      {/* Fun Mascot Container */}
-      <div className="relative mb-3 flex items-center justify-center">
+      {/* Brand Squircle Loader with Ambient Halo */}
+      <div className="relative mb-3.5 flex items-center justify-center">
         {/* Soft Ambient Radiance Aura */}
-        <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-[#D9704F]/30 via-[#EFA84B]/20 to-[#5B9279]/20 blur-md animate-pulse" />
+        <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-[#D9704F]/20 via-[#EFA84B]/15 to-[#5B7B6B]/15 blur-md" />
 
-        {/* Orbiting Document / Paper Plane Icon */}
-        <div className="absolute inset-0 animate-spin" style={{ animationDuration: '6s' }}>
-          <div className="w-4 h-4 rounded-md bg-white dark:bg-zinc-800 border border-[#D9704F]/40 shadow-sm flex items-center justify-center -top-2 left-1/2 -translate-x-1/2 text-[9px] text-[#D9704F]">
-            ✦
-          </div>
-        </div>
+        {/* Outer Orbiting Track */}
+        <div className="absolute -inset-1 rounded-[24px] border border-dashed border-[#D9704F]/30 animate-spin" style={{ animationDuration: '14s' }} />
 
-        {/* Floating Squircle Companion "Aksh" */}
+        {/* Central Terracotta Squircle Badge */}
         <div
-          className={`relative ${avatarDimensions} rounded-[22px] bg-gradient-to-br from-[#D9704F] via-[#C85F3E] to-[#B04C2E] p-0.5 shadow-lg shadow-[#D9704F]/25 flex items-center justify-center transition-all animate-bounce`}
-          style={{ animationDuration: '2s' }}
+          className={`relative ${containerDimensions} rounded-2xl bg-gradient-to-br from-[#D9704F] to-[#C85F3E] p-2.5 shadow-md shadow-[#D9704F]/20 flex items-center justify-center transition-transform hover:scale-105`}
         >
-          {/* Inner face mask */}
-          <div className="w-full h-full rounded-[20px] bg-gradient-to-b from-[#2B1B17] to-[#1C1210] flex flex-col items-center justify-center relative overflow-hidden border border-white/10">
-            {/* Soft cheeks / blush */}
-            <div className="absolute inset-x-2 bottom-2.5 flex justify-between pointer-events-none opacity-40">
-              <span className="w-2 h-1 rounded-full bg-[#EFA84B]" />
-              <span className="w-2 h-1 rounded-full bg-[#EFA84B]" />
-            </div>
-
-            {/* Expressive animated eyes */}
-            <div className={`flex items-center ${eyeGap} mb-0.5`}>
-              <span
-                className={`${eyeDimensions} bg-white rounded-full shadow-[0_0_6px_#fff] animate-pulse`}
-              />
-              <span
-                className={`${eyeDimensions} bg-white rounded-full shadow-[0_0_6px_#fff] animate-pulse`}
-                style={{ animationDelay: '200ms' }}
-              />
-            </div>
-
-            {/* Cute mini smile */}
-            <div className="w-2.5 h-1 border-b-2 border-white/80 rounded-full" />
-          </div>
-
-          {/* Little Antenna / Sparkle on top */}
-          <div className="absolute -top-1.5 w-1.5 h-1.5 rounded-full bg-[#EFA84B] ring-2 ring-white dark:ring-zinc-900 animate-ping" />
+          <img
+            src="/assets/vedha-terracotta-leaf-emblem.png"
+            alt="Loading"
+            className={`${iconDimensions} object-contain filter drop-shadow-sm brightness-110`}
+          />
         </div>
       </div>
 
-      {/* Dynamic Typing / Stage Message */}
+      {/* Dynamic Stage Message */}
       <div className="space-y-1 max-w-sm">
-        <div className="flex items-center justify-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#D9704F] animate-pulse" />
-          <h4 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-white tracking-tight transition-all duration-300">
-            {displayMessage}
-          </h4>
-        </div>
+        <h4 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-white tracking-tight transition-all duration-300">
+          {displayMessage}
+        </h4>
         {submessage ? (
           <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
             {submessage}
           </p>
         ) : (
           <p className="text-[11px] text-zinc-400 dark:text-zinc-500 font-mono">
-            Vedha Intelligence Engine • Human-in-the-loop verified
+            Vedha Intelligence Engine · Calibrated Analysis
           </p>
         )}
       </div>
 
-      {/* Progress pill shimmer */}
-      <div className="w-40 h-1 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden mt-2.5">
-        <div className="h-full w-full bg-gradient-to-r from-[#D9704F] via-[#EFA84B] to-[#5B9279] rounded-full animate-pulse" />
+      {/* Sleek Progress Track */}
+      <div className="w-36 h-1 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden mt-3">
+        <div className="h-full w-full bg-gradient-to-r from-[#D9704F] via-[#EFA84B] to-[#5B7B6B] rounded-full animate-pulse" />
       </div>
     </div>
   );

@@ -37,7 +37,7 @@ public class PlatformNavigatorSkill : IAkshSkill
             "   - **Chrome Extension Copilot**: Injects floating HUD directly into LinkedIn Easy Apply, Greenhouse, Lever, Ashby, Workday, Indeed, and Naukri. Extracts job specs, auto-fills multi-step forms using React synthetic event dispatch, and syncs session tokens.\n" +
             "   - **Ask Aksh AI Agent** (`/aksh`): Your conversational career copilot for instant resume tailoring, interview prep, salary negotiation, and queue audits.\n" +
             "   - **Settings & AI Providers** (`/settings`): Configure custom API keys (Google Gemini 2.5 Flash, OpenAI GPT-4o, Anthropic Claude 3.5 Sonnet) and set autonomy levels (Supervised, SemiAutonomous, Autonomous).\n" +
-            "3. If the user asks about their own account status, tokens, or profile, call `get_candidate_profile` or `get_application_queue` to provide personalized answers.\n" +
+            "3. If the user asks about their own account status, tokens, or profile, retrieve their candidate profile or application queue to provide personalized answers (without disclosing internal tool function names).\n" +
             "4. Enforce the strict domain guardrail: only answer questions regarding Vedha AI features and the candidate's professional career data.";
     }
 }

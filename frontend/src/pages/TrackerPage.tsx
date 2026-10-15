@@ -10,6 +10,7 @@ import {
   Briefcase
 } from 'lucide-react';
 import { Button, Card, Badge, Input, Modal } from '../components/ui';
+import { AkshFunLoader } from '../components/ui/AkshFunLoader';
 import { applicationsApi } from '../api';
 import { ApplicationRecordDto, ApplicationStatus } from '../types/application';
 
@@ -94,6 +95,18 @@ export const TrackerPage: React.FC = () => {
     { status: ApplicationStatus.Rejected, label: 'Archived', color: 'border-rose-200/80 dark:border-rose-500/20 bg-rose-50/40 dark:bg-[#181113]', badgeColor: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20' },
   ];
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] w-full">
+        <AkshFunLoader
+          size="md"
+          message="Loading your job tracker..."
+          submessage="Synchronizing active positions, stages, and interview schedules..."
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 font-sans text-slate-900 dark:text-[#e2e4e9]">
       {error && (
@@ -103,31 +116,48 @@ export const TrackerPage: React.FC = () => {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] shadow-sm">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
+      {/* Header with Autumn Kanban Vector Hero */}
+      <div className="relative overflow-hidden p-6 sm:p-7 rounded-3xl bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="space-y-3 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#D9704F]/10 border border-[#D9704F]/20 text-[#D9704F]">
               {applications.length} Active {applications.length === 1 ? 'Position' : 'Positions'}
             </span>
+            <span className="text-[11px] font-mono uppercase tracking-wider text-[#5B7B6B] dark:text-[#7EA895] bg-[#5B7B6B]/10 dark:bg-[#5B7B6B]/20 border border-[#5B7B6B]/20 px-2 py-0.5 rounded-full font-semibold">
+              Pipeline Kanban
+            </span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white tracking-tight flex items-center gap-2 mt-1">
-            <Kanban className="w-5 h-5 text-[#D9704F]" />
-            Job Application Tracker
-          </h1>
-          <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
-            Track your recruitment stages, interview dates, and application conversion.
-          </p>
+
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white tracking-tight flex items-center gap-2">
+              <Kanban className="w-5 h-5 text-[#D9704F]" />
+              Job Application Tracker
+            </h1>
+            <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1 max-w-xl">
+              Track recruitment progress from Saved to Offer. Integrate with the Chrome Extension for one-click autosync.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 pt-1">
+            <button
+              type="button"
+              onClick={() => setIsAddModalOpen(true)}
+              className="inline-flex items-center gap-2 text-xs bg-[#D9704F] hover:bg-[#C85F3E] text-white font-semibold px-4 py-2.5 rounded-xl shadow-sm transition-all cursor-pointer active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Application</span>
+            </button>
+          </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsAddModalOpen(true)}
-          className="inline-flex items-center gap-2 text-xs self-start sm:self-auto bg-[#D9704F] hover:bg-[#C85F3E] text-white font-semibold px-4 py-2.5 rounded-xl shadow-sm transition-all cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Application</span>
-        </button>
+        {/* Vector Illustration Card */}
+        <div className="hidden sm:flex shrink-0 w-44 h-32 md:w-52 md:h-36 rounded-2xl overflow-hidden bg-gradient-to-b from-[#FDF5EE] to-[#F9EFE6] dark:from-[#231F2E] dark:to-[#181622] border border-[#D9704F]/20 p-2 shadow-sm items-center justify-center">
+          <img
+            src="/assets/job-tracker-illustration.png"
+            alt="Application Pipeline Kanban Illustration"
+            className="w-full h-full object-contain filter drop-shadow-sm hover:scale-105 transition-transform duration-300"
+          />
+        </div>
       </div>
 
       {/* Kanban Board */}

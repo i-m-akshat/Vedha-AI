@@ -154,6 +154,46 @@ Minimalist Editorial Chat Bubble + Smooth Loading Indicator
     - `extension/popup.html`
     - `extension/popup.js`
     - `docs/architecture/*.html`
-
-
-
+- **2026-10-16 (Mid-Morning - Vector Editorial Art Suite, BA Dashboard Overhaul & Executive Workspace Loader)**:
+  - **Vector Editorial Art Integration**:
+    - Converted and deployed 3 high-resolution vector illustrations: `aksh-copilot-illustration.png` (AI Copilot & STAR drill canvas in `AskAkshPage.tsx`), `job-tracker-illustration.png` (Recruitment pipeline hero banner in `TrackerPage.tsx`), and `resume-tailor-illustration.png` (Tailoring studio empty state in `TailorStudioPage.tsx` and master resume onboarding dropzone in `MasterResumePage.tsx`).
+  - **Business Analyst (BA) Dashboard Streamlining (`DashboardPage.tsx`)**:
+    - Conducted comprehensive use-case audit. Purged 6 redundant pastel metric cards, arbitrary technical sliders (Daily Dispatch Cap, Min ATS threshold), duplicate search inputs, and repetitive stat boxes.
+    - Consolidated workspace into a high-density, executive 4-metric KPI row: Master Resume Health, Pipeline Applications, Interviews & Offers, and ATS Resonance Benchmark.
+  - **Executive Workspace Loader & AI-Cliché Purge**:
+    - Replaced bouncy cartoon faces and pinging antennas in `LoadingScreen.tsx` and `AkshFunLoader.tsx` with a refined terracotta leaf emblem, ambient breathing halo, and smooth continuous gradient progress.
+    - Removed pulsing status dots and stereotypical AI-template tags across `AppLayout.tsx`, `DashboardPage.tsx`, and `AskAkshPage.tsx`.
+  - **Impacted Files**:
+    - `frontend/public/assets/aksh-copilot-illustration.png`
+    - `frontend/public/assets/job-tracker-illustration.png`
+    - `frontend/public/assets/resume-tailor-illustration.png`
+    - `frontend/src/pages/DashboardPage.tsx`
+    - `frontend/src/pages/AskAkshPage.tsx`
+    - `frontend/src/pages/TrackerPage.tsx`
+    - `frontend/src/pages/TailorStudioPage.tsx`
+    - `frontend/src/pages/MasterResumePage.tsx`
+    - `frontend/src/components/ui/LoadingScreen.tsx`
+    - `frontend/src/components/ui/AkshFunLoader.tsx`
+    - `frontend/src/components/layout/AppLayout.tsx`
+    - `docs/plan/aesthetic-minimalist-redesign.md`
+    - `docs/architecture/lld.html`
+- **2026-10-16 (Late-Morning - Aksh Persona Identity Security, Anti-Leakage Guardrails & Chrome Extension Design Alignment)**:
+  - **Aksh Persona & Model Identity Hardening (`AkshPrompts.cs`, `AkshAgentRunner.cs`)**:
+    - Mandated strict identity protection: Aksh identifies strictly as **"Aksh AI, the proprietary career copilot for Vedha AI"** and is explicitly prohibited from acknowledging underlying foundation models (Google, OpenAI, Anthropic, Gemini, GPT, Claude).
+    - Hardened tool and system confidentiality: Forbade leaking raw internal function names (`get_master_resume`, `get_candidate_profile`, `todos_add`, `mode_set`, `launch_apply`) in user-facing turns. Enforced that skill inquiries describe functional career advisory superpowers (ATS optimization, STAR interview coaching, salary negotiation, application staging).
+    - Added prompt injection and system instruction extraction refusal defense.
+  - **Chrome Extension Autumn Design Alignment (`extension/popup.html`, `extension/popup.js`, `extension/content.js`)**:
+    - Overhauled extension CSS tokens from legacy indigo (`#6366f1`) and harsh slate (`#090a0f`) to warm Autumn Obsidian (`#16151F`), Linen Cream (`#FAF8F5`), Terracotta (`#D9704F`), and Sage (`#5B7B6B`).
+    - Purged pulsating radar rings and glowing neon drop-shadows, replacing them with refined editorial borders and clean status indicators.
+    - Updated Review Gateway HUD in `content.js` to match the warm terracotta luxury theme.
+    - Replaced all vendor-specific model strings (`Gemini AI`) with Vedha AI branding across popup labels and placeholders.
+  - **Impacted Files**:
+    - `backend/src/ResumeTailor.Infrastructure/Aksh/AkshPrompts.cs`
+    - `backend/src/ResumeTailor.Infrastructure/Aksh/AkshAgentRunner.cs`
+    - `backend/src/ResumeTailor.Infrastructure/Aksh/Skills/PlatformNavigatorSkill.cs`
+    - `backend/src/ResumeTailor.Infrastructure/Aksh/Skills/ProfileAndQueueAuditSkill.cs`
+    - `extension/popup.html`
+    - `extension/popup.js`
+    - `extension/content.js`
+    - `docs/plan/aesthetic-minimalist-redesign.md`
+    - `docs/architecture/lld.html`
