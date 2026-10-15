@@ -76,10 +76,11 @@ public sealed class AkshChatClientAdapter : IChatClient
     {
         var list = messages.ToList();
 
-        // Native function calling (Gemini): forward tool declarations so the model
-        var toolsRequested = options?.Tools?.OfType<AIFunction>().Any() == true
-            && (ProviderType is null || ProviderType == AiProviderType.Gemini);
-        if (toolsRequested)
+        // Native Gemini client: routes all Gemini turns (tool-calling and conversational text)
+        // through GeminiFunctionCallingClient. This preserves full multi-turn history, avoids
+        // obsolete thinkingConfig parameters, and handles tools or zero-tool turns gracefully.
+        var isGemini = ProviderType is null || ProviderType == AiProviderType.Gemini;
+        if (isGemini)
         {
             try
             {
@@ -93,11 +94,11 @@ public sealed class AkshChatClientAdapter : IChatClient
                     return new ChatResponse(toolResult.Value);
                 }
 
-                _logger?.LogWarning("Gemini function-calling path failed ({Error}); gracefully falling back to conversational text path.", toolResult.Error);
+                _logger?.LogWarning("Gemini client path returned error ({Error}); falling back to generic provider text path.", toolResult.Error);
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "Gemini function-calling path threw; gracefully falling back to conversational text path.");
+                _logger?.LogWarning(ex, "Gemini client path threw exception; falling back to generic provider text path.");
             }
         }
 
@@ -105,6 +106,11 @@ public sealed class AkshChatClientAdapter : IChatClient
             .Where(m => m.Role == ChatRole.System)
             .SelectMany(m => m.Contents.OfType<TextContent>())
             .Select(t => t.Text));
+        if (string.IsNullOrWhiteSpace(system) && !string.IsNullOrWhiteSpace(options?.Instructions))
+        {
+            system = options.Instructions;
+        }
+
         var userMessage = list.LastOrDefault(m => m.Role == ChatRole.User);
         var userText = userMessage is null
             ? string.Empty

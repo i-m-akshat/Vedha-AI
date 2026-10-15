@@ -1081,36 +1081,13 @@ public class GeminiProvider : IAiProvider
 
     private static object CreateGenerationConfig(int maxTokens, double temperature, bool isJson, string model)
     {
-        var isThinkingModel = model.Contains("-2.5-flash", StringComparison.OrdinalIgnoreCase) || 
-                              model.Contains("-pro", StringComparison.OrdinalIgnoreCase);
-
         if (isJson)
         {
-            if (isThinkingModel)
-            {
-                return new
-                {
-                    temperature = temperature,
-                    maxOutputTokens = maxTokens,
-                    responseMimeType = "application/json",
-                    thinkingConfig = new { thinkingBudget = 0 }
-                };
-            }
             return new
             {
                 temperature = temperature,
                 maxOutputTokens = maxTokens,
                 responseMimeType = "application/json"
-            };
-        }
-
-        if (isThinkingModel)
-        {
-            return new
-            {
-                temperature = temperature,
-                maxOutputTokens = maxTokens,
-                thinkingConfig = new { thinkingBudget = 0 }
             };
         }
 

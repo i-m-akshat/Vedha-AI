@@ -11,11 +11,10 @@ public class PlatformNavigatorSkill : IAkshSkill
 
     private static readonly string[] TriggerKeywords =
     [
-        "how to", "how do i", "where is", "where do i", "extension", "chrome extension",
-        "studio", "master resume studio", "orchestrator", "review gateway", "tailor page",
-        "token", "tokens", "budget", "pricing", "cost", "settings", "api key", "ai provider",
-        "vedha", "what can this app do", "help me use", "features of this app", "walkthrough",
-        "how does this work", "how does vedha work", "easy apply", "naukri", "linkedin"
+        "how do i use", "how to use the", "where can i", "where do i", "in the studio",
+        "in settings", "chrome extension", "features of vedha", "what can this app do",
+        "features of this app", "how does vedha work", "review gateway", "orchestrator page",
+        "tailor page", "tracker page", "walkthrough", "autofill extension"
     ];
 
     public bool CanHandle(string message, AkshSession session)

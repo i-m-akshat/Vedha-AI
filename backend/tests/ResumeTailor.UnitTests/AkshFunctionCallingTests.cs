@@ -291,4 +291,73 @@ public class AkshFunctionCallingTests
             p => p.GenerateTextAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
+
+    [Fact]
+    public async Task Adapter_RoutesToFunctionClient_ForConversationalTurnWithoutTools()
+    {
+        var geminiResponse = """
+        {
+          "candidates": [
+            {
+              "content": {
+                "parts": [
+                  {
+                    "text": "Hello! I am Aksh, your AI career copilot. How can I assist you with your job search today?"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+        """;
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(geminiResponse, Encoding.UTF8, "application/json")
+            });
+
+        var httpClient = new HttpClient(handlerMock.Object);
+        var factoryMock = new Mock<IHttpClientFactory>();
+        factoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(httpClient);
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IConfiguration>(_config);
+        services.AddSingleton<IEncryptionService>(_encryptionMock.Object);
+        services.AddSingleton(factoryMock.Object);
+        services.AddTransient<GeminiFunctionCallingClient>();
+
+        var providerMock = new Mock<IAiProvider>();
+        var aiFactoryMock = new Mock<IAiServiceFactory>();
+        aiFactoryMock.Setup(f => f.GetDefaultProvider()).Returns(providerMock.Object);
+        aiFactoryMock.Setup(f => f.GetProvider(AiProviderType.Gemini)).Returns(providerMock.Object);
+        services.AddSingleton(aiFactoryMock.Object);
+
+        using var serviceProvider = services.BuildServiceProvider();
+
+        var adapter = new AkshChatClientAdapter(serviceProvider.GetRequiredService<IServiceScopeFactory>())
+            .WithCredentials(AiProviderType.Gemini, "key", "gemini-flash-lite-latest");
+
+        // Conversational turn with NO tools (e.g. user sends "HI"):
+        var options = new ChatOptions { Tools = null };
+        var response = await adapter.GetResponseAsync(new[] { new ChatMessage(ChatRole.User, "HI") }, options);
+
+        response.Should().NotBeNull();
+        response.Messages.Should().ContainSingle();
+        var textContent = response.Messages[0].Contents[0].Should().BeOfType<TextContent>().Subject;
+        textContent.Text.Should().Contain("Hello! I am Aksh");
+
+        // Generic IAiProvider was NOT invoked because GeminiFunctionCallingClient handled it natively
+        providerMock.Verify(
+            p => p.GenerateTextAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
 }

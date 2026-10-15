@@ -658,6 +658,7 @@ public class GeminiFunctionCallingClient
 
     private static readonly string[] ModelFallbackSequence =
     [
+        "gemini-3.8-flash",
         "gemini-2.5-flash",
         "gemini-2.0-flash",
         "gemini-1.5-flash",
@@ -674,7 +675,7 @@ public class GeminiFunctionCallingClient
 
         if (idx < 0)
         {
-            // Current model was not in standard fallback sequence (e.g. gemini-3.8-flash or custom); cascade to frontier 2.5-flash
+            // Current model was not in standard fallback sequence (e.g. custom); cascade to frontier flagship flash
             return ModelFallbackSequence[0];
         }
 
@@ -683,15 +684,15 @@ public class GeminiFunctionCallingClient
 
     /// <summary>
     /// Harness model resolution:
-    /// Unset defaults to gemini-2.5-flash (Google's latest production flash model with excellent tool calling and vision).
+    /// Unset defaults to gemini-3.8-flash (current GA flagship Flash with excellent tool calling and vision).
     /// Explicit lite aliases resolve to gemini-flash-lite-latest.
     /// Explicit custom models pass through untouched.
     /// </summary>
     private static string ResolveModelName(string? modelName)
     {
-        if (string.IsNullOrWhiteSpace(modelName) || modelName.Contains("3.8", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(modelName))
         {
-            return "gemini-2.5-flash";
+            return "gemini-3.8-flash";
         }
 
         var clean = modelName.Trim();

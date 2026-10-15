@@ -416,7 +416,9 @@ public class AkshAgentRunner : IAkshAgentRunner
                     message = ex.ReasonCode switch
                     {
                         "function_calling_unavailable" => "The AI tool-calling channel failed. Your plan and receipts are intact — sending your message again retries the turn. If it persists, check the model name in Settings.",
-                        _ => "The AI model failed mid-turn. Nothing was submitted — your plan and receipts are intact. Please try again.",
+                        _ => !string.IsNullOrWhiteSpace(ex.Message) && ex.Message != "model_unavailable"
+                            ? $"AI Provider Error: {ex.Message} (Plan and receipts are intact)."
+                            : "The AI model failed mid-turn. Nothing was submitted — your plan and receipts are intact. Please try again.",
                     }
                 });
             }

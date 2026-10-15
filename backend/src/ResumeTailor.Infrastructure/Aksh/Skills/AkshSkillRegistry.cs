@@ -20,11 +20,11 @@ public class AkshSkillRegistry : IAkshSkillRegistry
         _skills = new List<IAkshSkill>
         {
             new JobApplicationCopilotSkill(),
-            new PlatformNavigatorSkill(),
-            new ResumeOptimizerSkill(),
             new InterviewCoachSkill(),
             new SalaryNegotiatorSkill(),
             new ProfileAndQueueAuditSkill(),
+            new PlatformNavigatorSkill(),
+            new ResumeOptimizerSkill(),
             new CareerStrategistSkill(),
         };
     }

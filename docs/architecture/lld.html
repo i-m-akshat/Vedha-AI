@@ -908,7 +908,14 @@ builder.Entity&lt;RefreshToken&gt;(b =>
         <div class="card">
           <div class="card-title">Chat-First Copilot Experience & In-Chat PDF Generation</div>
           <p>
-            In <code>AskAkshPage.tsx</code> and <code>AkshTools.cs</code>, the rigid 3-field "Goal" form was eliminated in favor of a conversational-first interface (ChatGPT/Claude style). Submitting a prompt automatically initializes a session with instant streaming. When tailoring resumes, <code>prepare_package</code> returns <code>generatedResumeId</code> and direct <code>resumePdfDownloadUrl</code> (<code>/api/resumes/{id}/export?format=Pdf</code>), enabling Aksh to deliver ready-to-download ATS PDFs directly in the chat stream. While streaming, an animated running anime girl GIF (<code>/assets/anime-running.gif</code>) provides delightful, responsive execution feedback.
+            In <code>AskAkshPage.tsx</code> and <code>AkshTools.cs</code>, the rigid 3-field "Goal" form was eliminated in favor of a conversational-first interface (ChatGPT/Claude style). Submitting a prompt automatically initializes a session with instant streaming. When tailoring resumes, <code>prepare_package</code> returns <code>generatedResumeId</code> and direct <code>resumePdfDownloadUrl</code> (<code>/api/resumes/{id}/export?format=Pdf</code>), enabling Aksh to deliver ready-to-download ATS PDFs directly in the chat stream.
+          </p>
+        </div>
+        <div class="card" style="border-left: 3px solid #10b981;">
+          <div class="card-title">Aesthetic Minimalist Design System & Conversational Robustness (2026-10-15)</div>
+          <p>
+            Eliminated generic "AI Slop" artifacts (neon holographic purple glows, faux HUD corner brackets, loud saturated borders) in favor of a studio-grade, minimalist editorial design system. Features an Obsidian & Slate dark foundation (<code>#09090b</code>), hairline whisper borders (<code>border-white/[0.07]</code>), stark monochrome tactile buttons (<code>active:scale-[0.98]</code>), and calm status indicators.
+            In <code>AkshChatClientAdapter.cs</code> and <code>AiProviders.cs</code>, Gemini conversational turns (including simple greetings like "HI") route natively through <code>GeminiFunctionCallingClient</code>, avoiding obsolete <code>thinkingBudget</code> fields that caused 400 Bad Request, while streaming real-time status with the custom loading GIF (<code>/assets/loading.gif</code>) in a backdrop-blurred glass indicator.
           </p>
         </div>
       </div>
