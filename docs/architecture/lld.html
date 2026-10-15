@@ -1047,6 +1047,86 @@ builder.Entity&lt;RefreshToken&gt;(b =>
       </div>
     </section>
 
+    <!-- SECTION 13: Universal Light/Dark Theme Decoupling & Autumn Design Synchronization -->
+    <section class="doc-section" id="section-13">
+      <div class="section-badge">Section 13 • UI/UX Architecture</div>
+      <h2>Universal Light/Dark Theme Decoupling &amp; Token Architecture</h2>
+      <p class="section-lead">
+        Decoupling all application surfaces from hardcoded pitch-black styling (<code>#111216</code>, <code>#16181f</code>, <code>#121215</code>) and establishing an adaptive, dual-token design system consistent with the Autumn App aesthetic.
+      </p>
+
+      <div class="card" style="margin-top: 1.5rem;">
+        <h3>1. Architectural Defect &amp; Root Cause Analysis</h3>
+        <p style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-muted); line-height: 1.7;">
+          While the initial design system overhaul established adaptive variables at the root layout, seven core sub-pages continued to use un-prefixed Tailwind arbitrary classes (e.g., <code>bg-[#111216]</code> and <code>text-white</code>). Because Tailwind treats un-prefixed rules as default (Light Mode) declarations, clicking the theme toggle correctly transitioned the canvas to warm cream (<code>#FAF8F5</code>), but cards remained jet-black with white text.
+        </p>
+      </div>
+
+      <div class="card" style="margin-top: 1.5rem;">
+        <h3>2. Dual-Token Architecture Matrix</h3>
+        <div style="overflow-x: auto; margin-top: 1rem;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.8125rem; text-align: left;">
+            <thead>
+              <tr style="border-bottom: 2px solid var(--border); color: var(--text-muted);">
+                <th style="padding: 10px 12px;">UI Element</th>
+                <th style="padding: 10px 12px;">Light Mode (Alabaster &amp; Terracotta)</th>
+                <th style="padding: 10px 12px;">Dark Mode (Obsidian Slate)</th>
+                <th style="padding: 10px 12px;">Tailwind Dual-Token Class</th>
+              </tr>
+            </thead>
+            <tbody style="border-bottom: 1px solid var(--border);">
+              <tr style="border-bottom: 1px solid var(--border);">
+                <td style="padding: 10px 12px; font-weight: 600;">Primary Card Surface</td>
+                <td style="padding: 10px 12px;"><code>#FFFFFF</code> (Pure White)</td>
+                <td style="padding: 10px 12px;"><code>#16151F</code> (Obsidian Violet)</td>
+                <td style="padding: 10px 12px;"><code>bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] shadow-sm</code></td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--border);">
+                <td style="padding: 10px 12px; font-weight: 600;">Secondary / Input Box</td>
+                <td style="padding: 10px 12px;"><code>#FAF7F2</code> (Warm Sand)</td>
+                <td style="padding: 10px 12px;"><code>rgba(39,39,42,0.4)</code> (Slate 800/40)</td>
+                <td style="padding: 10px 12px;"><code>bg-[#FAF7F2] dark:bg-zinc-800/40 border border-black/[0.04] dark:border-white/[0.06]</code></td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--border);">
+                <td style="padding: 10px 12px; font-weight: 600;">Primary Headings</td>
+                <td style="padding: 10px 12px;"><code>#18181B</code> (Zinc 900)</td>
+                <td style="padding: 10px 12px;"><code>#FFFFFF</code> (Pure White)</td>
+                <td style="padding: 10px 12px;"><code>text-zinc-900 dark:text-white font-bold</code></td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--border);">
+                <td style="padding: 10px 12px; font-weight: 600;">Labels &amp; Metadata</td>
+                <td style="padding: 10px 12px;"><code>#71717A</code> (Zinc 500)</td>
+                <td style="padding: 10px 12px;"><code>#A1A1AA</code> (Zinc 400)</td>
+                <td style="padding: 10px 12px;"><code>text-zinc-500 dark:text-zinc-400 text-xs</code></td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 12px; font-weight: 600;">Primary Action Button</td>
+                <td style="padding: 10px 12px;"><code>#D9704F</code> (Terracotta)</td>
+                <td style="padding: 10px 12px;"><code>#D9704F</code> (Terracotta)</td>
+                <td style="padding: 10px 12px;"><code>bg-[#D9704F] hover:bg-[#C85F3E] text-white shadow-sm rounded-xl</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 1.5rem;">
+        <h3>3. Full Surface Synchronization Audit</h3>
+        <p style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-muted); line-height: 1.7;">
+          The following pages have been audited, decoupled from raw hex classes, and verified under both theme states:
+        </p>
+        <ul style="padding-left: 1.25rem; margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-main); line-height: 1.8;">
+          <li><strong>TailorStudioPage.tsx:</strong> Header hero card, ATS match score gauge, Target Role card, and bullet enhancement diffs refactored to responsive white/obsidian cards with terracotta primary CTAs.</li>
+          <li><strong>ResultStudioPage.tsx:</strong> Action toolbar, Master candidate profile column, ATS scorecard, matched keywords, and all modals (Cover Letter, Interview Prep, Skill Roadmap) updated to dual-token styling.</li>
+          <li><strong>OrchestratorQueuePage.tsx:</strong> Top header card, candidate pre-filled details, application controls, supported job platforms card, and recent applications table fully responsive.</li>
+          <li><strong>AskAkshPage.tsx:</strong> Plan of action rail and Review Gate decision cards converted to responsive white/obsidian cards.</li>
+          <li><strong>TrackerPage.tsx:</strong> Header overview card and Add Application modal converted from hardcoded dark to adaptive styling.</li>
+          <li><strong>HistoryPage.tsx:</strong> Header card, resume version cards, and empty state cards unified with Autumn squircle geometry.</li>
+          <li><strong>AuthPages.tsx:</strong> Left-hand interactive 3D career matrix and feature highlight cards responsive across light/dark modes.</li>
+        </ul>
+      </div>
+    </section>
+
     <footer class="doc-footer">
       <div>Vedha AI Low-Level Design • Maintained per <a href="../AGENTS.md" style="color: var(--primary-light);">AGENTS.md</a></div>
       <div>Strict HTML Visual Standard • 2026</div>

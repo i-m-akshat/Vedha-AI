@@ -104,31 +104,30 @@ export const TrackerPage: React.FC = () => {
       )}
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl bg-[#111216] border border-[#23252b]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] shadow-sm">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#D9704F]/10 border border-[#D9704F]/20 text-[#D9704F]">
               {applications.length} Active {applications.length === 1 ? 'Position' : 'Positions'}
             </span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2 mt-1">
-            <Kanban className="w-5 h-5 text-indigo-400" />
+          <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white tracking-tight flex items-center gap-2 mt-1">
+            <Kanban className="w-5 h-5 text-[#D9704F]" />
             Job Application Tracker
           </h1>
-          <p className="text-xs sm:text-sm text-[#8e929b]">
+          <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
             Track your recruitment stages, interview dates, and application conversion.
           </p>
         </div>
 
-        <Button
-          variant="primary"
-          size="sm"
+        <button
+          type="button"
           onClick={() => setIsAddModalOpen(true)}
-          className="gap-2 text-xs self-start sm:self-auto bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl"
+          className="inline-flex items-center gap-2 text-xs self-start sm:self-auto bg-[#D9704F] hover:bg-[#C85F3E] text-white font-semibold px-4 py-2.5 rounded-xl shadow-sm transition-all cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>Add Application</span>
-        </Button>
+        </button>
       </div>
 
       {/* Kanban Board */}
@@ -227,9 +226,13 @@ export const TrackerPage: React.FC = () => {
               <Input value={newSalary} onChange={(e) => setNewSalary(e.target.value)} placeholder="$140k - $170k" className="rounded-xl" />
             </div>
           </div>
-          <Button variant="primary" size="md" onClick={handleAdd} className="w-full mt-4 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl text-xs py-2.5">
+          <button
+            type="button"
+            onClick={handleAdd}
+            className="w-full mt-4 bg-[#D9704F] hover:bg-[#C85F3E] text-white font-semibold rounded-xl text-xs py-2.5 shadow-sm transition-all cursor-pointer"
+          >
             Save Application
-          </Button>
+          </button>
         </div>
       </Modal>
     </div>

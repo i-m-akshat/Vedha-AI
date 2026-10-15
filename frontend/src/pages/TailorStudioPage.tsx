@@ -127,33 +127,33 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
   const overallScore = tailoredResult?.atsAnalysis?.overallScore ?? 0;
 
   return (
-    <div className="flex flex-col w-full gap-6 font-sans text-[#e2e4e9]">
+    <div className="flex flex-col w-full gap-6 font-sans text-zinc-900 dark:text-[#ededed]">
       
       {/* Top Header Card */}
-      <div className="p-6 rounded-2xl bg-[#111216] border border-[#23252b] space-y-4">
+      <div className="p-6 rounded-2xl bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">
               Resume Tailoring Studio
             </h1>
-            <p className="text-xs sm:text-sm text-[#8e929b] mt-0.5">
+            <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
               Customize your resume to match specific job requirements for 95%+ ATS alignment.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 bg-[#16181f] p-1 rounded-xl border border-[#23252b] text-xs self-start md:self-auto">
+          <div className="flex items-center gap-1 bg-black/[0.04] dark:bg-white/[0.06] p-1 rounded-xl border border-black/[0.05] dark:border-white/[0.08] text-xs self-start md:self-auto">
             <button
               onClick={() => setInputMode('url')}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                inputMode === 'url' ? 'bg-indigo-600 text-white font-semibold' : 'text-[#8e929b] hover:text-white'
+              className={`px-3.5 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
+                inputMode === 'url' ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white font-semibold shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
               }`}
             >
               Job Posting URL
             </button>
             <button
               onClick={() => setInputMode('text')}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                inputMode === 'text' ? 'bg-indigo-600 text-white font-semibold' : 'text-[#8e929b] hover:text-white'
+              className={`px-3.5 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
+                inputMode === 'text' ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white font-semibold shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
               }`}
             >
               Paste Job Description
@@ -169,7 +169,7 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
               value={jobUrl}
               onChange={(e) => setJobUrl(e.target.value)}
               placeholder="Paste LinkedIn, Greenhouse, Lever, Ashby, or company job URL..."
-              className="flex-1 rounded-xl bg-[#16181f] border border-[#2a2d36] focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 py-3 px-4 text-xs sm:text-sm text-white placeholder-[#555866] outline-none transition-colors"
+              className="flex-1 rounded-xl bg-white dark:bg-zinc-900/80 border border-black/[0.08] dark:border-white/[0.08] focus:border-zinc-400 dark:focus:border-white/30 py-3 px-4 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder-zinc-400 outline-none transition-colors shadow-inner"
             />
           ) : (
             <textarea
@@ -177,14 +177,14 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
               value={jobText}
               onChange={(e) => setJobText(e.target.value)}
               placeholder="Paste full job description text here..."
-              className="flex-1 rounded-xl bg-[#16181f] border border-[#2a2d36] focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 p-3 text-xs sm:text-sm text-white placeholder-[#555866] outline-none transition-colors resize-none"
+              className="flex-1 rounded-xl bg-white dark:bg-zinc-900/80 border border-black/[0.08] dark:border-white/[0.08] focus:border-zinc-400 dark:focus:border-white/30 p-3 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder-zinc-400 outline-none transition-colors resize-none shadow-inner"
             />
           )}
 
           <button
             onClick={handleStartGeneration}
             disabled={isGenerating}
-            className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-semibold shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 flex-shrink-0"
+            className="px-6 py-3 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 text-xs sm:text-sm font-semibold shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 flex-shrink-0 cursor-pointer active:scale-95"
           >
             {isGenerating ? (
               <>
@@ -201,12 +201,12 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
         </div>
 
         {error && (
-          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between">
+          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
               <span>{error}</span>
             </div>
-            <button onClick={() => setError(null)} className="text-white hover:underline text-xs">Dismiss</button>
+            <button onClick={() => setError(null)} className="text-zinc-900 dark:text-white hover:underline text-xs cursor-pointer">Dismiss</button>
           </div>
         )}
       </div>
@@ -225,32 +225,32 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
           {/* Left Column (5 Cols): Target Opening & Match Analysis */}
           <section className="lg:col-span-5 flex flex-col gap-5">
             {/* Target Job Card */}
-            <div className="p-5 rounded-2xl bg-[#111216] border border-[#23252b] space-y-4">
+            <div className="p-5 rounded-2xl bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] shadow-sm space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <span className="text-xs font-semibold text-indigo-400 block uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-[#D9704F] dark:text-[#F39A7E] block uppercase tracking-wider">
                     Target Role
                   </span>
-                  <h2 className="text-lg font-bold text-white tracking-tight mt-0.5">
+                  <h2 className="text-lg font-bold text-zinc-900 dark:text-white tracking-tight mt-0.5">
                     {tailoredResult.targetRole || 'Target Role'}
                   </h2>
-                  <p className="text-xs text-[#8e929b] mt-0.5">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                     {tailoredResult.targetCompany ? `@ ${tailoredResult.targetCompany}` : 'Target Opportunity'}
                   </p>
                 </div>
-                <span className="px-2.5 py-1 rounded-lg bg-[#16181f] border border-[#2a2d36] text-white text-xs font-semibold">
+                <span className="px-2.5 py-1 rounded-lg bg-black/[0.04] dark:bg-zinc-800 border border-black/[0.05] dark:border-white/[0.06] text-zinc-800 dark:text-zinc-200 text-xs font-semibold">
                   {tailoredResult.selectedTemplate || 'Classic ATS'}
                 </span>
               </div>
 
               {/* Match Score Card */}
-              <div className="p-4 rounded-xl bg-[#16181f] border border-[#23252b] space-y-3">
+              <div className="p-4 rounded-xl bg-[#FAF7F2] dark:bg-zinc-800/40 border border-black/[0.04] dark:border-white/[0.06] space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-white flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-emerald-400" />
+                  <span className="text-xs font-semibold text-zinc-900 dark:text-white flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-emerald-500" />
                     ATS Match Score
                   </span>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold">
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-bold font-mono">
                     {overallScore}% Match
                   </span>
                 </div>
@@ -259,14 +259,14 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
                   <div className="relative w-20 h-20 flex-shrink-0 flex items-center justify-center">
                     <svg className="w-16 h-16 -rotate-90" viewBox="0 0 36 36">
                       <path
-                        className="text-[#23252b]"
+                        className="text-zinc-200 dark:text-zinc-800"
                         d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="3.5"
                       />
                       <path
-                        className="text-emerald-400"
+                        className="text-emerald-500"
                         d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                         fill="none"
                         stroke="currentColor"
@@ -276,46 +276,46 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
                       />
                     </svg>
                     <div className="absolute text-center">
-                      <span className="text-base font-bold text-white block">{overallScore}%</span>
+                      <span className="text-base font-bold text-zinc-900 dark:text-white block font-mono">{overallScore}%</span>
                     </div>
                   </div>
 
-                  <div className="space-y-1 text-xs text-[#8e929b]">
-                    <div>Keyword Match: <strong className="text-white">{tailoredResult.atsAnalysis.keywordMatchScore}%</strong></div>
-                    <div>Skills Match: <strong className="text-white">{tailoredResult.atsAnalysis.skillsMatchScore}%</strong></div>
-                    <div>Experience Relevance: <strong className="text-white">{tailoredResult.atsAnalysis.experienceRelevanceScore}%</strong></div>
+                  <div className="space-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+                    <div>Keyword Match: <strong className="text-zinc-900 dark:text-white font-mono">{tailoredResult.atsAnalysis.keywordMatchScore}%</strong></div>
+                    <div>Skills Match: <strong className="text-zinc-900 dark:text-white font-mono">{tailoredResult.atsAnalysis.skillsMatchScore}%</strong></div>
+                    <div>Experience Relevance: <strong className="text-zinc-900 dark:text-white font-mono">{tailoredResult.atsAnalysis.experienceRelevanceScore}%</strong></div>
                   </div>
                 </div>
               </div>
 
               {/* Key Skills Identified */}
               <div className="space-y-2">
-                <span className="text-xs font-semibold text-white block">
+                <span className="text-xs font-semibold text-zinc-900 dark:text-white block">
                   Matched Keywords &amp; Competencies ({allMatchedTerms.length})
                 </span>
                 <div className="flex flex-wrap gap-1.5 text-xs max-h-40 overflow-y-auto pr-1">
                   {allMatchedTerms.length > 0 ? (
                     allMatchedTerms.map((skill, i) => (
-                      <span key={i} className="px-2.5 py-1 rounded-lg bg-[#16181f] border border-[#2a2d36] text-[#c4c7d0] text-[11px] font-medium flex items-center gap-1.5">
-                        <Check className="w-3 h-3 text-emerald-400" />
+                      <span key={i} className="px-2.5 py-1 rounded-lg bg-black/[0.03] dark:bg-zinc-800/60 border border-black/[0.06] dark:border-white/[0.08] text-zinc-800 dark:text-zinc-200 text-[11px] font-medium flex items-center gap-1.5">
+                        <Check className="w-3 h-3 text-emerald-500" />
                         <span>{skill}</span>
                       </span>
                     ))
                   ) : (
-                    <span className="text-xs text-[#6c707d]">No direct keyword matches found.</span>
+                    <span className="text-xs text-zinc-400 dark:text-zinc-500">No direct keyword matches found.</span>
                   )}
                 </div>
               </div>
 
               {/* Missing Skills Warning */}
               {missingTerms.length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-[#23252b]">
-                  <span className="text-xs font-semibold text-amber-400 block">
+                <div className="space-y-2 pt-2 border-t border-black/[0.05] dark:border-white/[0.06]">
+                  <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 block">
                     Recommended Keywords to Consider ({missingTerms.length})
                   </span>
                   <div className="flex flex-wrap gap-1.5 text-xs max-h-32 overflow-y-auto pr-1">
                     {missingTerms.map((sk, i) => (
-                      <span key={i} className="px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px]">
+                      <span key={i} className="px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-[11px]">
                         + {sk}
                       </span>
                     ))}
@@ -326,11 +326,11 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
 
             {/* Recruiter Feedback Card */}
             {tailoredResult.atsAnalysis.recruiterFeedback && (
-              <div className="p-4 rounded-2xl bg-[#111216] border border-[#23252b] space-y-2">
-                <span className="text-xs font-semibold text-indigo-400 block uppercase tracking-wider">
+              <div className="p-4 rounded-2xl bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] shadow-sm space-y-2">
+                <span className="text-xs font-semibold text-[#D9704F] dark:text-[#F39A7E] block uppercase tracking-wider">
                   AI Recruiter Assessment
                 </span>
-                <p className="text-xs text-[#8e929b] leading-relaxed">
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
                   {tailoredResult.atsAnalysis.recruiterFeedback}
                 </p>
               </div>
@@ -341,35 +341,35 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
           <section className="lg:col-span-7 flex flex-col gap-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
               <div>
-                <h2 className="text-base font-bold text-white tracking-tight">
+                <h2 className="text-base font-bold text-zinc-900 dark:text-white tracking-tight">
                   Resume Enhancements &amp; Changes
                 </h2>
-                <p className="text-xs text-[#8e929b]">
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
                   Compare your original master experience against the optimized tailored bullets.
                 </p>
               </div>
 
-              <div className="flex bg-[#16181f] p-1 rounded-xl border border-[#23252b] text-xs self-start sm:self-auto">
+              <div className="flex bg-black/[0.04] dark:bg-white/[0.06] p-1 rounded-xl border border-black/[0.05] dark:border-white/[0.08] text-xs self-start sm:self-auto">
                 <button
                   onClick={() => setActiveDiffFilter('all')}
-                  className={`px-3 py-1 rounded-lg font-medium transition-colors ${
-                    activeDiffFilter === 'all' ? 'bg-white text-zinc-950 font-semibold' : 'text-[#8e929b] hover:text-white'
+                  className={`px-3 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+                    activeDiffFilter === 'all' ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white font-semibold shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
                   }`}
                 >
                   All Changes
                 </button>
                 <button
                   onClick={() => setActiveDiffFilter('keywords')}
-                  className={`px-3 py-1 rounded-lg font-medium transition-colors ${
-                    activeDiffFilter === 'keywords' ? 'bg-white text-zinc-950 font-semibold' : 'text-[#8e929b] hover:text-white'
+                  className={`px-3 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+                    activeDiffFilter === 'keywords' ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white font-semibold shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
                   }`}
                 >
                   Keywords
                 </button>
                 <button
                   onClick={() => setActiveDiffFilter('impact')}
-                  className={`px-3 py-1 rounded-lg font-medium transition-colors ${
-                    activeDiffFilter === 'impact' ? 'bg-white text-zinc-950 font-semibold' : 'text-[#8e929b] hover:text-white'
+                  className={`px-3 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+                    activeDiffFilter === 'impact' ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white font-semibold shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
                   }`}
                 >
                   Metrics
@@ -386,12 +386,12 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
                   const tailoredHighlights = filterHighlights(originalHighlights, exp.highlights || [], allMatchedTerms);
 
                   return (
-                    <div key={exp.id || expIdx} className="p-5 rounded-2xl bg-[#111216] border border-[#23252b] space-y-3">
+                    <div key={exp.id || expIdx} className="p-5 rounded-2xl bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] shadow-sm space-y-3">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-white">
+                        <span className="font-bold text-zinc-900 dark:text-white">
                           {exp.role} • {exp.company}
                         </span>
-                        <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 text-[10px] font-semibold border border-indigo-500/20">
+                        <span className="px-2 py-0.5 rounded-full bg-[#FDF2EE] dark:bg-[#2A1B16] text-[#D9704F] dark:text-[#F39A7E] text-[10px] font-semibold border border-[#FAD9CE] dark:border-[#542B20]">
                           {exp.startDate} - {exp.isCurrent ? 'Present' : exp.endDate}
                         </span>
                       </div>
@@ -399,11 +399,11 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
                       {tailoredHighlights.map((tailoredBullet, bIdx) => {
                         const originalBullet = originalHighlights[bIdx];
                         return (
-                          <div key={bIdx} className="space-y-2 pt-1 border-t border-[#1e2027]">
+                          <div key={bIdx} className="space-y-2 pt-1 border-t border-black/[0.05] dark:border-white/[0.06]">
                             {/* Original */}
                             {originalBullet && originalBullet !== tailoredBullet && (
-                              <div className="p-3 rounded-xl bg-[#16181f] border border-[#23252b] text-xs text-[#8e929b] leading-relaxed">
-                                <span className="text-[10px] font-semibold uppercase text-[#6c707d] block mb-1">
+                              <div className="p-3 rounded-xl bg-[#FAF7F2] dark:bg-zinc-800/40 border border-black/[0.04] dark:border-white/[0.06] text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                                <span className="text-[10px] font-semibold uppercase text-zinc-400 dark:text-zinc-500 block mb-1">
                                   Original Master Bullet:
                                 </span>
                                 {originalBullet}
@@ -411,8 +411,8 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
                             )}
 
                             {/* Tailored */}
-                            <div className="p-3 rounded-xl bg-indigo-950/20 border border-indigo-500/30 text-xs text-white leading-relaxed">
-                              <span className="text-[10px] font-semibold uppercase text-indigo-400 block mb-1">
+                            <div className="p-3 rounded-xl bg-emerald-500/[0.06] dark:bg-emerald-950/20 border border-emerald-500/20 text-xs text-zinc-900 dark:text-white leading-relaxed">
+                              <span className="text-[10px] font-semibold uppercase text-emerald-600 dark:text-emerald-400 block mb-1">
                                 Tailored Bullet (Optimized):
                               </span>
                               {tailoredBullet}
@@ -424,18 +424,18 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
                   );
                 })
               ) : (
-                <div className="p-8 rounded-2xl bg-[#111216] border border-[#23252b] text-center text-xs text-[#8e929b]">
+                <div className="p-8 rounded-2xl bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] text-center text-xs text-zinc-500 dark:text-zinc-400 shadow-sm">
                   No tailored experience bullets found.
                 </div>
               )}
             </div>
 
             {/* Action Bar */}
-            <div className="p-4 rounded-2xl bg-[#111216] border border-[#23252b] flex items-center justify-between">
-              <span className="text-xs text-[#8e929b]">Ready to inspect your full formatted resume and export?</span>
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] shadow-sm flex items-center justify-between">
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">Ready to inspect your full formatted resume and export?</span>
               <button
                 onClick={() => setActivePage('result-studio')}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl bg-[#D9704F] hover:bg-[#C85F3E] text-white text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
               >
                 <span>View Full Formatted Resume</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -447,49 +447,49 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
 
       {/* Empty State: Ready to Tailor */}
       {!isLoadingHistory && !tailoredResult && (
-        <div className="p-8 sm:p-12 rounded-2xl bg-[#111216] border border-[#23252b] space-y-8">
+        <div className="p-8 sm:p-12 rounded-2xl bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] shadow-sm space-y-8">
           <div className="text-center max-w-xl mx-auto space-y-2">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto">
+            <div className="w-12 h-12 rounded-2xl bg-[#FDF2EE] dark:bg-[#2A1B16] border border-[#FAD9CE] dark:border-[#542B20] text-[#D9704F] dark:text-[#F39A7E] flex items-center justify-center mx-auto">
               <Sparkles className="w-6 h-6" />
             </div>
-            <h2 className="text-xl font-bold text-white tracking-tight">
+            <h2 className="text-xl font-bold text-zinc-900 dark:text-white tracking-tight">
               Ready to Tailor Your Resume
             </h2>
-            <p className="text-xs sm:text-sm text-[#8e929b] leading-relaxed">
+            <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
               Enter a job posting URL or paste the job description above. Our AI aligns your experience, highlights critical keywords, and tunes your bullets for 95%+ ATS matching.
             </p>
           </div>
 
           {/* 3 Simple Steps */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-5 rounded-xl bg-[#16181f] border border-[#23252b] space-y-2">
-              <span className="text-xs font-bold text-indigo-400">Step 1</span>
-              <h3 className="text-sm font-semibold text-white">Target Job Input</h3>
-              <p className="text-xs text-[#8e929b]">
+            <div className="p-5 rounded-xl bg-[#FAF7F2] dark:bg-zinc-800/40 border border-black/[0.04] dark:border-white/[0.06] space-y-2">
+              <span className="text-xs font-bold text-[#D9704F] dark:text-[#F39A7E]">Step 1</span>
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Target Job Input</h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
                 Paste any job posting link (LinkedIn, Greenhouse, Lever, Ashby, or company career page) or raw job description text.
               </p>
             </div>
 
-            <div className="p-5 rounded-xl bg-[#16181f] border border-[#23252b] space-y-2">
-              <span className="text-xs font-bold text-indigo-400">Step 2</span>
-              <h3 className="text-sm font-semibold text-white">Select Resume Style</h3>
-              <p className="text-xs text-[#8e929b]">
+            <div className="p-5 rounded-xl bg-[#FAF7F2] dark:bg-zinc-800/40 border border-black/[0.04] dark:border-white/[0.06] space-y-2">
+              <span className="text-xs font-bold text-[#D9704F] dark:text-[#F39A7E]">Step 2</span>
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Select Resume Style</h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
                 Choose from ATS Classic, Modern Minimalist, Executive Clean, or Technical Pro layouts.
               </p>
             </div>
 
-            <div className="p-5 rounded-xl bg-[#16181f] border border-[#23252b] space-y-2">
-              <span className="text-xs font-bold text-indigo-400">Step 3</span>
-              <h3 className="text-sm font-semibold text-white">Generate &amp; Review</h3>
-              <p className="text-xs text-[#8e929b]">
+            <div className="p-5 rounded-xl bg-[#FAF7F2] dark:bg-zinc-800/40 border border-black/[0.04] dark:border-white/[0.06] space-y-2">
+              <span className="text-xs font-bold text-[#D9704F] dark:text-[#F39A7E]">Step 3</span>
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Generate &amp; Review</h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
                 Click "Tailor Resume" to inspect matched keywords, bullet enhancements, and export PDF or Word documents.
               </p>
             </div>
           </div>
 
           {/* Template Selection Preview */}
-          <div className="space-y-3 pt-4 border-t border-[#23252b]">
-            <span className="text-xs font-semibold text-white block">
+          <div className="space-y-3 pt-4 border-t border-black/[0.05] dark:border-white/[0.06]">
+            <span className="text-xs font-semibold text-zinc-900 dark:text-white block">
               Choose Your Default Template Style:
             </span>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -498,39 +498,39 @@ export const TailorStudioPage: React.FC<{ setActivePage: (p: ActivePage) => void
                   key={tpl.id}
                   type="button"
                   onClick={() => setSelectedTemplate(tpl.id)}
-                  className={`p-4 rounded-xl border text-left transition-all ${
+                  className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
                     selectedTemplate === tpl.id
-                      ? 'border-indigo-500 bg-indigo-950/30 text-white shadow-sm'
-                      : 'border-[#23252b] bg-[#16181f] text-[#8e929b] hover:border-[#323640] hover:text-white'
+                      ? 'border-[#D9704F] bg-[#FDF2EE] dark:bg-[#2A1B16] text-[#D9704F] dark:text-[#F39A7E] shadow-sm'
+                      : 'border-black/[0.06] dark:border-white/[0.08] bg-[#FAF7F2] dark:bg-zinc-800/40 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-xs text-white">{tpl.name}</span>
-                    {selectedTemplate === tpl.id && <Check className="w-3.5 h-3.5 text-indigo-400" />}
+                    <span className="font-bold text-xs text-zinc-900 dark:text-white">{tpl.name}</span>
+                    {selectedTemplate === tpl.id && <Check className="w-3.5 h-3.5 text-[#D9704F] dark:text-[#F39A7E]" />}
                   </div>
-                  <p className="text-[11px] leading-relaxed text-[#8e929b]">{tpl.desc}</p>
+                  <p className="text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">{tpl.desc}</p>
                 </button>
               ))}
             </div>
           </div>
 
           {/* Master Resume Status Check */}
-          <div className="flex items-center justify-between p-4 rounded-xl bg-[#16181f] border border-[#23252b] text-xs">
+          <div className="flex items-center justify-between p-4 rounded-xl bg-[#FAF7F2] dark:bg-zinc-800/40 border border-black/[0.04] dark:border-white/[0.06] text-xs">
             <div className="flex items-center gap-2.5">
-              <FileText className="w-4 h-4 text-indigo-400" />
+              <FileText className="w-4 h-4 text-[#D9704F] dark:text-[#F39A7E]" />
               <span>
                 Master Resume Status:{' '}
                 {masterResume ? (
-                  <strong className="text-emerald-400 font-semibold">Loaded ({masterResume.title || 'Master'})</strong>
+                  <strong className="text-emerald-600 dark:text-emerald-400 font-semibold">Loaded ({masterResume.title || 'Master'})</strong>
                 ) : (
-                  <strong className="text-amber-400 font-semibold">Not Uploaded Yet</strong>
+                  <strong className="text-amber-600 dark:text-amber-400 font-semibold">Not Uploaded Yet</strong>
                 )}
               </span>
             </div>
             {!masterResume && (
               <button
                 onClick={() => setActivePage('master-resume')}
-                className="text-indigo-400 hover:text-indigo-300 font-medium underline"
+                className="text-[#D9704F] hover:underline font-medium cursor-pointer"
               >
                 Upload Master Resume
               </button>

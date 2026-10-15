@@ -182,31 +182,31 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
   };
 
   return (
-    <div className="space-y-6 font-sans text-[#e2e4e9]">
+    <div className="space-y-6 font-sans text-zinc-900 dark:text-[#ededed]">
       {studioError && (
-        <div className="flex items-center gap-2.5 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300">
+        <div className="flex items-center gap-2.5 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-700 dark:text-rose-300">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{studioError}</span>
-          <button onClick={() => setStudioError(null)} className="ml-auto" aria-label="Dismiss">✕</button>
+          <button onClick={() => setStudioError(null)} className="ml-auto cursor-pointer" aria-label="Dismiss">✕</button>
         </div>
       )}
       
       {downloadError && (
-        <div className="flex items-center gap-2.5 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300">
-          <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+        <div className="flex items-center gap-2.5 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-700 dark:text-rose-300">
+          <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
           <span>{downloadError}</span>
-          <button onClick={() => setDownloadError(null)} className="ml-auto text-rose-400 hover:text-rose-200" aria-label="Dismiss">✕</button>
+          <button onClick={() => setDownloadError(null)} className="ml-auto text-rose-500 hover:text-rose-700 dark:hover:text-rose-200 cursor-pointer" aria-label="Dismiss">✕</button>
         </div>
       )}
 
       {/* Top Action Header Bar */}
-      <div className="p-5 rounded-2xl bg-[#111216] border border-[#23252b] flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-5 rounded-2xl bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h2 className="text-lg font-bold text-white tracking-tight">
+            <h2 className="text-lg font-bold text-zinc-900 dark:text-white tracking-tight">
               {tailoredResult.targetRole}
             </h2>
-            <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-xs font-semibold">
+            <span className="px-2.5 py-0.5 rounded-full bg-[#FDF2EE] dark:bg-[#2A1B16] text-[#D9704F] dark:text-[#F39A7E] border border-[#FAD9CE] dark:border-[#542B20] text-xs font-semibold">
               @ {tailoredResult.targetCompany}
             </span>
             {historyList.length > 1 && (
@@ -222,28 +222,28 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
                     setStudioError('That tailored resume version could not be loaded.');
                   }
                 }}
-                className="text-xs py-1 px-2.5 bg-[#16181f] border border-[#2a2d36] rounded-lg text-white font-medium cursor-pointer hover:border-indigo-400 focus:outline-none"
+                className="text-xs py-1 px-2.5 bg-black/[0.04] dark:bg-zinc-800 border border-black/[0.08] dark:border-white/[0.08] rounded-lg text-zinc-800 dark:text-white font-medium cursor-pointer focus:outline-none"
                 title="Switch tailored resume version"
               >
                 {historyList.map((item) => (
-                  <option key={item.id} value={item.id}>
+                  <option key={item.id} value={item.id} className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">
                     {item.targetRole} @ {item.targetCompany} ({item.matchScore}% ATS)
                   </option>
                 ))}
               </select>
             )}
           </div>
-          <div className="text-xs text-[#8e929b] flex items-center gap-2 pt-0.5">
+          <div className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-2 pt-0.5">
             <span>Verified Truth-Preserved Content</span>
             <span>•</span>
-            <span>ATS Match: <strong className="text-emerald-400 font-semibold">{atsAnalysis.overallScore}%</strong></span>
+            <span>ATS Match: <strong className="text-emerald-600 dark:text-emerald-400 font-semibold font-mono">{atsAnalysis.overallScore}%</strong></span>
           </div>
         </div>
 
         {/* Action Buttons Toolbar */}
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Template Style Selector */}
-          <div className="flex items-center bg-[#16181f] p-1 rounded-xl border border-[#23252b] text-xs">
+          <div className="flex items-center bg-black/[0.04] dark:bg-white/[0.06] p-1 rounded-xl border border-black/[0.05] dark:border-white/[0.08] text-xs">
             {[
               { id: TemplateStyle.ClassicAts, label: 'Classic' },
               { id: TemplateStyle.ModernMinimalist, label: 'Modern' },
@@ -253,8 +253,8 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
               <button
                 key={id}
                 onClick={() => setSelectedTemplate(id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  selectedTemplate === id ? 'bg-white text-zinc-950 font-semibold shadow-sm' : 'text-[#8e929b] hover:text-white'
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  selectedTemplate === id ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white font-semibold shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
                 }`}
               >
                 {label}
@@ -265,18 +265,18 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
           {/* Cover Letter */}
           <button
             onClick={handleGenerateCoverLetter}
-            className="px-3.5 py-2 rounded-xl bg-[#16181f] hover:bg-[#20222a] border border-[#2a2d37] text-white text-xs font-medium transition-colors flex items-center gap-1.5"
+            className="px-3.5 py-2 rounded-xl bg-white dark:bg-zinc-800/80 hover:bg-black/[0.04] dark:hover:bg-zinc-700 border border-black/[0.08] dark:border-white/[0.08] text-zinc-800 dark:text-white text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
           >
-            <Mail className="w-3.5 h-3.5 text-indigo-400" />
+            <Mail className="w-3.5 h-3.5 text-[#D9704F] dark:text-[#F39A7E]" />
             <span>Cover Letter</span>
           </button>
 
           {/* Interview Prep */}
           <button
             onClick={handleGenerateInterviewPrep}
-            className="px-3.5 py-2 rounded-xl bg-[#16181f] hover:bg-[#20222a] border border-[#2a2d37] text-white text-xs font-medium transition-colors flex items-center gap-1.5"
+            className="px-3.5 py-2 rounded-xl bg-white dark:bg-zinc-800/80 hover:bg-black/[0.04] dark:hover:bg-zinc-700 border border-black/[0.08] dark:border-white/[0.08] text-zinc-800 dark:text-white text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
           >
-            <HelpCircle className="w-3.5 h-3.5 text-purple-400" />
+            <HelpCircle className="w-3.5 h-3.5 text-purple-500" />
             <span>Interview Prep</span>
           </button>
 
@@ -284,7 +284,7 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
           <button
             disabled={downloading !== null}
             onClick={() => handleDownload(ResumeFormat.Pdf)}
-            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5 disabled:opacity-50"
+            className="px-4 py-2 rounded-xl bg-[#D9704F] hover:bg-[#C85F3E] text-white text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer active:scale-95"
           >
             <Download className="w-3.5 h-3.5" />
             <span>{downloading === ResumeFormat.Pdf ? 'Rendering PDF...' : 'Download PDF'}</span>
@@ -294,7 +294,7 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
           <button
             disabled={downloading !== null}
             onClick={() => handleDownload(ResumeFormat.Docx)}
-            className="px-3 py-2 rounded-xl bg-[#16181f] hover:bg-[#20222a] border border-[#2a2d37] text-white text-xs font-medium transition-colors flex items-center gap-1.5 disabled:opacity-50"
+            className="px-3 py-2 rounded-xl bg-white dark:bg-zinc-800/80 hover:bg-black/[0.04] dark:hover:bg-zinc-700 border border-black/[0.08] dark:border-white/[0.08] text-zinc-800 dark:text-white text-xs font-medium transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-sm active:scale-95"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Word</span>
@@ -307,26 +307,26 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
         
         {/* Left Column (3 cols): Master Reference */}
         <div className="lg:col-span-3 space-y-3">
-          <div className="p-5 rounded-2xl bg-[#111216] border border-[#23252b] space-y-4 sticky top-20 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-[#23252b]">
-              <span className="text-xs font-bold text-white flex items-center gap-2">
-                <FileText className="w-4 h-4 text-indigo-400" /> Master Profile
+          <div className="p-5 rounded-2xl bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] shadow-sm space-y-4 sticky top-20 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-black/[0.05] dark:border-white/[0.06]">
+              <span className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                <FileText className="w-4 h-4 text-[#D9704F] dark:text-[#F39A7E]" /> Master Profile
               </span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#16181f] text-[#8e929b] border border-[#2a2d36]">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-black/[0.04] dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-black/[0.05] dark:border-white/[0.06]">
                 Reference
               </span>
             </div>
 
-            <div className="space-y-3 text-xs text-[#c4c7d0]">
+            <div className="space-y-3 text-xs text-zinc-700 dark:text-zinc-300">
               <div>
-                <div className="font-bold text-white text-sm">
+                <div className="font-bold text-zinc-900 dark:text-white text-sm">
                   {masterSchema?.personalInfo?.fullName || tailoredSchema?.personalInfo?.fullName || 'Master Profile'}
                 </div>
-                <div className="text-[11px] text-[#8e929b]">
+                <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
                   {masterSchema?.personalInfo?.email || tailoredSchema?.personalInfo?.email || ''}
                 </div>
                 {(masterSchema?.personalInfo?.phone || tailoredSchema?.personalInfo?.phone) && (
-                  <div className="text-[11px] text-[#8e929b]">
+                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
                     {masterSchema?.personalInfo?.phone || tailoredSchema?.personalInfo?.phone}
                   </div>
                 )}
@@ -334,19 +334,19 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
 
               {masterSchema.summary && (
                 <div className="space-y-1">
-                  <span className="text-[10px] font-semibold text-[#8e929b] uppercase tracking-wider block">Summary</span>
-                  <p className="text-[11px] text-[#9fa3b0] leading-relaxed line-clamp-4">{masterSchema.summary}</p>
+                  <span className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Summary</span>
+                  <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed line-clamp-4">{masterSchema.summary}</p>
                 </div>
               )}
 
               {masterExperiences.length > 0 && (
                 <div className="space-y-2">
-                  <span className="text-[10px] font-semibold text-[#8e929b] uppercase tracking-wider block">Experience</span>
+                  <span className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Experience</span>
                   <div className="space-y-2">
                     {masterExperiences.map((exp, i) => (
-                      <div key={i} className="p-2.5 rounded-xl bg-[#16181f] border border-[#23252b]">
-                        <div className="font-semibold text-white text-xs">{exp.role}</div>
-                        <div className="text-[10px] text-[#8e929b] mt-0.5">{exp.company} ({exp.startDate} - {exp.isCurrent ? 'Present' : exp.endDate})</div>
+                      <div key={i} className="p-2.5 rounded-xl bg-[#FAF7F2] dark:bg-zinc-800/40 border border-black/[0.04] dark:border-white/[0.06]">
+                        <div className="font-semibold text-zinc-900 dark:text-white text-xs">{exp.role}</div>
+                        <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">{exp.company} ({exp.startDate} - {exp.isCurrent ? 'Present' : exp.endDate})</div>
                       </div>
                     ))}
                   </div>
@@ -355,10 +355,10 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
 
               {masterSchema.skills && masterSchema.skills.length > 0 && (
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-semibold text-[#8e929b] uppercase tracking-wider block">Key Skills</span>
+                  <span className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Key Skills</span>
                   <div className="flex flex-wrap gap-1">
                     {masterSchema.skills.flatMap((s: any) => s.skills || []).map((skill: string, i: number) => (
-                      <span key={i} className="text-[10px] px-2 py-0.5 rounded-md bg-[#16181f] text-[#a0a4b0] border border-[#23252b]">
+                      <span key={i} className="text-[10px] px-2 py-0.5 rounded-md bg-[#FAF7F2] dark:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 border border-black/[0.05] dark:border-white/[0.06]">
                         {skill}
                       </span>
                     ))}
@@ -509,13 +509,13 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
 
         {/* Right Column (4 cols): ATS Scorecard */}
         <div className="lg:col-span-4 space-y-4">
-          <div className="p-5 rounded-2xl bg-[#111216] border border-[#23252b] space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#23252b]">
-              <span className="text-xs font-bold text-white flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-emerald-400" />
+          <div className="p-5 rounded-2xl bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] shadow-sm space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-black/[0.05] dark:border-white/[0.06]">
+              <span className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-emerald-500" />
                 <span>ATS Scorecard</span>
               </span>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold">
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-bold font-mono">
                 High Alignment
               </span>
             </div>
@@ -524,14 +524,14 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
               <div className="relative w-20 h-20 flex-shrink-0 flex items-center justify-center">
                 <svg className="w-16 h-16 -rotate-90" viewBox="0 0 36 36">
                   <path
-                    className="text-[#23252b]"
+                    className="text-zinc-200 dark:text-zinc-800"
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="3.5"
                   />
                   <path
-                    className="text-emerald-400"
+                    className="text-emerald-500"
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
                     stroke="currentColor"
@@ -541,62 +541,62 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
                   />
                 </svg>
                 <div className="absolute text-center">
-                  <span className="text-base font-bold text-white block">
+                  <span className="text-base font-bold text-zinc-900 dark:text-white block font-mono">
                     {atsAnalysis.overallScore}%
                   </span>
                 </div>
               </div>
 
               <div className="space-y-1 text-xs">
-                <div className="text-white font-semibold">Semantic Match Score</div>
-                <div className="text-[11px] text-[#8e929b]">
-                  <strong className="text-emerald-400">{(atsAnalysis?.matchingKeywords || []).length}</strong> matching • <strong className="text-amber-400">{(atsAnalysis?.missingKeywords || []).length}</strong> missing
+                <div className="text-zinc-900 dark:text-white font-semibold">Semantic Match Score</div>
+                <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                  <strong className="text-emerald-600 dark:text-emerald-400">{(atsAnalysis?.matchingKeywords || []).length}</strong> matching • <strong className="text-amber-600 dark:text-amber-400">{(atsAnalysis?.missingKeywords || []).length}</strong> missing
                 </div>
-                <div className="text-[10px] text-[#6c707d]">
+                <div className="text-[10px] text-zinc-400 dark:text-zinc-500">
                   100% Parsed &amp; Readable
                 </div>
               </div>
             </div>
 
             {/* Score Breakdown Bars */}
-            <div className="space-y-3 pt-3 border-t border-[#1c1e26] text-xs">
+            <div className="space-y-3 pt-3 border-t border-black/[0.05] dark:border-white/[0.06] text-xs">
               <div>
-                <div className="flex justify-between text-[#8e929b] mb-1 text-[11px]">
+                <div className="flex justify-between text-zinc-500 dark:text-zinc-400 mb-1 text-[11px]">
                   <span>Keyword Match</span>
-                  <span className="font-semibold text-white">{atsAnalysis?.keywordMatchScore ?? 0}%</span>
+                  <span className="font-semibold text-zinc-900 dark:text-white font-mono">{atsAnalysis?.keywordMatchScore ?? 0}%</span>
                 </div>
-                <div className="w-full bg-[#1c1e26] h-2 rounded-full overflow-hidden">
-                  <div className="bg-indigo-500 h-full rounded-full" style={{ width: `${atsAnalysis?.keywordMatchScore ?? 0}%` }} />
+                <div className="w-full bg-black/[0.05] dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
+                  <div className="bg-[#D9704F] h-full rounded-full" style={{ width: `${atsAnalysis?.keywordMatchScore ?? 0}%` }} />
                 </div>
               </div>
 
               <div>
-                <div className="flex justify-between text-[#8e929b] mb-1 text-[11px]">
+                <div className="flex justify-between text-zinc-500 dark:text-zinc-400 mb-1 text-[11px]">
                   <span>Skills Coverage</span>
-                  <span className="font-semibold text-white">{atsAnalysis?.skillsMatchScore ?? 0}%</span>
+                  <span className="font-semibold text-zinc-900 dark:text-white font-mono">{atsAnalysis?.skillsMatchScore ?? 0}%</span>
                 </div>
-                <div className="w-full bg-[#1c1e26] h-2 rounded-full overflow-hidden">
+                <div className="w-full bg-black/[0.05] dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
                   <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${atsAnalysis?.skillsMatchScore ?? 0}%` }} />
                 </div>
               </div>
 
               <div>
-                <div className="flex justify-between text-[#8e929b] mb-1 text-[11px]">
+                <div className="flex justify-between text-zinc-500 dark:text-zinc-400 mb-1 text-[11px]">
                   <span>Experience Relevance</span>
-                  <span className="font-semibold text-white">{atsAnalysis?.experienceRelevanceScore ?? 0}%</span>
+                  <span className="font-semibold text-zinc-900 dark:text-white font-mono">{atsAnalysis?.experienceRelevanceScore ?? 0}%</span>
                 </div>
-                <div className="w-full bg-[#1c1e26] h-2 rounded-full overflow-hidden">
-                  <div className="bg-purple-500 h-full rounded-full" style={{ width: `${atsAnalysis?.experienceRelevanceScore ?? 0}%` }} />
+                <div className="w-full bg-black/[0.05] dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
+                  <div className="bg-sky-500 h-full rounded-full" style={{ width: `${atsAnalysis?.experienceRelevanceScore ?? 0}%` }} />
                 </div>
               </div>
             </div>
           </div>
 
           {/* Keywords Match Cloud */}
-          <div className="p-5 rounded-2xl bg-[#111216] border border-[#23252b] space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-[#23252b] text-xs">
-              <span className="text-white font-bold">Matched Keywords</span>
-              <span className="text-[11px] text-emerald-400 font-semibold">
+          <div className="p-5 rounded-2xl bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] shadow-sm space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-black/[0.05] dark:border-white/[0.06] text-xs">
+              <span className="text-zinc-900 dark:text-white font-bold">Matched Keywords</span>
+              <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold font-mono">
                 {(atsAnalysis?.matchingKeywords || []).length} Matched
               </span>
             </div>
@@ -605,24 +605,24 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
               {(atsAnalysis?.matchingKeywords || []).map((kw: string, i: number) => (
                 <span 
                   key={i} 
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-emerald-500/10 text-emerald-300 border border-emerald-500/20"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20"
                 >
-                  <Check className="w-3 h-3 text-emerald-400" />
+                  <Check className="w-3 h-3 text-emerald-500" />
                   {kw}
                 </span>
               ))}
             </div>
 
             {(atsAnalysis?.missingKeywords || []).length > 0 && (
-              <div className="space-y-2 pt-3 border-t border-[#1c1e26]">
-                <div className="text-xs text-[#8e929b] font-medium">
+              <div className="space-y-2 pt-3 border-t border-black/[0.05] dark:border-white/[0.06]">
+                <div className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
                   Missing Keywords ({(atsAnalysis?.missingKeywords || []).length})
                 </div>
                 <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
                   {(atsAnalysis?.missingKeywords || []).map((kw: string, i: number) => (
                     <span 
                       key={i} 
-                      className="px-2.5 py-1 rounded-lg text-xs bg-[#16181f] text-[#8e929b] border border-[#23252b]"
+                      className="px-2.5 py-1 rounded-lg text-xs bg-[#FAF7F2] dark:bg-zinc-800/60 text-zinc-600 dark:text-zinc-400 border border-black/[0.05] dark:border-white/[0.06]"
                     >
                       {kw}
                     </span>
@@ -633,17 +633,17 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
           </div>
 
           {/* Recruiter Feedback */}
-          <div className="p-5 rounded-2xl bg-[#111216] border border-[#23252b] space-y-3">
-            <h4 className="text-xs font-bold text-white">Recruiter AI Feedback</h4>
-            <p className="text-xs text-[#a0a4b0] leading-relaxed">
+          <div className="p-5 rounded-2xl bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] shadow-sm space-y-3">
+            <h4 className="text-xs font-bold text-zinc-900 dark:text-white">Recruiter AI Feedback</h4>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
               {atsAnalysis?.recruiterFeedback || 'Recruiter feedback analysis is being prepared.'}
             </p>
 
             <button
               onClick={() => setIsRoadmapModalOpen(true)}
-              className="w-full mt-2 py-2 px-3 rounded-xl bg-[#16181f] hover:bg-[#20222a] border border-[#2a2d37] text-white text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
+              className="w-full mt-2 py-2 px-3 rounded-xl bg-black/[0.04] dark:bg-zinc-800/80 hover:bg-black/[0.08] dark:hover:bg-zinc-700 border border-black/[0.06] dark:border-white/[0.08] text-zinc-800 dark:text-white text-xs font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
             >
-              <Compass className="w-3.5 h-3.5 text-indigo-400" />
+              <Compass className="w-3.5 h-3.5 text-[#D9704F] dark:text-[#F39A7E]" />
               <span>View Skills Roadmap ({(atsAnalysis?.skillRoadmap || []).length})</span>
             </button>
           </div>
@@ -663,10 +663,10 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
             <div>Generating compelling cover letter...</div>
           </div>
         ) : coverLetterError ? (
-          <div className="py-12 text-center text-xs text-rose-400">{coverLetterError}</div>
+          <div className="py-12 text-center text-xs text-rose-500 dark:text-rose-400">{coverLetterError}</div>
         ) : coverLetter ? (
           <div className="space-y-4">
-            <div className="p-4 rounded-xl bg-[#16181f] border border-[#23252b] text-xs text-[#c4c7d0] whitespace-pre-wrap leading-relaxed">
+            <div className="p-4 rounded-xl bg-[#FAF7F2] dark:bg-zinc-800/40 border border-black/[0.04] dark:border-white/[0.06] text-xs text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap leading-relaxed">
               {coverLetter.content}
             </div>
             <button
@@ -675,7 +675,7 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
                 setCopiedCoverLetter(true);
                 setTimeout(() => setCopiedCoverLetter(false), 2000);
               }}
-              className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-sm transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-4 rounded-xl bg-[#D9704F] hover:bg-[#C85F3E] text-white font-semibold text-xs shadow-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
               {copiedCoverLetter ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copiedCoverLetter ? 'Copied to Clipboard!' : 'Copy Cover Letter'}</span>
@@ -693,32 +693,32 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
         maxWidth="max-w-3xl"
       >
         {isInterviewPrepLoading ? (
-          <div className="py-12 text-center text-xs text-[#8e929b] space-y-2">
-            <RefreshCw className="w-5 h-5 animate-spin mx-auto text-indigo-400" />
+          <div className="py-12 text-center text-xs text-zinc-500 dark:text-zinc-400 space-y-2">
+            <RefreshCw className="w-5 h-5 animate-spin mx-auto text-[#D9704F]" />
             <div>Generating interview coaching questions...</div>
           </div>
         ) : interviewPrepError ? (
-          <div className="py-12 text-center text-xs text-rose-400">{interviewPrepError}</div>
+          <div className="py-12 text-center text-xs text-rose-500 dark:text-rose-400">{interviewPrepError}</div>
         ) : interviewPrep ? (
           <div className="space-y-5">
             {/* Behavioral */}
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Behavioral Questions (STAR)</h4>
+              <h4 className="text-xs font-bold text-[#D9704F] uppercase tracking-wider">Behavioral Questions (STAR)</h4>
               {interviewPrep.behavioralQuestions.map((q, i) => (
-                <div key={i} className="p-3.5 rounded-xl bg-[#16181f] border border-[#23252b] space-y-1.5 text-xs">
-                  <div className="font-semibold text-white">Q: {q.question}</div>
-                  <div className="text-[11px] text-[#8e929b]"><strong className="text-white">Suggested Approach:</strong> {q.suggestedStarApproach}</div>
+                <div key={i} className="p-3.5 rounded-xl bg-[#FAF7F2] dark:bg-zinc-800/40 border border-black/[0.04] dark:border-white/[0.06] space-y-1.5 text-xs">
+                  <div className="font-semibold text-zinc-900 dark:text-white">Q: {q.question}</div>
+                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400"><strong className="text-zinc-800 dark:text-zinc-200">Suggested Approach:</strong> {q.suggestedStarApproach}</div>
                 </div>
               ))}
             </div>
 
             {/* Technical */}
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider">Technical Deep-Dive</h4>
+              <h4 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Technical Deep-Dive</h4>
               {interviewPrep.technicalQuestions.map((q, i) => (
-                <div key={i} className="p-3.5 rounded-xl bg-[#16181f] border border-[#23252b] space-y-1.5 text-xs">
-                  <div className="font-semibold text-white">Q: {q.question}</div>
-                  <div className="text-[11px] text-[#8e929b]"><strong className="text-white">Talking Point:</strong> {q.exampleTalkingPoint}</div>
+                <div key={i} className="p-3.5 rounded-xl bg-[#FAF7F2] dark:bg-zinc-800/40 border border-black/[0.04] dark:border-white/[0.06] space-y-1.5 text-xs">
+                  <div className="font-semibold text-zinc-900 dark:text-white">Q: {q.question}</div>
+                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400"><strong className="text-zinc-800 dark:text-zinc-200">Talking Point:</strong> {q.exampleTalkingPoint}</div>
                 </div>
               ))}
             </div>
@@ -726,11 +726,11 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
             {/* Gap Probe */}
             {interviewPrep.gapProbeQuestions.length > 0 && (
               <div className="space-y-2">
-                <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider">Skill Gap Questions</h4>
+                <h4 className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Skill Gap Questions</h4>
                 {interviewPrep.gapProbeQuestions.map((q, i) => (
-                  <div key={i} className="p-3.5 rounded-xl bg-[#16181f] border border-amber-500/20 space-y-1.5 text-xs">
-                    <div className="font-semibold text-white">Q: {q.question}</div>
-                    <div className="text-[11px] text-[#8e929b]"><strong className="text-white">Strategy:</strong> {q.suggestedStarApproach}</div>
+                  <div key={i} className="p-3.5 rounded-xl bg-[#FAF7F2] dark:bg-zinc-800/40 border border-amber-500/30 space-y-1.5 text-xs">
+                    <div className="font-semibold text-zinc-900 dark:text-white">Q: {q.question}</div>
+                    <div className="text-[11px] text-zinc-500 dark:text-zinc-400"><strong className="text-zinc-800 dark:text-zinc-200">Strategy:</strong> {q.suggestedStarApproach}</div>
                   </div>
                 ))}
               </div>
@@ -748,17 +748,17 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
       >
         <div className="space-y-3">
           {atsAnalysis.skillRoadmap.map((item, i) => (
-            <div key={i} className="p-3.5 rounded-xl bg-[#16181f] border border-[#23252b] flex items-start justify-between gap-3 text-xs">
+            <div key={i} className="p-3.5 rounded-xl bg-[#FAF7F2] dark:bg-zinc-800/40 border border-black/[0.04] dark:border-white/[0.06] flex items-start justify-between gap-3 text-xs">
               <div className="space-y-1">
-                <div className="font-semibold text-white flex items-center gap-2">
+                <div className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2">
                   <span>{item.skillName}</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#20222a] text-white">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#D9704F]/10 text-[#D9704F] font-semibold border border-[#D9704F]/20">
                     {item.priority} Priority
                   </span>
                 </div>
-                <div className="text-[#8e929b] text-[11px]">{item.recommendedAction}</div>
+                <div className="text-zinc-500 dark:text-zinc-400 text-[11px]">{item.recommendedAction}</div>
               </div>
-              <div className="text-[10px] text-[#6c707d] shrink-0 font-medium">
+              <div className="text-[10px] text-zinc-400 dark:text-zinc-500 shrink-0 font-medium">
                 {item.estimatedLearningTime || '1-2 weeks'}
               </div>
             </div>

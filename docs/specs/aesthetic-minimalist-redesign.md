@@ -90,4 +90,21 @@ Minimalist Editorial Chat Bubble + Smooth Loading Indicator
   - **Decision Engine Technical Exploration**:
     - Evaluated TypeSafe AI's **Jev** (non-autoregressive discriminative decision model) versus free open-source alternatives: **Laya** (ConvAI Innovations, ModernBERT-based), **Kev** (0.8B/1.5B Qwen pointer model), **Outlines by Dottxt** (FSM/Grammar-guided logit masking for 0-hallucination agent tool/route selection), and **Zen Engine** (sub-millisecond Rust JSON decision tables).
   - **Impacted Layers**: `frontend/src/components/icons/AutumnVectors.tsx`, `frontend/src/pages/DashboardPage.tsx`, `frontend/src/components/layout/AppLayout.tsx`, `docs/architecture/lld.html`.
+- **2026-10-16 (Early Morning - Comprehensive Light/Dark Theme Decoupling & Autumn Design Unification Across All Pages)**:
+  - **Problem Solved**: Six user screenshots revealed that while the dashboard had received the Autumn App transformation, sub-pages (`TailorStudioPage`, `ResultStudioPage`, `OrchestratorQueuePage`, `AskAkshPage`, `TrackerPage`, `HistoryPage`, and `AuthPages`) still had hardcoded pitch-black background hexes (`bg-[#111216]`, `bg-[#16181f]`, `bg-[#121215]`, `border-[#23252b]`) and static `text-white` headings, resulting in jarring black slabs when toggled to Light mode.
+  - **Architectural Solution & Token Harmonization**:
+    - Replaced all raw dark backgrounds with responsive dual-mode Tailwind tokens: `bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] shadow-sm` for primary cards.
+    - Updated nested sub-cards and inputs to `bg-[#FAF7F2] dark:bg-zinc-800/40 border border-black/[0.04] dark:border-white/[0.06]`.
+    - Standardized typography across all 7 pages with `text-zinc-900 dark:text-white` for headings, `text-zinc-700 dark:text-zinc-300` for body/values, and `text-zinc-500 dark:text-zinc-400` for subtitles.
+    - Replaced hardcoded indigo button styles with the Autumn design system accent palette: terracotta `#D9704F` / hover `#C85F3E` with crisp squircle radiuses.
+    - Decoupled `AskAkshPage` Review Gate card and `ResultStudioPage` modals (Cover Letter, Interview Coach, Skill Roadmap) from dark-only classes.
+  - **Impacted Files**:
+    - `frontend/src/pages/TailorStudioPage.tsx`
+    - `frontend/src/pages/ResultStudioPage.tsx`
+    - `frontend/src/pages/OrchestratorQueuePage.tsx`
+    - `frontend/src/pages/AskAkshPage.tsx`
+    - `frontend/src/pages/TrackerPage.tsx`
+    - `frontend/src/pages/HistoryPage.tsx`
+    - `frontend/src/pages/AuthPages.tsx`
+
 

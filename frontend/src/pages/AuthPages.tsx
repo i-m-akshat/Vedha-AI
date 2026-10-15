@@ -146,10 +146,10 @@ export const AuthGatewayPage: React.FC<AuthPageProps> = ({
               </div>
 
               {/* Interactive 3D Canvas Box */}
-              <div className="rounded-xl border border-[#23252b] bg-[#16181f]/80 overflow-hidden shadow-inner my-2">
-                <div className="flex items-center justify-between px-4 py-2 border-b border-[#23252b] bg-[#14151b] text-xs text-[#8e929b]">
+              <div className="rounded-xl border border-black/[0.06] dark:border-[#23252b] bg-white dark:bg-[#16181f]/80 overflow-hidden shadow-inner my-2">
+                <div className="flex items-center justify-between px-4 py-2 border-b border-black/[0.06] dark:border-[#23252b] bg-[#FAF7F2] dark:bg-[#14151b] text-xs text-zinc-500 dark:text-[#8e929b]">
                   <span className="flex items-center gap-1.5 font-medium">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                    <Sparkles className="w-3.5 h-3.5 text-[#D9704F]" />
                     Interactive 3D Career Matrix
                   </span>
                   <span className="text-[11px]">Hover or drag to explore</span>
@@ -161,29 +161,29 @@ export const AuthGatewayPage: React.FC<AuthPageProps> = ({
 
               {/* Feature Highlights */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
-                <div className="p-3 rounded-xl bg-[#16181f] border border-[#23252b] space-y-1">
-                  <div className="font-semibold text-white">95%+ ATS Score</div>
-                  <div className="text-[#8e929b] text-[11px]">Keyword-matched to every job description</div>
+                <div className="p-3 rounded-xl bg-white dark:bg-[#16181f] border border-black/[0.06] dark:border-[#23252b] space-y-1 shadow-sm">
+                  <div className="font-semibold text-zinc-900 dark:text-white">95%+ ATS Score</div>
+                  <div className="text-zinc-500 dark:text-[#8e929b] text-[11px]">Keyword-matched to every job description</div>
                 </div>
-                <div className="p-3 rounded-xl bg-[#16181f] border border-[#23252b] space-y-1">
-                  <div className="font-semibold text-white">One-Click Apply</div>
-                  <div className="text-[#8e929b] text-[11px]">Auto-fills applications across platforms</div>
+                <div className="p-3 rounded-xl bg-white dark:bg-[#16181f] border border-black/[0.06] dark:border-[#23252b] space-y-1 shadow-sm">
+                  <div className="font-semibold text-zinc-900 dark:text-white">One-Click Apply</div>
+                  <div className="text-zinc-500 dark:text-[#8e929b] text-[11px]">Auto-fills applications across platforms</div>
                 </div>
-                <div className="p-3 rounded-xl bg-[#16181f] border border-[#23252b] space-y-1">
-                  <div className="font-semibold text-white">Zero Guesswork</div>
-                  <div className="text-[#8e929b] text-[11px]">Truth-preserved & verified content</div>
+                <div className="p-3 rounded-xl bg-white dark:bg-[#16181f] border border-black/[0.06] dark:border-[#23252b] space-y-1 shadow-sm">
+                  <div className="font-semibold text-zinc-900 dark:text-white">Zero Guesswork</div>
+                  <div className="text-zinc-500 dark:text-[#8e929b] text-[11px]">Truth-preserved & verified content</div>
                 </div>
               </div>
             </div>
 
             {/* Metrics Footer */}
-            <div className="mt-8 pt-4 border-t border-[#23252b] flex items-center justify-between text-xs text-[#8e929b]">
+            <div className="mt-8 pt-4 border-t border-black/[0.06] dark:border-[#23252b] flex items-center justify-between text-xs text-zinc-500 dark:text-[#8e929b]">
               <div>
-                <span className="text-white font-bold text-base block">14,000+</span>
+                <span className="text-zinc-900 dark:text-white font-bold text-base block">14,000+</span>
                 <span>Applications submitted</span>
               </div>
               <div className="text-right">
-                <span className="text-emerald-400 font-bold text-base block">4.2x higher</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold text-base block">4.2x higher</span>
                 <span>Interview callback rate</span>
               </div>
             </div>
@@ -199,8 +199,8 @@ export const AuthGatewayPage: React.FC<AuthPageProps> = ({
                   <button
                     type="button"
                     onClick={() => handleSwitchMode('signin')}
-                    className={`px-4 py-1.5 rounded-full font-medium transition-all ${
-                      mode === 'signin' ? 'bg-zinc-950 dark:bg-indigo-600 text-white font-semibold shadow-sm' : 'text-zinc-600 dark:text-[#8e929b] hover:text-zinc-950 dark:hover:text-white'
+                    className={`px-4 py-1.5 rounded-full font-medium transition-all cursor-pointer ${
+                      mode === 'signin' ? 'bg-[#D9704F] text-white font-semibold shadow-sm' : 'text-zinc-600 dark:text-[#8e929b] hover:text-zinc-950 dark:hover:text-white'
                     }`}
                   >
                     Sign In
@@ -208,8 +208,8 @@ export const AuthGatewayPage: React.FC<AuthPageProps> = ({
                   <button
                     type="button"
                     onClick={() => handleSwitchMode('signup')}
-                    className={`px-4 py-1.5 rounded-full font-medium transition-all ${
-                      mode === 'signup' ? 'bg-zinc-950 dark:bg-indigo-600 text-white font-semibold shadow-sm' : 'text-zinc-600 dark:text-[#8e929b] hover:text-zinc-950 dark:hover:text-white'
+                    className={`px-4 py-1.5 rounded-full font-medium transition-all cursor-pointer ${
+                      mode === 'signup' ? 'bg-[#D9704F] text-white font-semibold shadow-sm' : 'text-zinc-600 dark:text-[#8e929b] hover:text-zinc-950 dark:hover:text-white'
                     }`}
                   >
                     Create Account
@@ -326,7 +326,7 @@ export const AuthGatewayPage: React.FC<AuthPageProps> = ({
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="mt-2 w-full rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs py-3 px-4 shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="mt-2 w-full rounded-xl bg-[#D9704F] hover:bg-[#C85F3E] text-white font-semibold text-xs py-3 px-4 shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                 >
                   {isLoading ? (
                     <>
@@ -343,14 +343,14 @@ export const AuthGatewayPage: React.FC<AuthPageProps> = ({
               </form>
 
               {/* Toggle Prompt */}
-              <div className="text-center pt-2 text-xs text-[#8e929b]">
+              <div className="text-center pt-2 text-xs text-zinc-500 dark:text-[#8e929b]">
                 {mode === 'signin' ? (
                   <span>
                     Don&apos;t have an account yet?{' '}
                     <button
                       type="button"
                       onClick={() => handleSwitchMode('signup')}
-                      className="text-indigo-400 hover:text-indigo-300 font-semibold hover:underline"
+                      className="text-[#D9704F] hover:text-[#C85F3E] font-semibold hover:underline cursor-pointer"
                     >
                       Sign up free
                     </button>
@@ -361,7 +361,7 @@ export const AuthGatewayPage: React.FC<AuthPageProps> = ({
                     <button
                       type="button"
                       onClick={() => handleSwitchMode('signin')}
-                      className="text-indigo-400 hover:text-indigo-300 font-semibold hover:underline"
+                      className="text-[#D9704F] hover:text-[#C85F3E] font-semibold hover:underline cursor-pointer"
                     >
                       Sign in
                     </button>
