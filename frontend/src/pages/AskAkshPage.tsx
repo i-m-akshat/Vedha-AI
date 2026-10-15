@@ -532,8 +532,8 @@ export const AskAkshPage: React.FC = () => {
             {streaming && (
               <div className="flex items-center gap-3 rounded-2xl border border-indigo-500/20 bg-indigo-950/30 p-2.5 max-w-sm ml-9 mb-2 shadow-lg backdrop-blur-sm">
                 <img
-                  src="/assets/anime-running.gif"
-                  alt="Aksh is sprinting"
+                  src="/assets/loading.gif"
+                  alt="Aksh is processing"
                   className="w-12 h-12 object-cover rounded-xl shadow-md border border-indigo-500/30 shrink-0"
                 />
                 <div className="min-w-0 flex flex-col">
