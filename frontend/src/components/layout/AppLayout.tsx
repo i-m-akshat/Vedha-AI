@@ -79,22 +79,22 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
           {/* Left Brand */}
           <div className="flex items-center gap-4">
             <div 
-              className="flex items-center cursor-pointer select-none py-1 transition-opacity hover:opacity-85"
+              className="flex items-center gap-2.5 cursor-pointer select-none py-1 transition-opacity hover:opacity-90 group"
               onClick={() => setActivePage('dashboard')}
             >
-              {isDark ? (
-                <img 
-                  src="/VedhaAI-Dark.png" 
-                  alt="Vedha AI" 
-                  className="h-7 w-auto max-w-[130px] object-contain" 
-                />
-              ) : (
-                <img 
-                  src="/vedha-logo.png" 
-                  alt="Vedha AI" 
-                  className="h-8 w-auto max-w-[105px] object-contain" 
-                />
-              )}
+              <img 
+                src="/assets/vedha-terracotta-leaf-emblem.png" 
+                alt="Vedha AI" 
+                className="w-8 h-8 object-contain transition-transform group-hover:scale-105" 
+              />
+              <div className="flex flex-col">
+                <span className="font-bold tracking-tight text-base text-zinc-900 dark:text-white font-sans leading-none">
+                  Vedha<span className="text-[#D9704F]">.ai</span>
+                </span>
+                <span className="text-[9px] font-mono uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mt-0.5">
+                  Career OS
+                </span>
+              </div>
             </div>
 
             <div className="hidden xl:flex items-center gap-2 rounded-full border border-black/[0.06] dark:border-white/[0.08] bg-black/[0.03] dark:bg-zinc-900/60 px-3 py-1 text-[11px] text-zinc-600 dark:text-zinc-400 font-medium">

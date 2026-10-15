@@ -16,6 +16,8 @@ import { OrchestratorQueuePage } from './pages/OrchestratorQueuePage';
 import { AskAkshPage } from './pages/AskAkshPage';
 import { Loader2 } from 'lucide-react';
 import { LoginPage, RegisterPage } from './pages/AuthPages';
+import { LoadingScreen } from './components/ui/LoadingScreen';
+import { NotFoundPage } from './pages/NotFoundPage';
 
 const queryClient = new QueryClient();
 
@@ -85,18 +87,10 @@ export const AppContent: React.FC = () => {
 
   if (isAuthenticated && !isInitialized) {
     return (
-      <div className="min-h-screen w-screen flex flex-col items-center justify-center p-4 bg-[#090a0f] font-sans text-[#e2e4e9] antialiased">
-        <div className="border border-[#1e2029] bg-[#111218] p-8 rounded-2xl max-w-sm w-full flex flex-col items-center gap-4 text-center shadow-xl">
-          <img src="/vedha-logo.png" alt="Vedha AI" className="w-12 h-12 rounded-xl object-contain shadow-lg" />
-          <div className="space-y-1">
-            <h3 className="text-sm font-bold text-white tracking-tight">Vedha AI</h3>
-            <div className="flex items-center justify-center gap-2 text-xs text-[#8e929b]">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
-              <span>Loading workspace...</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <LoadingScreen
+        message="Calibrating your career workspace..."
+        submessage="Synchronizing Master Resume, Auto-Apply Queue, and Job Tracker..."
+      />
     );
   }
 
@@ -135,7 +129,7 @@ export const AppContent: React.FC = () => {
       case 'settings':
         return <SettingsPage />;
       default:
-        return <DashboardPage setActivePage={setActivePage} />;
+        return <NotFoundPage setActivePage={setActivePage} />;
     }
   };
 

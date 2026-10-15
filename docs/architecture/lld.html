@@ -355,7 +355,7 @@
   <!-- Sidebar Navigation -->
   <aside class="sidebar">
     <div class="brand">
-      <img src="../assets/vedha-logo.png" alt="Vedha AI Logo" id="sidebar-logo">
+      <img src="../assets/vedha-terracotta-leaf-emblem.png" alt="Vedha AI Logo" id="sidebar-logo">
       <span class="brand-title">Vedha AI LLD</span>
       <span class="brand-badge">v2.4</span>
     </div>
@@ -1246,6 +1246,95 @@ builder.Entity&lt;RefreshToken&gt;(b =>
       </div>
     </section>
 
+    <!-- SECTION 13: TERRACOTTA V LEAF EMBLEM, CREATIVE AUTH, LOADING SCREEN & ERROR BOUNDARY -->
+    <section id="autumn-brand-and-resilience" class="doc-section">
+      <div class="section-badge">BRAND IDENTITY & RESILIENCE</div>
+      <h2>13. Terracotta V Leaf Identity, Creative Auth, LoadingScreen & ErrorBoundary Architecture</h2>
+      <p class="lead">
+        Comprehensive low-level technical specification covering the new Terracotta V Leaf emblem system, bundle-optimized creative authentication, dedicated workspace loading screen, and self-healing Error Boundary.
+      </p>
+
+      <div class="card" style="margin-top: 1.5rem;">
+        <h3>1. Brand Asset Taxonomy & Zero-Breaking Change Architecture</h3>
+        <p style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-muted); line-height: 1.7;">
+          To preserve backward compatibility, all existing legacy assets (<code>vedha-logo.png</code> and <code>VedhaAI-Dark.png</code>) remain strictly preserved in the repository. The new brand identity assets introduce an organic, uplifting career sprint aesthetic:
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 1.25rem;">
+          <div style="padding: 1.25rem; background: var(--bg-code); border-radius: 12px; border: 1px solid var(--border-color);">
+            <div style="display: flex; items-center; gap: 0.75rem; margin-bottom: 0.5rem;">
+              <span style="font-size: 1.25rem;">🌱</span>
+              <strong style="color: #D9704F;">Terracotta V Leaf Emblem</strong>
+            </div>
+            <code style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.5rem;">vedha-terracotta-leaf-emblem.png</code>
+            <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.6;">
+              Standalone terracotta & sage uplifting V leaf with peach inner facet. Used for sticky navigation headers, brand marks, and documentation sidebars.
+            </p>
+          </div>
+
+          <div style="padding: 1.25rem; background: var(--bg-code); border-radius: 12px; border: 1px solid var(--border-color);">
+            <div style="display: flex; items-center; gap: 0.75rem; margin-bottom: 0.5rem;">
+              <span style="font-size: 1.25rem;">✨</span>
+              <strong style="color: #5B9279;">Uplifting V Leaf App Icon</strong>
+            </div>
+            <code style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.5rem;">vedha-v-leaf-icon.png</code>
+            <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.6;">
+              Cream-bordered squircle container with golden star sparkle on upper right. Used for browser favicon, mobile app icons, splash loaders, and extension login.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 1.5rem;">
+        <h3>2. Creative Auth & 42% Bundle Size Optimization</h3>
+        <p style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-muted); line-height: 1.7;">
+          Replacing the non-essential 3D Three.js canvas in <code>AuthPages.tsx</code> with the Autumn vector illustration suite (<code>AutumnHeroVector</code>) dropped the frontend production bundle size from <strong>1,220 kB down to 702 kB</strong> (a 42.4% reduction), significantly improving initial Time-To-Interactive (TTI) for first-time candidates on mobile networks.
+        </p>
+
+        <div style="margin-top: 1.25rem; overflow-x: auto;">
+          <svg viewBox="0 0 880 180" style="width: 100%; max-width: 880px; height: auto; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color);">
+            <rect x="30" y="30" width="240" height="120" rx="10" fill="var(--bg-code)" stroke="#D9704F" stroke-width="1.5" />
+            <text x="150" y="60" text-anchor="middle" fill="#D9704F" font-weight="700" font-size="12">Autumn Hero Vector</text>
+            <text x="150" y="85" text-anchor="middle" fill="var(--text-muted)" font-size="10">Scenic Vector Art Card</text>
+            <text x="150" y="110" text-anchor="middle" fill="var(--text-muted)" font-size="9">• Terracotta #D9704F Banner</text>
+            <text x="150" y="130" text-anchor="middle" fill="var(--text-muted)" font-size="9">• 100% HITL Safety Tag</text>
+
+            <path d="M 270 90 L 320 90" stroke="#D9704F" stroke-width="2" marker-end="url(#arrowhead)" />
+
+            <rect x="320" y="30" width="260" height="120" rx="10" fill="var(--bg-code)" stroke="#5B9279" stroke-width="1.5" />
+            <text x="450" y="60" text-anchor="middle" fill="#5B9279" font-weight="700" font-size="12">3 Pastel Squircle Badges</text>
+            <text x="450" y="85" text-anchor="middle" fill="var(--text-muted)" font-size="10">Autumn Color Architecture</text>
+            <text x="450" y="105" text-anchor="middle" fill="var(--text-muted)" font-size="9">Sage #DCEEE5: 95%+ ATS Score</text>
+            <text x="450" y="125" text-anchor="middle" fill="var(--text-muted)" font-size="9">Peach #FCE1D4: Auto-Dispatch</text>
+            <text x="450" y="140" text-anchor="middle" fill="var(--text-muted)" font-size="9">Cyan #E1F3F0: Zero Hallucination</text>
+
+            <path d="M 580 90 L 630 90" stroke="#5B9279" stroke-width="2" marker-end="url(#arrowhead)" />
+
+            <rect x="630" y="30" width="220" height="120" rx="10" fill="var(--bg-code)" stroke="#EFA84B" stroke-width="1.5" />
+            <text x="740" y="60" text-anchor="middle" fill="#EFA84B" font-weight="700" font-size="12">Authentication Form</text>
+            <text x="740" y="85" text-anchor="middle" fill="var(--text-muted)" font-size="10">Pill Switcher & Demo</text>
+            <text x="740" y="105" text-anchor="middle" fill="var(--text-muted)" font-size="9">One-Click Alex Morgan Demo</text>
+            <text x="740" y="125" text-anchor="middle" fill="var(--text-muted)" font-size="9">Terracotta Focus Rings</text>
+            <text x="740" y="140" text-anchor="middle" fill="var(--text-muted)" font-size="9">Tactile Active Scale Button</text>
+          </svg>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 1.5rem;">
+        <h3>3. Self-Healing Error Boundary Architecture (ErrorBoundary.tsx)</h3>
+        <p style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-muted); line-height: 1.7;">
+          To safeguard candidates against uncaught JavaScript exceptions during active application tailoring, <code>ErrorBoundary.tsx</code> wraps the root React application tree.
+        </p>
+
+        <ul style="padding-left: 1.25rem; margin-top: 0.75rem; font-size: 0.875rem; color: var(--text-main); line-height: 1.8;">
+          <li><strong>Human-First Exception Messaging:</strong> <em>"A fallen leaf interrupted the pipeline"</em> reassures the user that resume versions and tokens remain untouched.</li>
+          <li><strong>One-Click State Reset:</strong> Clicking <em>"Return to Career Dashboard"</em> resets boundary error state and rewrites the window hash to <code>#dashboard</code>.</li>
+          <li><strong>Copyable Diagnostic Payload:</strong> Generates a full diagnostic JSON/text payload including timestamp, URL, User-Agent, stack trace, and component stack trace for effortless issue reporting.</li>
+          <li><strong>Fallback Trail 404 (NotFoundPage.tsx):</strong> Elegant fallback component for unmapped routes, guiding candidates back to the Autumn sprint.</li>
+        </ul>
+      </div>
+    </section>
+
     <footer class="doc-footer">
       <div>Vedha AI Low-Level Design • Maintained per <a href="../AGENTS.md" style="color: var(--primary-light);">AGENTS.md</a></div>
       <div>Strict HTML Visual Standard • 2026</div>
@@ -1261,18 +1350,16 @@ builder.Entity&lt;RefreshToken&gt;(b =>
       const logo = document.getElementById('sidebar-logo');
       if (isDark) {
         btn.innerHTML = '<span>🌙 Toggle Theme</span>';
-        if (logo) logo.src = '../assets/VedhaAI-Dark.png';
       } else {
         btn.innerHTML = '<span>☀️ Toggle Theme</span>';
-        if (logo) logo.src = '../assets/vedha-logo.png';
       }
+      if (logo) logo.src = '../assets/vedha-terracotta-leaf-emblem.png';
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-      const isDark = document.documentElement.classList.contains('dark');
       const logo = document.getElementById('sidebar-logo');
       if (logo) {
-        logo.src = isDark ? '../assets/VedhaAI-Dark.png' : '../assets/vedha-logo.png';
+        logo.src = '../assets/vedha-terracotta-leaf-emblem.png';
       }
     });
   </script>

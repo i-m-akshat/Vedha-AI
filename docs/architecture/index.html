@@ -255,7 +255,7 @@
   <div class="container">
     <div class="header">
       <div class="brand-group">
-        <img src="../assets/vedha-logo.png" alt="Vedha AI" id="logoImg">
+        <img src="../assets/vedha-terracotta-leaf-emblem.png" alt="Vedha AI" id="logoImg" style="width: 32px; height: 32px; object-fit: contain;">
         <div>
           <span style="font-weight: 700; font-size: 17px; letter-spacing: -0.01em;">Vedha AI</span>
           <span class="badge badge-mono" style="margin-left: 8px;">Architecture Hub</span>
@@ -437,18 +437,16 @@
       const logo = document.getElementById('logoImg');
       if (isDark) {
         btn.textContent = '🌙 Toggle Theme';
-        if (logo) logo.src = '../assets/VedhaAI-Dark.png';
       } else {
         btn.textContent = '☀️ Toggle Theme';
-        if (logo) logo.src = '../assets/vedha-logo.png';
       }
+      if (logo) logo.src = '../assets/vedha-terracotta-leaf-emblem.png';
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-      const isDark = document.documentElement.classList.contains('dark');
       const logo = document.getElementById('logoImg');
       if (logo) {
-        logo.src = isDark ? '../assets/VedhaAI-Dark.png' : '../assets/vedha-logo.png';
+        logo.src = '../assets/vedha-terracotta-leaf-emblem.png';
       }
     });
   </script>

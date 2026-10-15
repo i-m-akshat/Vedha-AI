@@ -12,26 +12,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.documentElement.setAttribute("data-theme", theme);
     const isDark = theme === "dark";
     if (headerLogo) {
-      if (isDark) {
-        headerLogo.src = "VedhaAI-Dark.png";
-        headerLogo.style.height = "26px";
-        headerLogo.style.maxWidth = "135px";
-      } else {
-        headerLogo.src = "vedha-logo.png";
-        headerLogo.style.height = "32px";
-        headerLogo.style.maxWidth = "110px";
-      }
+      headerLogo.src = "vedha-terracotta-leaf-emblem.png";
+      headerLogo.style.height = "24px";
+      headerLogo.style.width = "24px";
     }
     if (loginLogo) {
-      if (isDark) {
-        loginLogo.src = "VedhaAI-Dark.png";
-        loginLogo.style.height = "38px";
-        loginLogo.style.maxWidth = "165px";
-      } else {
-        loginLogo.src = "vedha-logo.png";
-        loginLogo.style.height = "48px";
-        loginLogo.style.maxWidth = "130px";
-      }
+      loginLogo.src = "vedha-v-leaf-icon.png";
+      loginLogo.style.height = "56px";
+      loginLogo.style.width = "56px";
     }
     if (themeToggleIcon) themeToggleIcon.innerText = isDark ? "☀️" : "🌙";
     if (themeToggleBtn) {

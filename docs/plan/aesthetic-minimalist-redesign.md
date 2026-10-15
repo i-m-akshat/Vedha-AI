@@ -98,6 +98,12 @@ Execute a holistic UI/UX elevation to remove "AI Slop" artifacts and establish a
   - Phase 14 Added: Built `AkshFunLoader.tsx` vector mascot with animated blinking eyes, soft cheeks, ambient glow aura, and rotating fun witty messages. Integrated into `AskAkshPage.tsx` and `DashboardPage.tsx`.
   - Phase 15 Added: Purged decorative mockups from `DashboardPage.tsx` (Day Schedule with Google/Stripe times, fake October Targets, dog/umbrella/bench icons) and connected real system entities: `masterResumeApi.get()`, `candidateProfileApi.get()`, `orchestratorApi.getQueue()`, `applicationsApi.list()`.
   - Verification: Frontend compiled cleanly with 0 errors (`npm run build`, 1771 modules, 22.30s). Backend compiled with 0 warnings/errors (`dotnet build backend/ResumeTailor.sln --no-restore`).
+- **2026-10-16 (Morning - New Terracotta V Leaf Emblem, Creative Auth, Dedicated LoadingScreen & ErrorBoundary Architecture)**:
+  - Phase 16 Added: Integrated two new brand assets: `vedha-v-leaf-icon.png` (Uplifting V Leaf App Icon) and `vedha-terracotta-leaf-emblem.png` (Terracotta V Leaf Emblem) without deleting legacy assets. Replaced UI active displays in `AppLayout.tsx`, `AuthPages.tsx`, `App.tsx` splash screen, `index.html` favicon, and `extension/popup.html`.
+  - Phase 17 Added: Redesigned `AuthPages.tsx` with Autumn vector art and pastel feature cards, replacing heavy 3D canvas and reducing bundle size from 1,220 kB to 702 kB.
+  - Phase 18 Added: Implemented self-healing `ErrorBoundary.tsx` with friendly recovery actions and diagnostic logging, dedicated `LoadingScreen.tsx`, and 404 `NotFoundPage.tsx`.
+  - Verification: Frontend compiled cleanly (`npm run build`, 1773 modules, 0 errors, 12.88s). Backend 207/207 unit tests passed (`dotnet test`, 18s).
+
 
 
 

@@ -127,5 +127,33 @@ Minimalist Editorial Chat Bubble + Smooth Loading Indicator
     - `backend/src/ResumeTailor.Infrastructure/Aksh/AkshPrompts.cs`
     - `backend/src/ResumeTailor.Infrastructure/Aksh/AkshAgentRunner.cs`
     - `backend/src/ResumeTailor.Infrastructure/Aksh/Skills/CareerStrategistSkill.cs`
+- **2026-10-16 (Morning - New Terracotta V Leaf Emblem, Creative Auth, Dedicated LoadingScreen & ErrorBoundary Architecture)**:
+  - **New Visual Identity & Logo Integration**:
+    - Integrated two new brand assets: `vedha-v-leaf-icon.png` (Uplifting V Leaf App Icon) and `vedha-terracotta-leaf-emblem.png` (Terracotta V Leaf Emblem).
+    - Preserved existing legacy logos (`vedha-logo.png`, `VedhaAI-Dark.png`) untouched in all asset directories to prevent any breaking changes.
+    - Replaced active UI brand marks across `AppLayout.tsx`, `AuthPages.tsx`, `App.tsx` splash screen, `index.html` favicon, `extension/popup.html`, `extension/popup.js`, and documentation suites (`lld.html`, `hld.html`, `system-design.html`, `index.html`).
+  - **Creative Autumn Authentication Experience (`AuthPages.tsx`)**:
+    - Replaced heavy 3D voxel canvas with pure Autumn vector illustrations (`AutumnHeroVector`) and 3 pastel squircle feature cards (Target ATS ≥ 95%, Autonomous Dispatch, Zero Hallucination), slashing JavaScript bundle size from 1,220 kB to 702 kB.
+    - Styled form inputs and buttons with warm terracotta focus rings and hover micro-interactions.
+  - **Creative Full-Screen Loading Experience (`LoadingScreen.tsx`)**:
+    - Built dedicated full-screen loader featuring `AkshFunLoader` mascot companion, glowing ambient warm aura, and new squircle leaf app icon.
+  - **Self-Healing Error Boundary & 404 Trail (`ErrorBoundary.tsx`, `NotFoundPage.tsx`)**:
+    - Built comprehensive React Error Boundary wrapping `<App />` with plain-English human-friendly recovery ("A fallen leaf interrupted the pipeline"), diagnostic stack-trace copy button, and one-click return to dashboard.
+    - Built Autumn-themed 404 Trail page for out-of-bounds routes.
+  - **Impacted Files**:
+    - `frontend/public/assets/vedha-terracotta-leaf-emblem.png`
+    - `frontend/public/assets/vedha-v-leaf-icon.png`
+    - `frontend/src/components/layout/AppLayout.tsx`
+    - `frontend/src/components/ui/LoadingScreen.tsx`
+    - `frontend/src/components/ui/ErrorBoundary.tsx`
+    - `frontend/src/pages/NotFoundPage.tsx`
+    - `frontend/src/pages/AuthPages.tsx`
+    - `frontend/src/App.tsx`
+    - `frontend/src/main.tsx`
+    - `frontend/index.html`
+    - `extension/popup.html`
+    - `extension/popup.js`
+    - `docs/architecture/*.html`
+
 
 

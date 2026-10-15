@@ -349,7 +349,7 @@
   <!-- Sidebar Navigation -->
   <aside class="sidebar">
     <div class="brand">
-      <img src="../assets/vedha-logo.png" alt="Vedha AI Logo" id="sidebar-logo">
+      <img src="../assets/vedha-terracotta-leaf-emblem.png" alt="Vedha AI Logo" id="sidebar-logo">
       <span class="brand-title">Vedha System Design</span>
       <span class="brand-badge">v2.4</span>
     </div>
@@ -881,18 +881,16 @@
       const logo = document.getElementById('sidebar-logo');
       if (isDark) {
         btn.innerHTML = '<span>🌙 Toggle Theme</span>';
-        if (logo) logo.src = '../assets/VedhaAI-Dark.png';
       } else {
         btn.innerHTML = '<span>☀️ Toggle Theme</span>';
-        if (logo) logo.src = '../assets/vedha-logo.png';
       }
+      if (logo) logo.src = '../assets/vedha-terracotta-leaf-emblem.png';
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-      const isDark = document.documentElement.classList.contains('dark');
       const logo = document.getElementById('sidebar-logo');
       if (logo) {
-        logo.src = isDark ? '../assets/VedhaAI-Dark.png' : '../assets/vedha-logo.png';
+        logo.src = '../assets/vedha-terracotta-leaf-emblem.png';
       }
     });
   </script>
