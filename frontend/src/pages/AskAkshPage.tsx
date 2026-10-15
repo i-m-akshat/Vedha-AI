@@ -28,6 +28,7 @@ import type {
 import type { ApplicationQueueItemDto as QueueItemDto } from '../types/orchestrator';
 import { AkshMark } from '../components/aksh/AkshMark';
 import { Markdown } from '../components/aksh/Markdown';
+import { AkshFunLoader } from '../components/ui/AkshFunLoader';
 
 interface ChatBubble {
   id: string;
@@ -567,7 +568,7 @@ export const AskAkshPage: React.FC = () => {
               ) : (
                 <div key={b.id} className="flex gap-3 group">
                   <AkshMark size={26} className="mt-1 shrink-0" />
-                  <div className="relative max-w-[85%] rounded-2xl rounded-tl-sm border border-black/[0.06] dark:border-white/[0.06] bg-black/[0.02] dark:bg-zinc-900/50 px-4 py-3 text-sm text-zinc-900 dark:text-[#ededed] leading-relaxed shadow-sm">
+                  <div className="relative max-w-[85%] rounded-2xl rounded-tl-sm border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#16151F] px-4 py-3 text-sm text-zinc-900 dark:text-[#ededed] leading-relaxed shadow-sm">
                     <Markdown text={b.text} />
                     {streaming && <span className="ml-1 inline-block w-1.5 animate-pulse text-zinc-500 dark:text-zinc-300">▍</span>}
                     {b.text && !streaming && (
@@ -585,29 +586,15 @@ export const AskAkshPage: React.FC = () => {
             )}
 
             {streaming && (
-              <div className="flex items-center gap-3.5 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white/95 dark:bg-[#16151F]/90 p-3 max-w-md ml-9 mb-2 shadow-lg backdrop-blur-md transition-all">
-                <img
-                  src="/assets/loading.gif"
-                  alt="Aksh is processing"
-                  className="w-11 h-11 object-cover rounded-xl border border-black/[0.08] dark:border-white/[0.1] shrink-0 shadow-sm"
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#16151F] p-3.5 max-w-lg ml-9 mb-2 shadow-md transition-all">
+                <AkshFunLoader
+                  size="compact"
+                  message={getStageDisplay(agentStatus).title}
+                  submessage={agentStatus?.detail || (activeSkill ? `Active Skill: ${activeSkill.name}` : undefined)}
                 />
-                <div className="min-w-0 flex-1 flex flex-col gap-0.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 truncate">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
-                      <span>{getStageDisplay(agentStatus).title}</span>
-                    </span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-semibold shrink-0 uppercase tracking-wider">
-                      {getStageDisplay(agentStatus).badge}
-                    </span>
-                  </div>
-                  <span className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
-                    {agentStatus?.detail || (activeSkill ? `Executing ${activeSkill.name}...` : 'Reasoning across career history and targets...')}
-                  </span>
-                  <div className="w-full bg-black/[0.05] dark:bg-white/[0.06] h-1 rounded-full overflow-hidden mt-1">
-                    <div className="bg-gradient-to-r from-emerald-500 via-indigo-500 to-purple-500 h-full w-full animate-pulse rounded-full" />
-                  </div>
-                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-semibold shrink-0 uppercase tracking-wider">
+                  {getStageDisplay(agentStatus).badge}
+                </span>
               </div>
             )}
             <div ref={threadEndRef} />
@@ -626,32 +613,47 @@ export const AskAkshPage: React.FC = () => {
 
           <form
             onSubmit={(e) => sendMessage(e)}
-            className="flex items-center gap-2.5 border-t border-black/[0.06] dark:border-white/[0.07] px-4 py-3 bg-[#FAF8F5] dark:bg-[#100F17]"
+            className="flex flex-col gap-2 border-t border-black/[0.06] dark:border-white/[0.07] px-4 py-3 bg-[#FAF8F5] dark:bg-[#100F17]"
           >
-            <input
-              value={composer}
-              onChange={(e) => setComposer(e.target.value)}
-              disabled={streaming}
-              placeholder="Ask Aksh anything (e.g. 'Tailor my resume for this JD', or paste a job URL)…"
-              className="flex-1 rounded-full border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-zinc-900/80 px-4 py-2 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none focus:border-zinc-400 dark:focus:border-white/30 transition-colors disabled:opacity-40 shadow-inner"
-            />
-            {streaming ? (
-              <button
-                type="button"
-                onClick={() => abortRef.current?.abort()}
-                className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.08] dark:border-white/[0.1] px-4 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" /> Stop
-              </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={streaming || !composer.trim()}
-                className="inline-flex items-center gap-1.5 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 px-4 py-2 text-xs font-semibold transition-all shadow-sm disabled:opacity-30 cursor-pointer active:scale-[0.98]"
-              >
-                <Send className="w-3.5 h-3.5" /> Send
-              </button>
-            )}
+            <div className="flex items-center gap-2.5">
+              <textarea
+                value={composer}
+                onChange={(e) => setComposer(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (composer.trim() && !streaming) {
+                      sendMessage();
+                    }
+                  }
+                }}
+                rows={1}
+                disabled={streaming}
+                placeholder="Ask Aksh anything (e.g. 'Tailor my resume for this JD', or paste a job URL)…"
+                className="flex-1 max-h-32 min-h-[42px] py-2.5 px-4 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-zinc-900/80 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none focus:border-[#D9704F] dark:focus:border-[#D9704F] transition-colors disabled:opacity-40 shadow-inner resize-none"
+              />
+              {streaming ? (
+                <button
+                  type="button"
+                  onClick={() => abortRef.current?.abort()}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.08] dark:border-white/[0.1] px-4 py-2.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
+                >
+                  <X className="w-3.5 h-3.5" /> Stop
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={streaming || !composer.trim()}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[#D9704F] hover:bg-[#C85F3E] text-white px-5 py-2.5 text-xs font-bold transition-all shadow-sm disabled:opacity-30 cursor-pointer active:scale-[0.98] shrink-0"
+                >
+                  <Send className="w-3.5 h-3.5" /> Send
+                </button>
+              )}
+            </div>
+            <div className="flex items-center justify-between text-[10px] text-zinc-400 dark:text-zinc-500 px-1">
+              <span>Press <kbd className="font-mono bg-black/[0.04] dark:bg-white/[0.06] px-1 py-0.5 rounded text-[9px]">Enter ↵</kbd> to send, <kbd className="font-mono bg-black/[0.04] dark:bg-white/[0.06] px-1 py-0.5 rounded text-[9px]">Shift+Enter</kbd> for newline</span>
+              <span className="font-mono">Google XYZ &amp; STAR Calibrated</span>
+            </div>
           </form>
         </section>
 

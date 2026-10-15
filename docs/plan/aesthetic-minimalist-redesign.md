@@ -93,5 +93,11 @@ Execute a holistic UI/UX elevation to remove "AI Slop" artifacts and establish a
 - **2026-10-16 (Early Morning - Comprehensive Light/Dark Theme Decoupling Across All Pages)**:
   - Phase 12 Added: Complete audit and conversion of all 7 application pages (`TailorStudioPage`, `ResultStudioPage`, `OrchestratorQueuePage`, `AskAkshPage`, `TrackerPage`, `HistoryPage`, `AuthPages`) from hardcoded dark background hexes (`#111216`, `#16181f`, `#121215`) to responsive light/dark tokens (`bg-white dark:bg-[#16151F]`, `bg-[#FAF7F2] dark:bg-zinc-800/40`), ensuring 100% theme fidelity with Autumn design accents (`#D9704F`).
   - Verification: TypeScript check and production bundle compiled cleanly (`npm run build`, 1770 modules, 0 errors, 16.48s).
+- **2026-10-16 (Dawn - Aksh AI Formatting Engine, Custom Fun Mascot Loader & Real Dashboard Data Binding)**:
+  - Phase 13 Added: Re-engineered `Markdown.tsx` list and bullet marker parser. Purged `display: flex` from `<ul>` tags, added smart clause parser for colon-introduced lists, and theme-neutral bold styling.
+  - Phase 14 Added: Built `AkshFunLoader.tsx` vector mascot with animated blinking eyes, soft cheeks, ambient glow aura, and rotating fun witty messages. Integrated into `AskAkshPage.tsx` and `DashboardPage.tsx`.
+  - Phase 15 Added: Purged decorative mockups from `DashboardPage.tsx` (Day Schedule with Google/Stripe times, fake October Targets, dog/umbrella/bench icons) and connected real system entities: `masterResumeApi.get()`, `candidateProfileApi.get()`, `orchestratorApi.getQueue()`, `applicationsApi.list()`.
+  - Verification: Frontend compiled cleanly with 0 errors (`npm run build`, 1771 modules, 22.30s). Backend compiled with 0 warnings/errors (`dotnet build backend/ResumeTailor.sln --no-restore`).
+
 
 

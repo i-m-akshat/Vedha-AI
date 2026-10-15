@@ -106,5 +106,26 @@ Minimalist Editorial Chat Bubble + Smooth Loading Indicator
     - `frontend/src/pages/TrackerPage.tsx`
     - `frontend/src/pages/HistoryPage.tsx`
     - `frontend/src/pages/AuthPages.tsx`
+- **2026-10-16 (Dawn - Aksh AI Markdown Bullets Fix, Custom Fun Loader & Dashboard Real Data Binding)**:
+  - **Aksh AI Reply Formatting Engine**:
+    - Resolved defect where markdown bullet lists and enumerations following colons failed to render bullet points or had invisible bold text in light mode.
+    - Removed `display: flex` from `<ul>` in `Markdown.tsx` which suppressed standard browser bullet marker rendering.
+    - Implemented intelligent clause parser that normalizes colon-introduced lists into proper `<li>` items even when the model omits hyphens.
+    - Hardened backend prompts (`AkshPrompts.cs`, `AkshAgentRunner.cs`, `CareerStrategistSkill.cs`) with explicit markdown structure guidelines.
+  - **Custom Animated Fun Mascot Loader (`AkshFunLoader.tsx`)**:
+    - Created bespoke vector companion mascot "Aksh" with pulsing squircle face, animated blinking/squinting eyes, soft cheeks, ambient radiance aura, orbiting sparkle, and rotating witty career messages.
+    - Integrated into `AskAkshPage.tsx` (replacing static `/assets/loading.gif`) and `DashboardPage.tsx`.
+  - **Dashboard Real Data Binding & Mockup Elimination (`DashboardPage.tsx`)**:
+    - Purged fake decorative mockups (Day Schedule with Google/Stripe times, October Targets with $240k/$380k fake salaries, and dog/bench/umbrella icons).
+    - Replaced with real live system entities: `masterResumeApi.get()`, `candidateProfileApi.get()`, `orchestratorApi.getQueue()`, `applicationsApi.list()`.
+    - Integrated real pipeline stages (Saved, Applied, Interviews, Offers), actionable HITL review alerts, and real Master Resume status hub.
+  - **Impacted Files**:
+    - `frontend/src/components/aksh/Markdown.tsx`
+    - `frontend/src/components/ui/AkshFunLoader.tsx`
+    - `frontend/src/pages/AskAkshPage.tsx`
+    - `frontend/src/pages/DashboardPage.tsx`
+    - `backend/src/ResumeTailor.Infrastructure/Aksh/AkshPrompts.cs`
+    - `backend/src/ResumeTailor.Infrastructure/Aksh/AkshAgentRunner.cs`
+    - `backend/src/ResumeTailor.Infrastructure/Aksh/Skills/CareerStrategistSkill.cs`
 
 

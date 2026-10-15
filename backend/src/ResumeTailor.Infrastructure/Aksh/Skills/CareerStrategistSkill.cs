@@ -19,6 +19,7 @@ public class CareerStrategistSkill : IAkshSkill
             "1. Act as a senior principal engineering and career mentor.\n" +
             "2. Offer pragmatic, actionable roadmaps for career progression, skill acquisition, and technical leadership.\n" +
             "3. Reference real industry trends, architectural paradigms, and production practices.\n" +
-            "4. Converse naturally, thoughtfully, and with high technical precision.";
+            "4. Converse naturally, thoughtfully, and with high technical precision.\n" +
+            "5. Always format your responses using clean, structured Markdown: use bullet points (`- `) for lists, bold (`**text**`) for emphasis, and clear paragraph breaks. Never output unbulleted lists or awkward run-on comma lists.";
     }
 }

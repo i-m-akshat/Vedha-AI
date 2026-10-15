@@ -16,13 +16,13 @@ import {
   Bot, 
   ShieldCheck, 
   Search,
-  ExternalLink,
   Bell,
   MoreHorizontal,
-  Calendar,
-  Briefcase,
-  Target,
-  Compass
+  BookmarkCheck,
+  Award,
+  AlertCircle,
+  FileCheck,
+  Briefcase
 } from 'lucide-react';
 import { 
   AutumnHeroVector, 
@@ -30,17 +30,23 @@ import {
   AutumnUmbrellaVector, 
   AutumnWalkingStepsVector, 
   AutumnScarfBranchVector, 
-  AutumnAvatarVector, 
-  AutumnPumpkinVector, 
-  AutumnBenchVector, 
-  AutumnDogVector 
+  AutumnAvatarVector 
 } from '../components/icons/AutumnVectors';
 import { ActivePage } from '../components/layout/AppLayout';
-import { analyticsApi, applicationsApi, orchestratorApi, autonomousApi } from '../api';
+import { 
+  analyticsApi, 
+  applicationsApi, 
+  orchestratorApi, 
+  autonomousApi,
+  masterResumeApi,
+  candidateProfileApi
+} from '../api';
 import { useAuthStore } from '../stores/useAuthStore';
 import { DashboardAnalyticsDto } from '../types/shared';
 import { ApplicationRecordDto } from '../types/application';
-import { ApplicationQueueItemDto } from '../types/orchestrator';
+import { ApplicationQueueItemDto, CandidateProfileDto } from '../types/orchestrator';
+import { MasterResumeDto } from '../types/resume';
+import { AkshFunLoader } from '../components/ui/AkshFunLoader';
 
 interface DashboardPageProps {
   setActivePage: (page: ActivePage) => void;
@@ -59,21 +65,34 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
   const [recentApps, setRecentApps] = useState<ApplicationRecordDto[]>([]);
   const [queueItems, setQueueItems] = useState<ApplicationQueueItemDto[]>([]);
   const [autonomousRuns, setAutonomousRuns] = useState<any[]>([]);
+  const [masterResume, setMasterResume] = useState<MasterResumeDto | null>(null);
+  const [candidateProfile, setCandidateProfile] = useState<CandidateProfileDto | null>(null);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [analyticsResult, appsResult, queueResult, autoResult] = await Promise.allSettled([
+      const [
+        analyticsResult, 
+        appsResult, 
+        queueResult, 
+        autoResult,
+        resumeResult,
+        profileResult
+      ] = await Promise.allSettled([
         analyticsApi.getDashboard(),
         applicationsApi.list(),
         orchestratorApi.getQueue(),
         autonomousApi.getApplications(),
+        masterResumeApi.get(),
+        candidateProfileApi.get(),
       ]);
 
       if (analyticsResult.status === 'fulfilled') setAnalytics(analyticsResult.value);
       if (appsResult.status === 'fulfilled') setRecentApps(appsResult.value);
       if (queueResult.status === 'fulfilled') setQueueItems(queueResult.value);
       if (autoResult.status === 'fulfilled') setAutonomousRuns(autoResult.value);
+      if (resumeResult.status === 'fulfilled') setMasterResume(resumeResult.value);
+      if (profileResult.status === 'fulfilled') setCandidateProfile(profileResult.value);
     } finally {
       setIsLoading(false);
     }
@@ -88,10 +107,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
   const activeCount = queueItems.filter(q => q.status !== 'Submitted' && q.status !== 'Failed').length + 
     autonomousRuns.filter(a => a.status === 'pending' || a.status === 'generating_resume' || a.status === 'applying').length;
 
+  const savedCount = recentApps.filter(a => String(a.status).toLowerCase().includes('saved')).length;
+  const appliedCount = recentApps.filter(a => String(a.status).toLowerCase().includes('applied')).length;
   const interviewsCount = recentApps.filter(a => 
     String(a.status).toLowerCase().includes('interview') || 
     String(a.status).toLowerCase().includes('offer')
   ).length;
+  const offersCount = recentApps.filter(a => String(a.status).toLowerCase().includes('offer')).length;
+
+  const reviewPendingItems = queueItems.filter(q => q.status === 'PausedForUserReview');
 
   const filteredQueueItems = useMemo(() => {
     if (!searchQuery) return queueItems;
@@ -120,13 +144,27 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
     );
   }, [recentApps, activeTab, searchQuery]);
 
-  const candidateName = user?.fullName || 'Alex Morgan';
-  const candidateInitial = candidateName.charAt(0).toUpperCase();
+  const candidateName = user?.fullName || masterResume?.schema?.personalInfo?.fullName || 'Alex Morgan';
+  const candidateRole = masterResume?.schema?.personalInfo?.title || 'Senior Software Engineer';
+  const totalExperiences = masterResume?.schema?.experience?.length ?? 0;
+  const totalSkills = masterResume?.schema?.skills?.reduce((acc, cat) => acc + (cat.skills?.length ?? 0), 0) ?? 0;
+
+  if (isLoading && !analytics && recentApps.length === 0 && queueItems.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] w-full">
+        <AkshFunLoader 
+          size="lg" 
+          message="Loading your career workspace..." 
+          submessage="Synchronizing Master Resume, Auto-Apply Queue, and Job Tracker..." 
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col w-full gap-8 font-sans text-zinc-900 dark:text-[#ededed]">
       
-      {/* Top Bar: Terracotta Squircle Notification + Pill Search Bar + Date Sprint Tag (Autumn App by Tamo) */}
+      {/* Top Bar: Terracotta Squircle Notification + Pill Search Bar + Date Sprint Tag */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-1 max-w-2xl">
           {/* Terracotta Notification Squircle with Dot */}
@@ -144,7 +182,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
             <Search className="w-4 h-4 text-zinc-400 absolute left-4 top-3 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search jobs, skills, or target companies..."
+              placeholder="Search jobs, target roles, or companies..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-11 pr-4 py-2.5 rounded-full bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] text-xs text-zinc-900 dark:text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-[#D9704F]/30 shadow-sm transition-all"
@@ -156,7 +194,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
         <div className="flex items-center gap-3 self-end sm:self-auto">
           <div className="hidden md:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FDF2EE] dark:bg-[#2A1B16] border border-[#FAD9CE] dark:border-[#542B20] text-xs font-semibold text-[#D9704F] dark:text-[#F39A7E]">
             <span className="w-2 h-2 rounded-full bg-[#D9704F] animate-pulse"></span>
-            <span>Autumn Career Sprint • Oct 2026</span>
+            <span>Autumn Career Sprint</span>
           </div>
 
           <button
@@ -168,30 +206,36 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
             }`}
           >
             {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
-            <span>{isPaused ? 'Resume' : 'Pause Auto-Apply'}</span>
+            <span>{isPaused ? 'Resume Dispatch' : 'Pause Dispatch'}</span>
           </button>
         </div>
       </div>
 
-      {/* Hero Showcase Card: Autumn Day Scenic Illustration + Terracotta Banner (Exact Tamo Pattern) */}
+      {/* Hero Showcase Card: Autumn Day Scenic Illustration + Dynamic Terracotta Banner */}
       <section className="relative overflow-hidden rounded-[32px] border border-black/[0.06] dark:border-white/[0.08] bg-[#FDF4ED] dark:bg-[#181622] shadow-sm transition-all">
         {/* Top: Autumn Day Scenic Vector Artwork */}
         <div className="w-full overflow-hidden">
           <AutumnHeroVector className="w-full h-44 sm:h-56 object-cover" />
         </div>
 
-        {/* Bottom Banner: Terracotta #D9704F Bar with Typography & Menu */}
+        {/* Bottom Banner: Terracotta #D9704F Bar with Real Dynamic System Stats */}
         <div className="bg-[#D9704F] p-6 sm:p-7 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-white/80 text-xs font-medium">
               <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
-              <span>Autumn Day • Active Search Mode</span>
+              <span>Career Workspace • {isPaused ? 'Dispatch Paused' : 'Active Dispatch Mode'}</span>
             </div>
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-              Autumn Career Sprint — Hello {candidateName.split(' ')[0]}
+              Welcome back, {candidateName.split(' ')[0]}
             </h1>
             <p className="text-xs sm:text-sm text-white/90 max-w-xl leading-relaxed">
-              14 new calibrated job matches ready for auto-dispatch. All applications pass 100% human-in-the-loop verification before submission.
+              {reviewPendingItems.length > 0
+                ? `${reviewPendingItems.length} application(s) awaiting your verification before dispatch. 100% human-in-the-loop guarantee.`
+                : queueItems.length > 0
+                ? `${queueItems.length} calibrated application(s) ready in queue. All systems operating with zero-hallucination shield.`
+                : masterResume
+                ? `Master Resume active with ${totalExperiences} role(s) and ${totalSkills} skill(s). Ready to tailor for any opening.`
+                : 'Upload your Master Resume to unlock automated tailoring, cover letter generation, and auto-apply dispatch.'}
             </p>
           </div>
 
@@ -204,18 +248,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
             </button>
             <button
               onClick={() => setActivePage('orchestrator')}
-              className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-all cursor-pointer active:scale-95"
-              title="Application Options"
+              className="px-4 py-2.5 rounded-full bg-white/20 hover:bg-white/30 text-white text-xs font-semibold transition-all cursor-pointer active:scale-95"
+              title="Open Auto-Apply Queue"
             >
-              <MoreHorizontal className="w-4 h-4" />
+              Auto-Apply Queue ({queueItems.length})
             </button>
           </div>
         </div>
       </section>
 
-      {/* 4 Stacked / Floating Pastel Squircle Tools (From Autumn App by Tamo Reference) */}
+      {/* 4 Pastel Squircle Real System Pathways */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {/* Tool 1: Sage Green (Resume Tailor) */}
+        {/* Tool 1: Sage Green (Resume Tailor Studio) */}
         <div 
           onClick={() => setActivePage('tailor-studio')}
           className="p-4 sm:p-5 rounded-[24px] bg-[#DCEEE5] dark:bg-[#1E362D] border border-[#C5E4D5] dark:border-[#2C5244] hover:shadow-md transition-all cursor-pointer flex items-center gap-3.5 group"
@@ -227,113 +271,152 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
           </div>
         </div>
 
-        {/* Tool 2: Soft Peach (Cover Letter AI) */}
+        {/* Tool 2: Soft Peach (Auto-Apply Queue) */}
         <div 
-          onClick={() => setActivePage('tailor-studio')}
+          onClick={() => setActivePage('orchestrator')}
           className="p-4 sm:p-5 rounded-[24px] bg-[#FCE1D4] dark:bg-[#3D261D] border border-[#F9CCA8] dark:border-[#5B392B] hover:shadow-md transition-all cursor-pointer flex items-center gap-3.5 group"
         >
           <AutumnUmbrellaVector className="w-12 h-12 shrink-0 group-hover:scale-105 transition-transform" />
           <div className="min-w-0">
-            <div className="text-xs font-bold text-[#8C3C24] dark:text-[#F8BCA7] truncate">Cover Letter AI</div>
-            <div className="text-[11px] text-[#A64B2F] dark:text-[#D98A72] truncate">Role-Specific Drafts</div>
+            <div className="text-xs font-bold text-[#8C3C24] dark:text-[#F8BCA7] truncate">Auto-Dispatch</div>
+            <div className="text-[11px] text-[#A64B2F] dark:text-[#D98A72] truncate">{queueItems.length} in Queue</div>
           </div>
         </div>
 
-        {/* Tool 3: Mint Cyan (Auto-Apply Queue) */}
+        {/* Tool 3: Mint Cyan (Ask Aksh Copilot) */}
         <div 
-          onClick={() => setActivePage('orchestrator')}
+          onClick={() => setActivePage('ask-aksh')}
           className="p-4 sm:p-5 rounded-[24px] bg-[#E1F3F0] dark:bg-[#1B3633] border border-[#C7EAE3] dark:border-[#29514D] hover:shadow-md transition-all cursor-pointer flex items-center gap-3.5 group"
         >
           <AutumnWalkingStepsVector className="w-12 h-12 shrink-0 group-hover:scale-105 transition-transform" />
           <div className="min-w-0">
-            <div className="text-xs font-bold text-[#20544B] dark:text-[#A7E2D8] truncate">Auto-Dispatch</div>
-            <div className="text-[11px] text-[#2D6E62] dark:text-[#7EC4B8] truncate">{activeCount} in Queue</div>
+            <div className="text-xs font-bold text-[#20544B] dark:text-[#A7E2D8] truncate">Ask Aksh AI</div>
+            <div className="text-[11px] text-[#2D6E62] dark:text-[#7EC4B8] truncate">Copilot &amp; STAR Drills</div>
           </div>
         </div>
 
-        {/* Tool 4: Warm Sand (Interview Drills) */}
+        {/* Tool 4: Warm Sand (Job Tracker Kanban) */}
         <div 
-          onClick={() => setActivePage('ask-aksh')}
+          onClick={() => setActivePage('tracker')}
           className="p-4 sm:p-5 rounded-[24px] bg-[#F9E8D6] dark:bg-[#3B3020] border border-[#F2D7B8] dark:border-[#584830] hover:shadow-md transition-all cursor-pointer flex items-center gap-3.5 group"
         >
           <AutumnScarfBranchVector className="w-12 h-12 shrink-0 group-hover:scale-105 transition-transform" />
           <div className="min-w-0">
-            <div className="text-xs font-bold text-[#6D4C24] dark:text-[#E8D1B5] truncate">Interview Drills</div>
-            <div className="text-[11px] text-[#865E2D] dark:text-[#C7A77F] truncate">STAR System Drills</div>
+            <div className="text-xs font-bold text-[#6D4C24] dark:text-[#E8D1B5] truncate">Job Tracker</div>
+            <div className="text-[11px] text-[#865E2D] dark:text-[#C7A77F] truncate">{recentApps.length} Tracked</div>
           </div>
         </div>
       </section>
 
-      {/* Day Schedule Section (Directly from Autumn App by Tamo Reference) */}
+      {/* Real Pipeline Stages Snapshot (Replacing fake Day Schedule) */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-bold text-zinc-900 dark:text-white tracking-tight">Day Schedule</h2>
+            <h2 className="text-sm font-bold text-zinc-900 dark:text-white tracking-tight">Application Pipeline</h2>
             <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-black/[0.04] dark:bg-white/[0.08] text-zinc-500 dark:text-zinc-400">
-              Today
+              Active Stages
             </span>
           </div>
-          <button className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
-            <MoreHorizontal className="w-4 h-4" />
+          <button 
+            onClick={() => setActivePage('tracker')}
+            className="text-xs text-[#D9704F] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+          >
+            <span>Kanban Board</span>
+            <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Schedule 1 */}
-          <div className="p-4 rounded-[24px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] flex items-center gap-3.5 shadow-sm hover:shadow transition-all">
-            <AutumnTreeLeavesVector className="w-11 h-11 shrink-0" />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">
-                <span>09:00 AM</span>
-                <span className="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-600 font-semibold">Done</span>
+        {/* Pending Review Alert if any item is paused for HITL */}
+        {reviewPendingItems.length > 0 && (
+          <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5">
+              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <div>
+                <span className="font-bold text-amber-900 dark:text-amber-200">
+                  {reviewPendingItems.length} Application(s) Waiting for Your Approval:
+                </span>{' '}
+                <span className="text-amber-800 dark:text-amber-300">
+                  Pre-filled answers are generated. Review and approve before submission.
+                </span>
               </div>
-              <div className="text-xs font-semibold text-zinc-900 dark:text-white truncate mt-0.5">Resume Tailoring</div>
-              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">Google • L6 Architect</div>
+            </div>
+            <button
+              onClick={() => setActivePage('ask-aksh')}
+              className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold transition-all shrink-0 cursor-pointer active:scale-95"
+            >
+              Review Now
+            </button>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {/* Stage 1: Saved */}
+          <div 
+            onClick={() => setActivePage('tracker')}
+            className="p-4 rounded-[22px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] flex items-center gap-3.5 shadow-sm hover:shadow transition-all cursor-pointer group"
+          >
+            <div className="w-10 h-10 rounded-2xl bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <BookmarkCheck className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-lg font-bold font-mono text-zinc-900 dark:text-white leading-tight">
+                {String(savedCount).padStart(2, '0')}
+              </div>
+              <div className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Saved Jobs</div>
             </div>
           </div>
 
-          {/* Schedule 2 */}
-          <div className="p-4 rounded-[24px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] flex items-center gap-3.5 shadow-sm hover:shadow transition-all">
-            <AutumnUmbrellaVector className="w-11 h-11 shrink-0" />
+          {/* Stage 2: Applied */}
+          <div 
+            onClick={() => setActivePage('tracker')}
+            className="p-4 rounded-[22px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] flex items-center gap-3.5 shadow-sm hover:shadow transition-all cursor-pointer group"
+          >
+            <div className="w-10 h-10 rounded-2xl bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <Send className="w-5 h-5" />
+            </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">
-                <span>11:30 AM</span>
-                <span className="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-600 font-semibold">Done</span>
+              <div className="text-lg font-bold font-mono text-sky-950 dark:text-sky-100 leading-tight">
+                {String(appliedCount).padStart(2, '0')}
               </div>
-              <div className="text-xs font-semibold text-zinc-900 dark:text-white truncate mt-0.5">Cover Letter AI</div>
-              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">Stripe • Staff Platform</div>
+              <div className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Applied</div>
             </div>
           </div>
 
-          {/* Schedule 3 */}
-          <div className="p-4 rounded-[24px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] flex items-center gap-3.5 shadow-sm hover:shadow transition-all">
-            <AutumnWalkingStepsVector className="w-11 h-11 shrink-0" />
+          {/* Stage 3: Interviewing */}
+          <div 
+            onClick={() => setActivePage('tracker')}
+            className="p-4 rounded-[22px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] flex items-center gap-3.5 shadow-sm hover:shadow transition-all cursor-pointer group"
+          >
+            <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <TrendingUp className="w-5 h-5" />
+            </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">
-                <span>02:15 PM</span>
-                <span className="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 font-semibold">Active</span>
+              <div className="text-lg font-bold font-mono text-amber-950 dark:text-amber-100 leading-tight">
+                {String(interviewsCount).padStart(2, '0')}
               </div>
-              <div className="text-xs font-semibold text-zinc-900 dark:text-white truncate mt-0.5">Auto-Dispatch</div>
-              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">12 Verified Positions</div>
+              <div className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Interviews</div>
             </div>
           </div>
 
-          {/* Schedule 4 */}
-          <div className="p-4 rounded-[24px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] flex items-center gap-3.5 shadow-sm hover:shadow transition-all">
-            <AutumnScarfBranchVector className="w-11 h-11 shrink-0" />
+          {/* Stage 4: Offers */}
+          <div 
+            onClick={() => setActivePage('tracker')}
+            className="p-4 rounded-[22px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] flex items-center gap-3.5 shadow-sm hover:shadow transition-all cursor-pointer group"
+          >
+            <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <Award className="w-5 h-5" />
+            </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">
-                <span>04:45 PM</span>
-                <span className="px-1.5 py-0.2 rounded bg-sky-500/10 text-sky-600 font-semibold">Ready</span>
+              <div className="text-lg font-bold font-mono text-emerald-950 dark:text-emerald-100 leading-tight">
+                {String(offersCount).padStart(2, '0')}
               </div>
-              <div className="text-xs font-semibold text-zinc-900 dark:text-white truncate mt-0.5">Mock Interview</div>
-              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">Airbnb • Systems Deep Dive</div>
+              <div className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Offers</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 2. Six Pastel Category & Metric Cards (Directly from Reference 1: High Conversion Landing Page) */}
+      {/* Six Pastel Category & Metric Cards */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         
         {/* Card 1: Mint (In-Progress Queue) */}
@@ -419,7 +502,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
             <div className="text-xs font-medium text-amber-800 dark:text-amber-300 mt-1">Interviews &amp; Offers</div>
           </div>
           <div className="text-[10px] font-mono text-amber-700 dark:text-amber-400 pt-2 border-t border-amber-200/50 dark:border-amber-800/30 flex items-center justify-between">
-            <button onClick={() => setActivePage('tracker')} className="hover:underline flex items-center gap-1">
+            <button onClick={() => setActivePage('tracker')} className="hover:underline flex items-center gap-1 cursor-pointer">
               <span>View Board</span>
               <ChevronRight className="w-3 h-3" />
             </button>
@@ -444,7 +527,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
             <div className="text-xl font-extrabold font-mono text-yellow-950 dark:text-yellow-100 tracking-tight truncate">
               Ask Aksh
             </div>
-            <div className="text-xs font-medium text-yellow-800 dark:text-yellow-300 mt-1">Autonomous Skills</div>
+            <div className="text-xs font-medium text-yellow-800 dark:text-yellow-300 mt-1">Career Agent</div>
           </div>
           <div className="text-[10px] font-mono text-yellow-700 dark:text-yellow-400 pt-2 border-t border-yellow-200/50 dark:border-yellow-800/30 flex items-center justify-between">
             <span>Harness Agent</span>
@@ -466,7 +549,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
             <div className="text-3xl font-extrabold font-mono text-rose-950 dark:text-rose-100 tracking-tight">
               100%
             </div>
-            <div className="text-xs font-medium text-rose-800 dark:text-rose-300 mt-1">Verification Shield</div>
+            <div className="text-xs font-medium text-rose-800 dark:text-rose-300 mt-1">Safety Shield</div>
           </div>
           <div className="text-[10px] font-mono text-rose-700 dark:text-rose-400 pt-2 border-t border-rose-200/50 dark:border-rose-800/30 flex items-center justify-between">
             <span>Integrity</span>
@@ -476,7 +559,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
 
       </section>
 
-      {/* 3. Segmented Control & Calibration Deck (Inspired by Flowbase & Autumn app) */}
+      {/* Segmented Control & Calibration Deck */}
       <section className="p-5 sm:p-6 rounded-[24px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] flex flex-col md:flex-row items-start md:items-center justify-between gap-5 shadow-sm">
         <div className="flex flex-wrap items-center gap-6 text-xs w-full md:w-auto">
           {/* Daily Limit Slider */}
@@ -488,7 +571,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
               max="100"
               value={dailyCap}
               onChange={(e) => setDailyCap(Number(e.target.value))}
-              className="w-28 accent-zinc-900 dark:accent-white cursor-pointer"
+              className="w-28 accent-[#D9704F] cursor-pointer"
             />
             <span className="font-mono font-semibold px-2.5 py-0.5 rounded-full bg-black/[0.04] dark:bg-white/[0.08] text-zinc-800 dark:text-zinc-200 border border-black/[0.05] dark:border-white/[0.06]">
               {dailyCap} apps/day
@@ -504,7 +587,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
               max="98"
               value={minAts}
               onChange={(e) => setMinAts(Number(e.target.value))}
-              className="w-28 accent-zinc-900 dark:accent-white cursor-pointer"
+              className="w-28 accent-[#D9704F] cursor-pointer"
             />
             <span className="font-mono font-semibold px-2.5 py-0.5 rounded-full bg-black/[0.04] dark:bg-white/[0.08] text-zinc-800 dark:text-zinc-200 border border-black/[0.05] dark:border-white/[0.06]">
               {minAts}%
@@ -533,13 +616,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
         </div>
       </section>
 
-      {/* 4. Main Split: Applications History (8 cols) vs Spotlight Profile & Feed (4 cols) */}
+      {/* Main Split: Real Applications History (8 cols) vs Real Candidate & Master Resume Hub (4 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* Left Column (8 cols): Applications List with Segmented Tabs & Search */}
         <section className="lg:col-span-8 flex flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3 pb-1">
-            {/* Segmented Pill Filter (Flowbase style) */}
+            {/* Segmented Pill Filter */}
             <div className="flex items-center gap-1 bg-black/[0.04] dark:bg-white/[0.06] p-1 rounded-full border border-black/[0.05] dark:border-white/[0.08] text-xs">
               <button
                 onClick={() => setActiveTab('all')}
@@ -549,7 +632,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
                     : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
                 }`}
               >
-                All Applications
+                All Applications ({recentApps.length})
               </button>
               <button
                 onClick={() => setActiveTab('queue')}
@@ -581,15 +664,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
                 placeholder="Search jobs..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 pr-3 py-1.5 text-xs rounded-full bg-black/[0.03] dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] focus:border-zinc-400 dark:focus:border-white/30 text-zinc-900 dark:text-white placeholder-zinc-400 outline-none w-44 sm:w-56 transition-all"
+                className="pl-8 pr-3 py-1.5 text-xs rounded-full bg-black/[0.03] dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] focus:border-[#D9704F] dark:focus:border-[#D9704F] text-zinc-900 dark:text-white placeholder-zinc-400 outline-none w-44 sm:w-56 transition-all"
               />
             </div>
           </div>
 
           {/* Cards Stack */}
           <div className="flex flex-col gap-3">
-            {(activeTab === 'queue' ? filteredQueueItems : filteredQueueItems.length > 0 ? filteredQueueItems : filteredRecentApps).length > 0 ? (
-              (activeTab === 'queue' || queueItems.length > 0 
+            {(activeTab === 'queue' ? filteredQueueItems : filteredRecentApps).length > 0 ? (
+              (activeTab === 'queue' 
                 ? filteredQueueItems.slice(0, 6) 
                 : filteredRecentApps.slice(0, 6)
               ).map((item: any) => {
@@ -653,10 +736,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
                           View Resume
                         </button>
                         <button
-                          onClick={() => setActivePage('orchestrator')}
+                          onClick={() => setActivePage(isQueue ? 'orchestrator' : 'tracker')}
                           className="px-3.5 py-1.5 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 text-xs font-semibold transition-all shadow-sm cursor-pointer active:scale-95"
                         >
-                          Auto-Apply
+                          {isQueue ? 'Auto-Dispatch' : 'Open Details'}
                         </button>
                       </div>
                     </div>
@@ -670,7 +753,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
                   <Inbox className="w-6 h-6" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">No Applications Recorded</h3>
+                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">No Applications Recorded Yet</h3>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto leading-relaxed">
                     Ready to accelerate your job search? Tailor your resume to any job opening or paste a URL to auto-apply.
                   </p>
@@ -678,7 +761,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
                 <div className="flex items-center justify-center gap-3 pt-2">
                   <button
                     onClick={() => setActivePage('tailor-studio')}
-                    className="px-4 py-2 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 text-xs font-semibold transition-all shadow-sm cursor-pointer active:scale-95"
+                    className="px-4 py-2 rounded-full bg-[#D9704F] hover:bg-[#C85F3E] text-white text-xs font-semibold transition-all shadow-sm cursor-pointer active:scale-95"
                   >
                     Tailor First Resume
                   </button>
@@ -694,23 +777,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
           </div>
         </section>
 
-        {/* Right Column (4 cols): Jack / Candidate Profile & Career Planning (Exact Autumn App Reference) */}
+        {/* Right Column (4 cols): Real Candidate Profile & Real Master Resume Hub */}
         <section className="lg:col-span-4 flex flex-col gap-6">
           
-          {/* Main Candidate Card (Pure white rounded container matching Jack's card in reference) */}
+          {/* Main Candidate Card */}
           <div className="p-6 sm:p-7 rounded-[32px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] space-y-6 shadow-sm">
             
             {/* 1. Profile Header with AutumnAvatarVector, Name, Role, and Terracotta Pill */}
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3.5">
-                <AutumnAvatarVector className="w-16 h-16 shrink-0" />
+                <AutumnAvatarVector className="w-14 h-14 shrink-0" />
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
                     <h3 className="font-bold text-zinc-900 dark:text-white text-base truncate">{candidateName}</h3>
                     <CheckCircle2 className="w-4 h-4 text-[#D9704F] fill-[#D9704F]/20 shrink-0" />
                   </div>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
-                    Senior Systems Architect
+                    {candidateRole}
                   </p>
                 </div>
               </div>
@@ -718,9 +801,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
               {/* Terracotta Pill Button */}
               <button
                 onClick={() => setActivePage('candidate-profile')}
-                className="px-4 py-1.5 rounded-full bg-[#D9704F] hover:bg-[#C85F3E] text-white text-xs font-semibold shadow-sm transition-all cursor-pointer active:scale-95 shrink-0"
+                className="px-3.5 py-1.5 rounded-full bg-[#D9704F] hover:bg-[#C85F3E] text-white text-xs font-semibold shadow-sm transition-all cursor-pointer active:scale-95 shrink-0"
               >
-                Active Profile
+                Profile
               </button>
             </div>
 
@@ -736,124 +819,101 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
               </div>
             </div>
 
-            {/* 2. October Targets Section (Google, Stripe, Airbnb with Autumn Vector Badges) */}
+            {/* 2. Real Master Resume Status Hub (Replacing Fake October Targets) */}
             <div className="space-y-3 pt-2 border-t border-black/[0.05] dark:border-white/[0.06]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-white font-mono">
-                    October Targets
+                    Master Resume
                   </h4>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#FDF2EE] dark:bg-[#2A1B16] text-[#D9704F] dark:text-[#F39A7E] font-semibold">
-                    3 Selected
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-semibold ${
+                    masterResume 
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' 
+                      : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                  }`}>
+                    {masterResume ? 'Active' : 'Missing'}
                   </span>
                 </div>
                 <button 
-                  onClick={() => setActivePage('tracker')}
-                  className="text-[11px] text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                  onClick={() => setActivePage('master-resume')}
+                  className="text-[11px] text-[#D9704F] hover:underline font-medium cursor-pointer"
+                >
+                  Manage →
+                </button>
+              </div>
+
+              {masterResume ? (
+                <div className="p-4 rounded-2xl bg-[#FAF7F2] dark:bg-[#1C1B27] border border-black/[0.04] dark:border-white/[0.06] space-y-2.5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-[#D9704F]/10 text-[#D9704F] flex items-center justify-center shrink-0">
+                      <FileCheck className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-bold text-zinc-900 dark:text-white truncate">
+                        {masterResume.title || masterResume.originalFileName || 'Master Resume'}
+                      </div>
+                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
+                        v{masterResume.versionNumber} · {totalExperiences} Experience(s) · {totalSkills} Skill(s)
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-zinc-400 dark:text-zinc-500 font-mono pt-1">
+                    <span>Last Updated: {masterResume.updatedAtUtc ? new Date(masterResume.updatedAtUtc).toLocaleDateString() : 'Active'}</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">100% Calibrated</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 text-center space-y-2">
+                  <p className="text-xs text-amber-800 dark:text-amber-300">
+                    No master resume uploaded yet. Upload your PDF or DOCX to enable zero-prompt tailoring.
+                  </p>
+                  <button
+                    onClick={() => setActivePage('master-resume')}
+                    className="px-4 py-1.5 rounded-full bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold transition-all cursor-pointer shadow-sm active:scale-95"
+                  >
+                    Upload Master Resume
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 3. Real Target Preferences (Replacing Fake Dog/Umbrella Icons) */}
+            <div className="space-y-3 pt-2 border-t border-black/[0.05] dark:border-white/[0.06]">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-white font-mono">
+                  Career Preferences
+                </h4>
+                <button 
+                  onClick={() => setActivePage('candidate-profile')}
+                  className="text-[11px] text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
                 >
                   Edit
                 </button>
               </div>
 
-              <div className="space-y-2.5">
-                {/* Target 1: Google */}
-                <div className="p-3 rounded-2xl bg-[#FAF7F2] dark:bg-[#1C1B27] border border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between gap-3 hover:border-[#D9704F]/40 transition-all">
-                  <div className="flex items-center gap-3">
-                    <AutumnTreeLeavesVector className="w-10 h-10 shrink-0" />
-                    <div>
-                      <div className="text-xs font-bold text-zinc-900 dark:text-white">Google</div>
-                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Staff Architect • $174k - $240k</div>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => setActivePage('tailor-studio')}
-                    className="px-3 py-1 rounded-full text-[11px] font-semibold text-[#D9704F] bg-[#FDF2EE] border border-[#FAD9CE] hover:bg-[#D9704F] hover:text-white transition-all cursor-pointer"
-                  >
-                    View
-                  </button>
-                </div>
-
-                {/* Target 2: Stripe */}
-                <div className="p-3 rounded-2xl bg-[#FAF7F2] dark:bg-[#1C1B27] border border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between gap-3 hover:border-[#D9704F]/40 transition-all">
-                  <div className="flex items-center gap-3">
-                    <AutumnPumpkinVector className="w-10 h-10 shrink-0" />
-                    <div>
-                      <div className="text-xs font-bold text-zinc-900 dark:text-white">Stripe</div>
-                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Core Infra • $320k - $380k</div>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => setActivePage('tailor-studio')}
-                    className="px-3 py-1 rounded-full text-[11px] font-semibold text-[#D9704F] bg-[#FDF2EE] border border-[#FAD9CE] hover:bg-[#D9704F] hover:text-white transition-all cursor-pointer"
-                  >
-                    View
-                  </button>
-                </div>
-
-                {/* Target 3: Airbnb */}
-                <div className="p-3 rounded-2xl bg-[#FAF7F2] dark:bg-[#1C1B27] border border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between gap-3 hover:border-[#D9704F]/40 transition-all">
-                  <div className="flex items-center gap-3">
-                    <AutumnBenchVector className="w-10 h-10 shrink-0" />
-                    <div>
-                      <div className="text-xs font-bold text-zinc-900 dark:text-white">Airbnb</div>
-                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Distributed • $215k - $290k</div>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => setActivePage('tailor-studio')}
-                    className="px-3 py-1 rounded-full text-[11px] font-semibold text-[#D9704F] bg-[#FDF2EE] border border-[#FAD9CE] hover:bg-[#D9704F] hover:text-white transition-all cursor-pointer"
-                  >
-                    View
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* 3. Career Planning Section (Vector Squircles Thumbnails from Autumn App Reference) */}
-            <div className="space-y-3 pt-2 border-t border-black/[0.05] dark:border-white/[0.06]">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-white font-mono">
-                  Career Planning
-                </h4>
-                <button 
-                  onClick={() => setActivePage('tracker')}
-                  className="text-[11px] text-[#D9704F] hover:underline font-medium"
-                >
-                  See all →
-                </button>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2.5">
-                {/* Planning Item 1: Dog walk / morning standup */}
-                <div 
-                  onClick={() => setActivePage('ask-aksh')}
-                  className="p-3 rounded-2xl bg-[#FAF7F2] dark:bg-[#1C1B27] border border-black/[0.04] dark:border-white/[0.06] text-center flex flex-col items-center gap-2 hover:border-[#D9704F]/40 transition-all cursor-pointer group"
-                >
-                  <AutumnDogVector className="w-10 h-10 group-hover:scale-105 transition-transform" />
-                  <span className="text-[10px] font-medium text-zinc-700 dark:text-zinc-300 leading-tight">
-                    Standup
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="p-2.5 rounded-xl bg-[#FAF7F2] dark:bg-[#1C1B27] border border-black/[0.04] dark:border-white/[0.06]">
+                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase tracking-wider font-mono block">Work Auth</span>
+                  <span className="font-semibold text-zinc-800 dark:text-zinc-200 truncate block mt-0.5">
+                    {candidateProfile?.workAuthorizationStatus || 'Verified'}
                   </span>
                 </div>
-
-                {/* Planning Item 2: Umbrella in rain / offer review */}
-                <div 
-                  onClick={() => setActivePage('tailor-studio')}
-                  className="p-3 rounded-2xl bg-[#FAF7F2] dark:bg-[#1C1B27] border border-black/[0.04] dark:border-white/[0.06] text-center flex flex-col items-center gap-2 hover:border-[#D9704F]/40 transition-all cursor-pointer group"
-                >
-                  <AutumnUmbrellaVector className="w-10 h-10 group-hover:scale-105 transition-transform" />
-                  <span className="text-[10px] font-medium text-zinc-700 dark:text-zinc-300 leading-tight">
-                    Offers
+                <div className="p-2.5 rounded-xl bg-[#FAF7F2] dark:bg-[#1C1B27] border border-black/[0.04] dark:border-white/[0.06]">
+                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase tracking-wider font-mono block">Remote</span>
+                  <span className="font-semibold text-zinc-800 dark:text-zinc-200 truncate block mt-0.5">
+                    {candidateProfile?.remotePreference || 'Remote / Hybrid'}
                   </span>
                 </div>
-
-                {/* Planning Item 3: Bench in park / negotiation */}
-                <div 
-                  onClick={() => setActivePage('ask-aksh')}
-                  className="p-3 rounded-2xl bg-[#FAF7F2] dark:bg-[#1C1B27] border border-black/[0.04] dark:border-white/[0.06] text-center flex flex-col items-center gap-2 hover:border-[#D9704F]/40 transition-all cursor-pointer group"
-                >
-                  <AutumnBenchVector className="w-10 h-10 group-hover:scale-105 transition-transform" />
-                  <span className="text-[10px] font-medium text-zinc-700 dark:text-zinc-300 leading-tight">
-                    Negotiate
+                <div className="p-2.5 rounded-xl bg-[#FAF7F2] dark:bg-[#1C1B27] border border-black/[0.04] dark:border-white/[0.06]">
+                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase tracking-wider font-mono block">Expected Comp</span>
+                  <span className="font-semibold text-zinc-800 dark:text-zinc-200 truncate block mt-0.5">
+                    {candidateProfile?.expectedSalary ? `${candidateProfile.salaryCurrency || '$'}${candidateProfile.expectedSalary}` : 'Flexible'}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-[#FAF7F2] dark:bg-[#1C1B27] border border-black/[0.04] dark:border-white/[0.06]">
+                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase tracking-wider font-mono block">Notice Period</span>
+                  <span className="font-semibold text-zinc-800 dark:text-zinc-200 truncate block mt-0.5">
+                    {candidateProfile?.noticePeriodDays ? `${candidateProfile.noticePeriodDays} Days` : 'Immediate'}
                   </span>
                 </div>
               </div>
