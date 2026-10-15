@@ -23,6 +23,12 @@ Vedha AI is an enterprise-grade AI Career Operating System that bridges the gap 
 
 ## 🌟 Key Features
 
+- **Ask Aksh (AI Career Copilot & Operating System)**:
+  - 7 modular dynamic skills (`PlatformNavigator`, `ResumeOptimizer`, `InterviewCoach`, `SalaryNegotiator`, `JobApplicationCopilot`, `ProfileQueueAudit`, `CareerStrategist`) loaded automatically based on candidate message intent.
+  - **Proactive Input Elicitation**: Intelligently prompts candidates for missing Job Descriptions, job URLs, or offer breakdowns instead of guessing or failing.
+  - **Strict Domain Guardrails**: Bounded strictly to Vedha AI features and user career data, declining off-topic prompts.
+  - **Durable Multi-Turn Memory**: 14-turn sliding history with full user/assistant context and candidate profile pre-grounding.
+  - **Chat-First Streaming Experience**: Delivers tailored ATS resume PDF exports directly in the chat stream with real-time visual progress feedback.
 - **Multi-Pipeline Job Application Orchestrator**:
   - Dedicated automation providers for LinkedIn Easy Apply (Copilot Mode), Naukri, Greenhouse, Lever, Ashby, and Workday.
   - Event-driven background application processing using **NATS JetStream** (`app.job.ingested` ➔ `app.resume.generated` ➔ `app.worker.success`).
