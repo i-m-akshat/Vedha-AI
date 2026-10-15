@@ -131,16 +131,31 @@ const getSavedThemeIsDark = () => {
   return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 };
 
-const initialIsDark = getSavedThemeIsDark();
-if (typeof document !== 'undefined') {
-  if (initialIsDark) {
-    document.documentElement.classList.add('dark');
-    document.documentElement.style.colorScheme = 'dark';
+const applyThemeToDom = (isDark: boolean) => {
+  if (typeof document === 'undefined') return;
+  const root = document.documentElement;
+  const body = document.body;
+  if (isDark) {
+    root.classList.add('dark');
+    root.classList.remove('light');
+    if (body) {
+      body.classList.add('dark');
+      body.classList.remove('light');
+    }
+    root.style.colorScheme = 'dark';
   } else {
-    document.documentElement.classList.remove('dark');
-    document.documentElement.style.colorScheme = 'light';
+    root.classList.remove('dark');
+    root.classList.add('light');
+    if (body) {
+      body.classList.remove('dark');
+      body.classList.add('light');
+    }
+    root.style.colorScheme = 'light';
   }
-}
+};
+
+const initialIsDark = getSavedThemeIsDark();
+applyThemeToDom(initialIsDark);
 
 interface ThemeState {
   isDark: boolean;
@@ -154,28 +169,12 @@ export const useThemeStore = create<ThemeState>((set) => ({
     set((state) => {
       const next = !state.isDark;
       localStorage.setItem('vedha_theme', next ? 'dark' : 'light');
-      if (typeof document !== 'undefined') {
-        if (next) {
-          document.documentElement.classList.add('dark');
-          document.documentElement.style.colorScheme = 'dark';
-        } else {
-          document.documentElement.classList.remove('dark');
-          document.documentElement.style.colorScheme = 'light';
-        }
-      }
+      applyThemeToDom(next);
       return { isDark: next };
     }),
   setTheme: (isDark: boolean) => {
     localStorage.setItem('vedha_theme', isDark ? 'dark' : 'light');
-    if (typeof document !== 'undefined') {
-      if (isDark) {
-        document.documentElement.classList.add('dark');
-        document.documentElement.style.colorScheme = 'dark';
-      } else {
-        document.documentElement.classList.remove('dark');
-        document.documentElement.style.colorScheme = 'light';
-      }
-    }
+    applyThemeToDom(isDark);
     set({ isDark });
   },
 }));

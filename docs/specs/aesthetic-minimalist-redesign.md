@@ -69,3 +69,10 @@ Minimalist Editorial Chat Bubble + Smooth Loading Indicator
 
 ## 7. Changelog
 - **2026-10-15**: Initial specification for the Aesthetic Minimalist Redesign and Aksh conversational dispatch hardening.
+- **2026-10-15 (Night)**: Theme Toggling Root Cause Resolution & 3-Reference Visual Design Integration:
+  - **Theme Toggling**: Resolved defect where hardcoded `#09090b` and `#ededed` backgrounds on `AppLayout.tsx`, `index.html`, and `index.css` prevented light mode from displaying when the theme toggle was activated. Implemented pre-hydration theme injection script in `index.html` to eliminate FOUC, coordinated `applyThemeToDom` across both `documentElement` and `document.body` in `useAuthStore.ts`.
+  - **Multi-Reference Design System Integration**: Extracted visual DNA from the user's 3 design references:
+    - *Reference 1 ("High Conversion Landing Page Design Ideas")*: 6-grid pastel-tinted cards (Mint, Sky Blue, Lavender, Peach, Buttercup, Rose), dual-icon squircle headers, and micro-metric status pills.
+    - *Reference 2 ("autumn app by tamo")*: Warm aesthetic canvas, personalized hero greeting banner ("Welcome back, Alex 👋"), and verified candidate profile spotlight card with avatar, role pill, and rapid metric counters.
+    - *Reference 3 ("Premium Flowbase_co LIVE! Landing")*: Segmented pill controls (`All Applications` / `Queue` / `Interviews`), dark translucent search pill, rounded-full high-contrast action CTAs, and refined activity table.
+  - **Impacted Layers**: `frontend/index.html`, `frontend/src/index.css`, `frontend/src/stores/useAuthStore.ts`, `frontend/src/components/layout/AppLayout.tsx`, `frontend/src/pages/DashboardPage.tsx`, `frontend/src/pages/AskAkshPage.tsx`, `frontend/src/pages/AuthPages.tsx`.

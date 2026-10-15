@@ -54,15 +54,41 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #09090b;
-  color: #ededed;
+  background-color: #FAF8F5;
+  color: #18181B;
   letter-spacing: -0.011em;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.dark body,
+html.dark body {
+  background-color: #0D0C13;
+  color: #EDEDED;
 }
 
 /* Minimalist subtle ambient grid */
 .minimal-grid {
   background-size: 32px 32px;
+  background-image: radial-gradient(circle, rgba(0, 0, 0, 0.035) 1px, transparent 1px);
+}
+
+.dark .minimal-grid {
   background-image: radial-gradient(circle, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+}
+
+/* Multi-Reference Ambient Aurora Gradient Backdrops */
+.ambient-aurora-light {
+  background: radial-gradient(circle at 10% 10%, rgba(220, 248, 235, 0.7) 0%, transparent 40%),
+              radial-gradient(circle at 90% 15%, rgba(243, 232, 255, 0.8) 0%, transparent 45%),
+              radial-gradient(circle at 50% 85%, rgba(254, 243, 199, 0.5) 0%, transparent 50%),
+              #FAF8F5;
+}
+
+.ambient-aurora-dark {
+  background: radial-gradient(circle at 15% 15%, rgba(45, 36, 56, 0.6) 0%, transparent 45%),
+              radial-gradient(circle at 85% 20%, rgba(30, 27, 75, 0.5) 0%, transparent 45%),
+              radial-gradient(circle at 50% 90%, rgba(24, 24, 37, 0.7) 0%, transparent 50%),
+              #0D0C13;
 }
 
 @layer utilities {
@@ -74,18 +100,34 @@ body {
 
   /* Editorial studio matte surfaces */
   .studio-surface {
-    background: rgba(18, 18, 21, 0.75);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(0, 0, 0, 0.06);
     backdrop-filter: blur(16px);
   }
 
+  .dark .studio-surface {
+    background: rgba(22, 21, 31, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
   .studio-surface-elevated {
-    background: rgba(24, 24, 28, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.08);
     backdrop-filter: blur(20px);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.04);
+  }
+
+  .dark .studio-surface-elevated {
+    background: rgba(26, 25, 38, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
   }
 
   .hairline-border {
+    border: 1px solid rgba(0, 0, 0, 0.07);
+  }
+
+  .dark .hairline-border {
     border: 1px solid rgba(255, 255, 255, 0.07);
   }
 
@@ -94,11 +136,83 @@ body {
   }
 
   .text-subtle {
-    color: #8e8e93;
+    color: #64748B;
+  }
+
+  .dark .text-subtle {
+    color: #8E8E93;
   }
 
   .text-crisp {
-    color: #f4f4f5;
+    color: #0F172A;
+  }
+
+  .dark .text-crisp {
+    color: #F4F4F5;
+  }
+
+  /* Reference 1: High Conversion 6-Card Pastel Tint Utilities */
+  .card-pastel-mint {
+    background-color: #EEF8F4;
+    border-color: #D1EFE2;
+  }
+  .dark .card-pastel-mint {
+    background-color: rgba(13, 40, 30, 0.35);
+    border-color: rgba(46, 125, 96, 0.3);
+  }
+
+  .card-pastel-sky {
+    background-color: #EFF6FF;
+    border-color: #D3E7FF;
+  }
+  .dark .card-pastel-sky {
+    background-color: rgba(16, 35, 61, 0.35);
+    border-color: rgba(43, 85, 145, 0.3);
+  }
+
+  .card-pastel-lavender {
+    background-color: #F5F0FB;
+    border-color: #E8DBF8;
+  }
+  .dark .card-pastel-lavender {
+    background-color: rgba(35, 26, 56, 0.35);
+    border-color: rgba(90, 68, 140, 0.3);
+  }
+
+  .card-pastel-peach {
+    background-color: #FEF8EE;
+    border-color: #FCE6C8;
+  }
+  .dark .card-pastel-peach {
+    background-color: rgba(51, 31, 20, 0.35);
+    border-color: rgba(145, 87, 50, 0.3);
+  }
+
+  .card-pastel-terracotta {
+    background-color: #FDF2EE;
+    border-color: #FAD9CE;
+  }
+  .dark .card-pastel-terracotta {
+    background-color: rgba(51, 28, 23, 0.35);
+    border-color: rgba(145, 75, 60, 0.3);
+  }
+
+  .card-pastel-rose {
+    background-color: #FFF1F2;
+    border-color: #FDD4D8;
+  }
+  .dark .card-pastel-rose {
+    background-color: rgba(51, 20, 30, 0.35);
+    border-color: rgba(145, 52, 80, 0.3);
+  }
+
+  .card-pastel-butter {
+    background-color: #FEFDE8;
+    border-color: #FDF4AA;
+  }
+  .dark .card-pastel-butter {
+    background-color: rgba(48, 42, 18, 0.35);
+    border-color: rgba(135, 118, 45, 0.3);
   }
 }
 

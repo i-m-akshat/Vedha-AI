@@ -93,15 +93,15 @@ export const AuthGatewayPage: React.FC<AuthPageProps> = ({
   };
 
   return (
-    <div className="bg-[#0b0c0e] font-sans text-[#e2e4e9] antialiased flex items-center justify-center min-h-screen relative p-4 md:p-8">
+    <div className="bg-[#FAF8F5] dark:bg-[#0b0c0e] font-sans text-zinc-800 dark:text-[#e2e4e9] antialiased flex items-center justify-center min-h-screen relative p-4 md:p-8 transition-colors duration-200">
       {/* Background Pixel Grid Pattern */}
-      <div className="fixed inset-0 pointer-events-none pixel-grid z-0 opacity-25"></div>
+      <div className="fixed inset-0 pointer-events-none minimal-grid z-0 opacity-40"></div>
 
       <main className="w-full max-w-6xl relative z-10 my-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-12 rounded-2xl border border-[#23252b] bg-[#111216] shadow-2xl overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-12 rounded-3xl border border-black/[0.06] dark:border-[#23252b] bg-white dark:bg-[#111216] shadow-2xl overflow-hidden transition-colors duration-200">
           
           {/* LEFT COLUMN: Clean Value Proposition & Visual */}
-          <section className="lg:col-span-7 flex flex-col justify-between p-8 md:p-10 lg:p-12 bg-gradient-to-br from-[#12141a] via-[#0f1015] to-[#0b0c0e] border-b lg:border-b-0 lg:border-r border-[#23252b]">
+          <section className="lg:col-span-7 flex flex-col justify-between p-8 md:p-10 lg:p-12 bg-gradient-to-br from-[#FAF6F0] via-white to-[#F5F2EB] dark:from-[#12141a] dark:via-[#0f1015] dark:to-[#0b0c0e] border-b lg:border-b-0 lg:border-r border-black/[0.06] dark:border-[#23252b] transition-colors duration-200">
             <div className="flex flex-col gap-6">
               {/* Top Brand Logo Only (No text, responsive theme sizing) + Theme Toggle */}
               <div className="flex items-center justify-between">
@@ -124,23 +124,23 @@ export const AuthGatewayPage: React.FC<AuthPageProps> = ({
                 <button
                   type="button"
                   onClick={toggleTheme}
-                  className="rounded-lg border border-[#23252b] bg-[#16181e] p-2 text-[#8e929b] hover:text-white hover:border-[#333742] transition-colors"
+                  className="rounded-full border border-black/[0.08] dark:border-[#23252b] bg-white dark:bg-[#16181e] p-2 text-zinc-600 dark:text-[#8e929b] hover:text-zinc-900 dark:hover:text-white hover:border-black/20 dark:hover:border-[#333742] transition-colors shadow-sm"
                   title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
                   aria-label="Toggle theme"
                 >
-                  {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
+                  {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-500" />}
                 </button>
               </div>
 
               {/* Headline */}
               <div className="space-y-3 pt-2">
-                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-zinc-900 dark:text-white tracking-tight leading-tight">
                   Land your dream job <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-sky-400">
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-sky-500 dark:from-indigo-400 dark:to-sky-400">
                     with AI-powered speed.
                   </span>
                 </h1>
-                <p className="text-sm sm:text-base text-[#9fa3b0] max-w-lg leading-relaxed">
+                <p className="text-sm sm:text-base text-zinc-600 dark:text-[#9fa3b0] max-w-lg leading-relaxed">
                   Tailor your resume in seconds, beat ATS applicant tracking systems, and apply to top companies effortlessly.
                 </p>
               </div>
@@ -190,17 +190,17 @@ export const AuthGatewayPage: React.FC<AuthPageProps> = ({
           </section>
 
           {/* RIGHT COLUMN: Simple, Clean Authentication Form */}
-          <section className="lg:col-span-5 flex flex-col justify-between p-8 md:p-10 bg-[#111216]">
+          <section className="lg:col-span-5 flex flex-col justify-between p-8 md:p-10 bg-white dark:bg-[#111216] transition-colors duration-200">
             <div className="flex flex-col gap-6">
               
               {/* Tab Switcher */}
-              <div className="flex items-center justify-between border-b border-[#23252b] pb-4">
-                <div className="flex bg-[#16181f] p-1 rounded-xl border border-[#23252b] text-xs">
+              <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-[#23252b] pb-4">
+                <div className="flex bg-black/[0.04] dark:bg-[#16181f] p-1 rounded-full border border-black/[0.05] dark:border-[#23252b] text-xs">
                   <button
                     type="button"
                     onClick={() => handleSwitchMode('signin')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                      mode === 'signin' ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'text-[#8e929b] hover:text-white'
+                    className={`px-4 py-1.5 rounded-full font-medium transition-all ${
+                      mode === 'signin' ? 'bg-zinc-950 dark:bg-indigo-600 text-white font-semibold shadow-sm' : 'text-zinc-600 dark:text-[#8e929b] hover:text-zinc-950 dark:hover:text-white'
                     }`}
                   >
                     Sign In
@@ -208,8 +208,8 @@ export const AuthGatewayPage: React.FC<AuthPageProps> = ({
                   <button
                     type="button"
                     onClick={() => handleSwitchMode('signup')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                      mode === 'signup' ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'text-[#8e929b] hover:text-white'
+                    className={`px-4 py-1.5 rounded-full font-medium transition-all ${
+                      mode === 'signup' ? 'bg-zinc-950 dark:bg-indigo-600 text-white font-semibold shadow-sm' : 'text-zinc-600 dark:text-[#8e929b] hover:text-zinc-950 dark:hover:text-white'
                     }`}
                   >
                     Create Account
@@ -220,7 +220,7 @@ export const AuthGatewayPage: React.FC<AuthPageProps> = ({
                 <button
                   type="button"
                   onClick={handleLoadDemo}
-                  className="text-xs text-indigo-400 hover:text-indigo-300 font-medium hover:underline"
+                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium hover:underline"
                 >
                   Fill Demo
                 </button>
@@ -228,10 +228,10 @@ export const AuthGatewayPage: React.FC<AuthPageProps> = ({
 
               {/* Form Title */}
               <div className="space-y-1">
-                <h2 className="text-2xl font-bold text-white tracking-tight">
+                <h2 className="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">
                   {mode === 'signin' ? 'Welcome Back' : 'Create Your Free Account'}
                 </h2>
-                <p className="text-xs text-[#8e929b]">
+                <p className="text-xs text-zinc-500 dark:text-[#8e929b]">
                   {mode === 'signin'
                     ? 'Enter your credentials to access your tailored resumes and active applications.'
                     : 'Start optimizing your job hunt with AI in less than 30 seconds.'}
@@ -260,11 +260,11 @@ export const AuthGatewayPage: React.FC<AuthPageProps> = ({
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 {mode === 'signup' && (
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-[#c4c7d0] block">
+                    <label className="text-xs font-medium text-zinc-700 dark:text-[#c4c7d0] block">
                       Full Name
                     </label>
                     <input
-                      className="w-full rounded-xl bg-[#16181f] border border-[#2a2d36] focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 py-2.5 px-3.5 text-xs text-white placeholder-[#555866] outline-none transition-colors"
+                      className="w-full rounded-xl bg-slate-50 dark:bg-[#16181f] border border-zinc-200 dark:border-[#2a2d36] focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 py-2.5 px-3.5 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-[#555866] outline-none transition-colors"
                       placeholder="e.g. Alex Morgan"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
@@ -276,11 +276,11 @@ export const AuthGatewayPage: React.FC<AuthPageProps> = ({
 
                 {/* Email Address */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-[#c4c7d0] block">
+                  <label className="text-xs font-medium text-zinc-700 dark:text-[#c4c7d0] block">
                     Email Address
                   </label>
                   <input
-                    className="w-full rounded-xl bg-[#16181f] border border-[#2a2d36] focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 py-2.5 px-3.5 text-xs text-white placeholder-[#555866] outline-none transition-colors"
+                    className="w-full rounded-xl bg-slate-50 dark:bg-[#16181f] border border-zinc-200 dark:border-[#2a2d36] focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 py-2.5 px-3.5 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-[#555866] outline-none transition-colors"
                     placeholder="name@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -292,15 +292,15 @@ export const AuthGatewayPage: React.FC<AuthPageProps> = ({
                 {/* Password */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-[#c4c7d0]">
+                    <label className="text-xs font-medium text-zinc-700 dark:text-[#c4c7d0]">
                       Password
                     </label>
                     {mode === 'signin' && (
-                      <span className="text-[11px] text-[#6c707d]">Minimum 8 characters</span>
+                      <span className="text-[11px] text-zinc-400 dark:text-[#6c707d]">Minimum 8 characters</span>
                     )}
                   </div>
                   <input
-                    className="w-full rounded-xl bg-[#16181f] border border-[#2a2d36] focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 py-2.5 px-3.5 text-xs text-white placeholder-[#555866] outline-none transition-colors"
+                    className="w-full rounded-xl bg-slate-50 dark:bg-[#16181f] border border-zinc-200 dark:border-[#2a2d36] focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 py-2.5 px-3.5 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-[#555866] outline-none transition-colors"
                     placeholder="••••••••••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -311,11 +311,11 @@ export const AuthGatewayPage: React.FC<AuthPageProps> = ({
 
                 {/* Remember Me */}
                 <div className="flex items-center justify-between pt-1">
-                  <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-[#8e929b]">
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-zinc-600 dark:text-[#8e929b]">
                     <input
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
-                      className="h-4 w-4 rounded bg-[#16181f] border-[#2a2d36] text-indigo-600 focus:ring-0 accent-indigo-600 cursor-pointer"
+                      className="h-4 w-4 rounded bg-slate-100 dark:bg-[#16181f] border-zinc-300 dark:border-[#2a2d36] text-indigo-600 focus:ring-0 accent-indigo-600 cursor-pointer"
                       type="checkbox"
                     />
                     <span>Remember me on this device</span>

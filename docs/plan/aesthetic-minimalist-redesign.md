@@ -81,3 +81,7 @@ Execute a holistic UI/UX elevation to remove "AI Slop" artifacts and establish a
 
 ## Changelog
 - **2026-10-15**: Initial implementation plan authored for aesthetic minimalist overhaul and conversational turn bug fix.
+- **2026-10-15 (Night)**: Theme Toggling Execution & Visual Reference Architecture Implementation:
+  - Phase 7 Added: Decoupled theme toggling from hardcoded black `#09090b` stylesheets in `AppLayout.tsx`, `index.html`, and `index.css`.
+  - Phase 8 Added: Implemented 6-pastel card grid (`card-pastel-mint`, `card-pastel-sky`, `card-pastel-lavender`, `card-pastel-peach`, `card-pastel-butter`, `card-pastel-rose`), spotlight verified profile card, and segmented pill tab controls across `DashboardPage.tsx` and `AppLayout.tsx`.
+  - Verification: Clean build on `npm run build` (Vite 6.4.3, 1769 modules) and 207/207 backend unit tests passed.

@@ -918,6 +918,20 @@ builder.Entity&lt;RefreshToken&gt;(b =>
             In <code>AkshChatClientAdapter.cs</code> and <code>AiProviders.cs</code>, Gemini conversational turns (including simple greetings like "HI") route natively through <code>GeminiFunctionCallingClient</code>, avoiding obsolete <code>thinkingBudget</code> fields that caused 400 Bad Request, while streaming real-time status with the custom loading GIF (<code>/assets/loading.gif</code>) in a backdrop-blurred glass indicator.
           </p>
         </div>
+        <div class="card" style="border-left: 3px solid #6366f1;">
+          <div class="card-title">Theme Toggling Decoupling & 3-Reference Aesthetic System (2026-10-15 Night)</div>
+          <p>
+            <strong>Root Cause Diagnosis:</strong> Theme toggling appeared broken because high-level layouts (<code>AppLayout.tsx</code>, <code>index.html</code>, and <code>index.css</code>) contained hardcoded dark backgrounds (<code>#09090b</code>, <code>#0c0d10</code>) without responsive <code>dark:</code> variant fallbacks. When users toggled to Light mode, the <code>dark</code> class was removed from <code>documentElement</code>, but the hardcoded dark surface styles persisted.<br><br>
+            <strong>Architectural Resolution:</strong>
+            <ul style="padding-left: 1.25rem; margin-top: 0.5rem; line-height: 1.8;">
+              <li><strong>Zero-FOUC Theme Pre-Hydration:</strong> Integrated synchronous head script in <code>frontend/index.html</code> inspecting <code>localStorage.getItem('vedha_theme')</code> before rendering, ensuring instantaneous synchronization without layout flash.</li>
+              <li><strong>Coordinated DOM Synchronization:</strong> Upgraded <code>useThemeStore</code> in <code>useAuthStore.ts</code> to synchronously toggle both <code>.dark</code> and <code>.light</code> class tokens across both <code>document.documentElement</code> and <code>document.body</code>.</li>
+              <li><strong>Reference 1 Integration (High Conversion Landing):</strong> Implemented 6-card multi-pastel architecture (Mint, Sky Blue, Lavender, Peach, Buttercup, Rose) featuring squircle dual-icon badges, high-contrast monospace metrics, and micro-metric status pills.</li>
+              <li><strong>Reference 2 Integration (Autumn App):</strong> Warm aesthetic canvas (<code>#FAF8F5</code>), personalized hero spotlight banner ("Welcome back, Alex 👋"), and verified candidate profile card with avatar squircle, verified checkmark badge, and rapid status metrics.</li>
+              <li><strong>Reference 3 Integration (Premium Flowbase):</strong> Segmented pill controls (<code>All Applications</code> / <code>Queue</code> / <code>Interviews</code>), dark translucent search pill with magnifying glass, rounded-full high-contrast action CTAs, and refined activity table.</li>
+            </ul>
+          </p>
+        </div>
       </div>
     </section>
 
