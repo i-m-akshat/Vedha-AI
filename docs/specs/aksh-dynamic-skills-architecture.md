@@ -76,16 +76,40 @@ Transform Aksh from a single-purpose application bot into an **All-in-One AI Car
 - **Tool Enhancements**: `prepare_package` tool returns `generatedResumeId` and direct `resumePdfDownloadUrl` (`/api/resumes/{generatedResumeId}/export?format=Pdf`).
 - **Dynamic Plan Generation**: `AkshPlanner.BuildInitialPlan` dynamically synthesizes a targeted 2-4 step milestone plan matching the active skill domain rather than enforcing the 4-step job application pipeline.
 - **LLM Resilience**: Integrated HTTP 500/502/503/504/429 exponential backoff and automatic model fallback cascading (`gemini-2.5-flash` -> `gemini-2.0-flash` -> `gemini-1.5-flash` -> `gemini-flash-lite-latest`).
+- **Multi-Turn Context Restoration**: The agent runner retains both user and assistant messages across turns (`m.SessionId == session.Id` without role exclusion) within a 14-turn sliding window.
 
 ---
 
-## 9. UI & Visual Experience
+## 9. Conversational Comprehension & Proactive Input Elicitation
+- **Missing Prerequisite Detection**: When a user triggers an intent that requires specific data (e.g. *"I want my resume to be tailored"*, *"Help me prepare for an interview"*, *"Help me negotiate my offer"*):
+  - The agent must not guess or attempt blind tool execution with dummy parameters.
+  - The agent immediately comprehends what is missing and actively prompts the candidate:
+    - *Resume Tailoring*: Requests the target Job Description (JD) text or job posting link (LinkedIn, Greenhouse, Lever, etc.).
+    - *Interview Prep*: Requests the target company, role title, and preference for behavioral (STAR) vs technical drills.
+    - *Salary Negotiation*: Requests the compensation breakdown (base, bonus, equity, location, competing offers).
+- **Subsequent Turn Continuity**: In the subsequent turn, the agent recalls the previous turn's request and pairs the newly provided input (e.g. pasted JD or link) with the ongoing workflow seamlessly.
+
+---
+
+## 10. Strict Domain Guardrails (Application & User Career Data Only)
+- **Authorized Domain Boundaries**:
+  1. **Vedha AI Platform**: Features, page routes (`/studio`, `/tailor`, `/orchestrator`, `/settings`), Chrome extension usage, AI provider configuration, and token ledger mechanics.
+  2. **Candidate Career Data**: Master resume, work history, skills, tailored resumes, cover letters, application queue items, and screening memories.
+  3. **Professional Career Strategy**: Resume optimization, ATS keyword targeting, interview coaching (STAR & technical), and salary negotiation.
+- **Guardrail Enforcement**:
+  - The agent strictly declines off-topic inquiries (e.g. creative writing, homework, general trivia, politics, general software engineering not tied to candidate's stack).
+  - Decline template: *"As your Vedha AI Career Copilot, I'm specifically focused on helping you land your next role—including resume tailoring, interview prep, job applications, and navigating the Vedha platform. How can I assist you with your resume, jobs, or applications today?"*
+
+---
+
+## 11. UI & Visual Experience
 - **Chat-First Workflow**: Removed mandatory 3-field "Goal" form and "Start Run" barriers. Ask Aksh operates conversational-first (ChatGPT/Claude style). Message submission automatically starts a session with instant streaming.
-- **Quick-Start Prompt Cards**: Renders interactive starter cards for top career workflows (Resume Optimization, Behavioral Mock Interview, Salary Negotiation, Queue & Profile Audit).
+- **Quick-Start Prompt Cards**: Renders interactive starter cards for top career workflows (Resume Optimization, Behavioral Mock Interview, Salary Negotiation, Queue & Profile Audit, Platform Guide).
 - **Animated Sprint Runner**: Features a high-quality local running anime girl GIF (`/assets/anime-running.gif`) and dynamic status caption (`Aksh is sprinting... Running [Active Skill] engine`) while the AI streaming engine is actively processing.
 
 ---
 
-## 10. Changelog
+## 12. Changelog
 - **2026-10-15 (Phase 1)**: Created Feature Specification for Aksh Dynamic Skill Architecture. Decoupled conversational tasks from the automated application pipeline and added 6 modular career skills.
 - **2026-10-15 (Phase 2)**: Added chat-first conversational overhaul, dynamic context-aware plan generation, anime girl running streaming indicator, in-chat PDF export links, and Gemini 500 transient error resilience with multi-model fallback cascading.
+- **2026-10-15 (Phase 3)**: Added Proactive Input Elicitation (intelligently requesting JDs, links, or offer details when users initiate workflows), Strict Application & Career Data Domain Guardrails, PlatformNavigatorSkill for comprehensive app guidance, and multi-turn user/assistant conversational history restoration.

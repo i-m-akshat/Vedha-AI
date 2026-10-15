@@ -15,9 +15,10 @@ public class AkshSkillRegistryTests
     {
         var skills = _registry.GetAllSkills().ToList();
 
-        skills.Should().HaveCount(6);
+        skills.Should().HaveCount(7);
         skills.Select(s => s.Id).Should().BeEquivalentTo(new[]
         {
+            "platform-navigator",
             "resume-optimizer",
             "interview-coach",
             "salary-negotiator",
@@ -28,9 +29,22 @@ public class AkshSkillRegistryTests
     }
 
     [Theory]
+    [InlineData("How do I use the Chrome extension on LinkedIn?", "platform-navigator")]
+    [InlineData("Where can I upload my master resume in the studio?", "platform-navigator")]
+    [InlineData("How do I configure my Gemini API key in settings?", "platform-navigator")]
+    [InlineData("What are the features of Vedha AI?", "platform-navigator")]
+    public void ResolveSkill_PlatformQueries_MatchesPlatformNavigator(string prompt, string expectedId)
+    {
+        var skill = _registry.ResolveSkill(prompt, _session);
+        skill.Id.Should().Be(expectedId);
+    }
+
+    [Theory]
     [InlineData("Can you optimize my resume bullets using the Google XYZ formula?", "resume-optimizer")]
     [InlineData("Review my cv for ATS keyword gaps in backend engineering", "resume-optimizer")]
     [InlineData("Rewrite this bullet point: built microservices in go", "resume-optimizer")]
+    [InlineData("I want my resume to be tailored", "resume-optimizer")]
+    [InlineData("Tailor my resume for a backend engineer role", "resume-optimizer")]
     public void ResolveSkill_ResumeOptimizationQueries_MatchesResumeOptimizer(string prompt, string expectedId)
     {
         var skill = _registry.ResolveSkill(prompt, _session);

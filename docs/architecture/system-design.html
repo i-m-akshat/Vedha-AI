@@ -858,10 +858,9 @@
             For frontier models (Gemini 2.5 / 3.x), tool calls emit cryptographic reasoning tokens (<code>thoughtSignature</code>). The Aksh function calling bridge captures these signatures at the part level and echoes them as sibling properties across multi-turn ReAct iterations. On HTTP 500/502/503/504/429 transient errors, it retries with exponential backoff and cascades dynamically across <code>gemini-2.5-flash</code> &rarr; <code>gemini-2.0-flash</code> &rarr; <code>gemini-1.5-flash</code> &rarr; <code>gemini-flash-lite-latest</code>.
           </p>
         </div>
-        <div class="card">
-          <div class="card-title">Aksh Dynamic Skill Architecture & Chat-First Copilot</div>
+          <div class="card-title">Aksh Dynamic Skill Architecture, Input Elicitation & Domain Guardrails</div>
           <p>
-            Decouples general career tasks from automated application pipelines via <code>IAkshSkillRegistry</code>. Loads targeted skills (<code>ResumeOptimizer</code>, <code>InterviewCoach</code>, <code>SalaryNegotiator</code>, <code>JobApplicationCopilot</code>, <code>ProfileQueueAudit</code>, <code>CareerStrategist</code>), announces them via SSE <code>skill</code> events, synthesizes dynamic skill-tailored milestone plans via <code>AkshPlanner</code>, provides direct in-chat ATS PDF downloads, and renders an animated running anime girl GIF during live execution.
+            Decouples general career tasks from automated application pipelines via <code>IAkshSkillRegistry</code> across 7 specialized skills (<code>PlatformNavigator</code>, <code>ResumeOptimizer</code>, <code>InterviewCoach</code>, <code>SalaryNegotiator</code>, <code>JobApplicationCopilot</code>, <code>ProfileQueueAudit</code>, <code>CareerStrategist</code>). Announces active skills via SSE <code>skill</code> events, synthesizes dynamic skill-tailored milestone plans via <code>AkshPlanner</code>, proactively requests missing prerequisites (JDs, links, offer details), strictly enforces Vedha AI domain guardrails, restores multi-turn user/assistant conversational history, provides direct in-chat ATS PDF downloads, and renders an animated running anime girl GIF during live execution.
           </p>
         </div>
       </div>

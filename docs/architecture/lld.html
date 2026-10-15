@@ -896,9 +896,13 @@ builder.Entity&lt;RefreshToken&gt;(b =>
           </p>
         </div>
         <div class="card">
-          <div class="card-title">Aksh Dynamic Skill Architecture & Runtime Registry</div>
+          <div class="card-title">Aksh Dynamic Skill Architecture, Input Elicitation & Domain Guardrails</div>
           <p>
-            In <code>IAkshSkill.cs</code> and <code>AkshSkillRegistry.cs</code>, Aksh is architected as an All-in-One AI Career Operating System with modular skills: <code>ResumeOptimizerSkill</code>, <code>InterviewCoachSkill</code>, <code>JobApplicationCopilotSkill</code>, <code>SalaryNegotiatorSkill</code>, <code>ProfileAndQueueAuditSkill</code>, and <code>CareerStrategistSkill</code>. At the start of each turn, Aksh resolves candidate intent, streams an SSE <code>skill</code> event with display name and description, binds relevant tool subsets, and dynamically synthesizes a targeted 2-4 milestone plan via <code>AkshPlanner.BuildInitialPlan</code>.
+            In <code>IAkshSkill.cs</code> and <code>AkshSkillRegistry.cs</code>, Aksh operates as an All-in-One AI Career Operating System with 7 modular skills: <code>PlatformNavigatorSkill</code>, <code>ResumeOptimizerSkill</code>, <code>InterviewCoachSkill</code>, <code>JobApplicationCopilotSkill</code>, <code>SalaryNegotiatorSkill</code>, <code>ProfileAndQueueAuditSkill</code>, and <code>CareerStrategistSkill</code>.
+            At turn initialization, intent is matched dynamically and streamed via SSE (<code>skill</code> event).
+            When a user requests workflows such as resume tailoring, mock interviews, or offer negotiations without prerequisite data (e.g. missing Job Description or offer breakdown), Aksh engages **Proactive Input Elicitation**—acknowledging verified master profile facts and actively requesting the JD text or job link rather than failing or guessing.
+            Strict **Domain Guardrails** constrain Aksh exclusively to Vedha AI features and user career data, declining off-topic queries.
+            Multi-turn conversation history retains both user and assistant interactions across a 14-turn sliding window with pre-injected candidate grounding context.
           </p>
         </div>
         <div class="card">

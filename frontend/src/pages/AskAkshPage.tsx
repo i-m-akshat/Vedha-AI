@@ -453,14 +453,27 @@ export const AskAkshPage: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full text-left">
                   <button
                     type="button"
-                    onClick={() => sendMessage(undefined, 'Optimize my resume bullets using the Google XYZ impact formula')}
+                    onClick={() => sendMessage(undefined, 'I want my resume to be tailored for a target job')}
                     className="flex flex-col gap-1 rounded-xl border border-[#2a2d36] bg-[#16181e] p-3 text-xs transition-colors hover:border-indigo-500/50 hover:bg-indigo-950/20"
                   >
                     <span className="font-semibold text-white flex items-center gap-1.5">
-                      <span>✨</span> Resume Optimization
+                      <span>✨</span> Tailor My Resume
                     </span>
                     <span className="text-[#8e929b] text-[11px]">
-                      Rewrite bullets with XYZ formula & ATS keywords
+                      Provide a JD or link to generate tailored bullets & PDF
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => sendMessage(undefined, 'How do I use the Chrome extension on LinkedIn Easy Apply?')}
+                    className="flex flex-col gap-1 rounded-xl border border-[#2a2d36] bg-[#16181e] p-3 text-xs transition-colors hover:border-indigo-500/50 hover:bg-indigo-950/20"
+                  >
+                    <span className="font-semibold text-white flex items-center gap-1.5">
+                      <span>🧭</span> Platform & Extension Guide
+                    </span>
+                    <span className="text-[#8e929b] text-[11px]">
+                      How Vedha AI autofill, studio & review gateway work
                     </span>
                   </button>
 
@@ -487,19 +500,6 @@ export const AskAkshPage: React.FC = () => {
                     </span>
                     <span className="text-[#8e929b] text-[11px]">
                       Benchmark compensation & draft counter-offer email
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => sendMessage(undefined, 'Show me recent items in my application queue and candidate profile status')}
-                    className="flex flex-col gap-1 rounded-xl border border-[#2a2d36] bg-[#16181e] p-3 text-xs transition-colors hover:border-indigo-500/50 hover:bg-indigo-950/20"
-                  >
-                    <span className="font-semibold text-white flex items-center gap-1.5">
-                      <span>📋</span> Queue & Profile Audit
-                    </span>
-                    <span className="text-[#8e929b] text-[11px]">
-                      Inspect active applications & screening memories
                     </span>
                   </button>
                 </div>
