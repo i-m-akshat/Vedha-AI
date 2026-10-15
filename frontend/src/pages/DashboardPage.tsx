@@ -457,7 +457,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
           onClick={() => setActivePage('ask-aksh')}
           className="p-4 sm:p-5 rounded-[24px] bg-[#E1F3F0] dark:bg-[#1B3633] border border-[#C7EAE3] dark:border-[#29514D] hover:shadow-md transition-all cursor-pointer flex items-center gap-3.5 group"
         >
-          <AutumnWalkingStepsVector className="w-12 h-12 shrink-0 group-hover:scale-105 transition-transform" />
+          <div className="w-12 h-12 rounded-2xl bg-white p-1.5 shadow-xs border border-black/[0.04] shrink-0 group-hover:scale-105 transition-transform flex items-center justify-center">
+            <img src="/assets/aksh-ai-logo.png" alt="Ask Aksh AI" className="w-full h-full object-contain" />
+          </div>
           <div className="min-w-0">
             <div className="text-xs font-bold text-[#20544B] dark:text-[#A7E2D8] truncate">Ask Aksh AI</div>
             <div className="text-[11px] text-[#2D6E62] dark:text-[#7EC4B8] truncate">Copilot &amp; STAR Drills</div>

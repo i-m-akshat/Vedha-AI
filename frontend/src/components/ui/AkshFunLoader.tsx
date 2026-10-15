@@ -72,14 +72,14 @@ export const AkshFunLoader: React.FC<AkshFunLoaderProps> = ({
         {/* Outer Orbiting Track */}
         <div className="absolute -inset-1 rounded-[24px] border border-dashed border-[#D9704F]/30 animate-spin" style={{ animationDuration: '14s' }} />
 
-        {/* Central Terracotta Squircle Badge */}
+        {/* Central Aksh AI Squircle Badge */}
         <div
-          className={`relative ${containerDimensions} rounded-2xl bg-gradient-to-br from-[#D9704F] to-[#C85F3E] p-2.5 shadow-md shadow-[#D9704F]/20 flex items-center justify-center transition-transform hover:scale-105`}
+          className={`relative ${containerDimensions} rounded-2xl bg-white p-2 shadow-md shadow-[#D9704F]/20 flex items-center justify-center transition-transform hover:scale-105 border border-black/[0.06] dark:border-white/[0.1]`}
         >
           <img
-            src="/assets/vedha-terracotta-leaf-emblem.png"
-            alt="Loading"
-            className={`${iconDimensions} object-contain filter drop-shadow-sm brightness-110`}
+            src="/assets/aksh-ai-logo.png"
+            alt="Aksh AI"
+            className={`${iconDimensions} object-contain`}
           />
         </div>
       </div>

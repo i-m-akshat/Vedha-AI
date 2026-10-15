@@ -59,7 +59,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
     { id: 'tailor-studio', label: 'Tailor Resume', icon: <FileText className="w-3.5 h-3.5" /> },
     { id: 'result-studio', label: 'Resume Preview', icon: <Sparkles className="w-3.5 h-3.5" /> },
     { id: 'orchestrator', label: 'Auto-Apply Queue', icon: <Send className="w-3.5 h-3.5" />, badge: 'Active' },
-    { id: 'ask-aksh', label: 'Ask Aksh', icon: <Bot className="w-3.5 h-3.5" />, badge: 'Copilot' },
+    { id: 'ask-aksh', label: 'Ask Aksh', icon: <img src="/assets/aksh-ai-logo.png" alt="Aksh AI" className="w-3.5 h-3.5 object-contain rounded-xs" />, badge: 'Copilot' },
     { id: 'tracker', label: 'Job Tracker', icon: <Kanban className="w-3.5 h-3.5" /> },
     { id: 'master-resume', label: 'Master Resume', icon: <Code className="w-3.5 h-3.5" /> },
     { id: 'candidate-profile', label: 'Candidate Profile', icon: <UserCheck className="w-3.5 h-3.5" /> },
