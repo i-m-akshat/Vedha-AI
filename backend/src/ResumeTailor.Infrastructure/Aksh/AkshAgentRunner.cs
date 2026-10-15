@@ -24,7 +24,7 @@ namespace ResumeTailor.Infrastructure.Aksh;
 public class AkshAgentRunner : IAkshAgentRunner
 {
     private const int MaxPromptHistory = 14;
-    private const int MaxSummaryChars = 2000;
+    private const int MaxSummaryChars = 64000;
     private const int MaxUserMessageChars = 4000;
 
     /// <summary>Turn-lock lease: bounds every abnormal turn exit.</summary>
@@ -153,6 +153,11 @@ public class AkshAgentRunner : IAkshAgentRunner
                 cancellationToken);
             if (!scraped)
             {
+                yield return new AkshStreamEvent("status", new
+                {
+                    stage = "ScrapingJob",
+                    detail = $"Extracting job requirements from {jobUrl}...",
+                });
                 var scrape = await _sender.Send(new DetectJobSourceQuery(jobUrl), cancellationToken);
                 if (session.JobUrl == null)
                 {
@@ -255,6 +260,11 @@ public class AkshAgentRunner : IAkshAgentRunner
             }
             else
             {
+                yield return new AkshStreamEvent("status", new
+                {
+                    stage = "TailoringResume",
+                    detail = $"Synthesizing truth-aligned tailored package for {master.Title ?? "profile"}...",
+                });
                 var prep = await _sender.Send(
                     new PrepareApplicationPackageCommand(userId, master.Id, session.JobUrl!, null, TemplateStyle.ClassicAts, null),
                     cancellationToken);
@@ -378,6 +388,11 @@ public class AkshAgentRunner : IAkshAgentRunner
         // delta processing and all yields stay outside it, preserving live SSE.)
         var harnessSession = await agent.CreateSessionAsync(cancellationToken);
         AkshStreamEvent? terminalError = null;
+        yield return new AkshStreamEvent("status", new
+        {
+            stage = "Reasoning",
+            detail = isGreetingOrGeneral ? "Formulating guidance..." : $"Reasoning with {activeSkill.DisplayName}...",
+        });
         await using var updateEnumerator = agent.RunStreamingAsync(
             chatMessages, harnessSession, null, cancellationToken).GetAsyncEnumerator();
         var streamOpen = true;

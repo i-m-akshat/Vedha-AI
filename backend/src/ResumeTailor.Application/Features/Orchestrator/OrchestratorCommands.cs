@@ -109,6 +109,11 @@ public class OrchestratorHandlers :
     private readonly IAtsScoringEngine _atsEngine;
     private readonly IJobApplicationOrchestrator _orchestrator;
     private readonly ITailoringProgressNotifier _progressNotifier;
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true
+    };
 
     public OrchestratorHandlers(
         IApplicationDbContext context,
@@ -358,7 +363,7 @@ Respond with JSON array of objects:
         ResumeSchema masterSchema;
         try
         {
-            masterSchema = JsonSerializer.Deserialize<ResumeSchema>(masterResume.StructuredJson) ?? new ResumeSchema();
+            masterSchema = JsonSerializer.Deserialize<ResumeSchema>(masterResume.StructuredJson, JsonOptions) ?? new ResumeSchema();
         }
         catch
         {
@@ -557,7 +562,7 @@ INSTRUCTIONS:
             JobDescriptionId = jobDescEntity.Id,
             TargetCompany = company,
             TargetRole = role,
-            TailoredStructuredJson = JsonSerializer.Serialize(tailoredSchema),
+            TailoredStructuredJson = JsonSerializer.Serialize(tailoredSchema, JsonOptions),
             DiffSummaryJson = "[]",
             SelectedTemplate = request.TemplateStyle,
             GeneratedWithProvider = user.PreferredAiProvider,
@@ -570,7 +575,7 @@ INSTRUCTIONS:
         {
             GeneratedResumeId = generatedResume.Id,
             MatchScore = atsScore.OverallScore,
-            AnalysisDataJson = JsonSerializer.Serialize(atsScore),
+            AnalysisDataJson = JsonSerializer.Serialize(atsScore, JsonOptions),
             RecruiterFeedbackSummary = atsScore.RecruiterFeedback,
             MatchingKeywordsCount = atsScore.MatchingKeywords.Count + atsScore.MatchingSkills.Count,
             MissingKeywordsCount = atsScore.MissingKeywords.Count + atsScore.MissingSkills.Count

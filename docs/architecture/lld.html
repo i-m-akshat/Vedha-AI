@@ -932,6 +932,25 @@ builder.Entity&lt;RefreshToken&gt;(b =>
             </ul>
           </p>
         </div>
+        <div class="card" style="border-left: 3px solid #10b981;">
+          <div class="card-title">Chat History Hydration, Real-Time Agent Telemetry & Past Resume Deserialization (2026-10-15 Late Night)</div>
+          <p>
+            <strong>Root Cause Diagnoses:</strong>
+            <ul style="padding-left: 1.25rem; margin-top: 0.5rem; line-height: 1.8;">
+              <li><strong>Chat History Loss:</strong> In <code>AskAkshPage.tsx</code>, switching sessions invoked <code>setThread([])</code> and never synchronized messages from <code>akshApi.getAudit(sessionId)</code>. Additionally, <code>AkshAgentRunner.cs</code> capped message summaries at 2,000 characters with <code>\n…[truncated]</code>, corrupting longer LLM answers upon database round-trip.</li>
+              <li><strong>Agent Execution Opacity:</strong> While Aksh performed background steps (URL scraping, requirement extraction, package preparation), the UI rendered only a generic loading screen ("Aksh is reasoning...") without granular stage progression.</li>
+              <li><strong>Past Resume Preview Deserialization:</strong> In <code>TailorCommands.cs</code>, <code>JsonOptions</code> lacked <code>PropertyNameCaseInsensitive = true</code>. Because <code>OrchestratorCommands.cs</code> serialized <code>TailoredStructuredJson</code> with standard C# PascalCase naming, deserialization in <code>GetTailoredResumeByIdQuery</code> silently dropped all properties, returning empty experiences, skills, and personal information.</li>
+            </ul>
+            <br>
+            <strong>Architectural Resolutions:</strong>
+            <ul style="padding-left: 1.25rem; margin-top: 0.5rem; line-height: 1.8;">
+              <li><strong>Serialization Case-Insensitivity:</strong> Unified <code>JsonOptions</code> across <code>TailorCommands.cs</code>, <code>OrchestratorCommands.cs</code>, and <code>ToolCommands.cs</code> with <code>PropertyNameCaseInsensitive = true</code> and camelCase policy. In <code>GetTailoredResumeByIdQuery</code>, added fallback queries for master resumes and on-the-fly ATS score recalculation.</li>
+              <li><strong>Defensive Schema Null-Safety:</strong> In <code>ResultStudioPage.tsx</code>, wrapped <code>masterSchema</code>, <code>tailoredSchema</code>, and <code>atsAnalysis</code> arrays with safe optional chaining and fallback empty arrays, completely eliminating undefined property runtime crashes.</li>
+              <li><strong>Granular Multi-Step Telemetry:</strong> In <code>AkshAgentRunner.cs</code>, emitted discrete SSE <code>status</code> events (<code>ScrapingJob</code>, <code>TailoringResume</code>, <code>Reasoning</code>, <code>PackagePrepared</code>). Increased <code>MaxSummaryChars</code> to 64,000 to preserve full conversational guidance.</li>
+              <li><strong>Rich Live Progress Widget & History Hydration:</strong> Upgraded <code>AskAkshPage.tsx</code> with a real-time progress card (dynamic stage badge, pulsating accent line, and human-readable detail beside <code>/assets/loading.gif</code>) and automated message hydration upon session selection via <code>akshApi.getAudit</code>.</li>
+            </ul>
+          </p>
+        </div>
       </div>
     </section>
 

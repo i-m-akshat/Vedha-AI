@@ -41,6 +41,33 @@ interface AkshActiveSkill {
   description: string;
 }
 
+interface AgentStatus {
+  stage: string;
+  detail: string;
+}
+
+const getStageDisplay = (status: AgentStatus | null) => {
+  const stage = status?.stage;
+  switch (stage) {
+    case 'ScrapingJob':
+      return { title: 'Scraping Target Job', badge: 'Scraping' };
+    case 'Scraped':
+      return { title: 'Job Profile Extracted', badge: 'Analyzed' };
+    case 'ParsingResume':
+      return { title: 'Analyzing Master Resume', badge: 'Parsing' };
+    case 'TailoringResume':
+      return { title: 'Synthesizing Tailored Content', badge: 'Tailoring' };
+    case 'PackagePrepared':
+      return { title: 'Application Package Ready', badge: 'Prepared' };
+    case 'Reasoning':
+      return { title: 'Reasoning & Planning', badge: 'Reasoning' };
+    case 'Responding':
+      return { title: 'Formulating Response', badge: 'Responding' };
+    default:
+      return { title: 'Aksh is reasoning...', badge: 'Active' };
+  }
+};
+
 const STATUS_STYLE: Record<AkshSessionStatus, string> = {
   Planning: 'bg-zinc-800 text-zinc-300 border-white/[0.08]',
   Executing: 'bg-zinc-800 text-zinc-200 border-white/[0.12]',
@@ -74,6 +101,7 @@ export const AskAkshPage: React.FC = () => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [liveSpend, setLiveSpend] = useState<{ input: number; output: number } | null>(null);
   const [activeSkill, setActiveSkill] = useState<AkshActiveSkill | null>(null);
+  const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null);
   
   const approvalReqSeq = useRef(0);
   const sessionIdRef = useRef<string | null>(null);
@@ -157,6 +185,19 @@ export const AskAkshPage: React.FC = () => {
     threadEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [thread, streaming]);
 
+  useEffect(() => {
+    if (!streaming && audit?.messages && sessionId && audit.session?.id === sessionId) {
+      const bubbles: ChatBubble[] = audit.messages
+        .filter((m) => m.role === 'user' || m.role === 'assistant' || (m.role === 'tool' && m.summaryText))
+        .map((m) => ({
+          id: m.id,
+          role: (m.role === 'user' ? 'user' : m.role === 'assistant' ? 'assistant' : 'system') as 'user' | 'assistant' | 'system',
+          text: m.role === 'tool' ? `⚙️ **[${m.toolName || 'Tool'}]** ${m.summaryText}` : m.summaryText,
+        }));
+      setThread(bubbles);
+    }
+  }, [audit, sessionId, streaming]);
+
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
@@ -176,6 +217,7 @@ export const AskAkshPage: React.FC = () => {
     setThread((prev) => [...prev, userBubble, assistantBubble]);
 
     setStreaming(true);
+    setAgentStatus({ stage: 'Reasoning', detail: 'Analyzing request and selecting domain skill...' });
     const abort = new AbortController();
     abortRef.current = abort;
 
@@ -206,6 +248,16 @@ export const AskAkshPage: React.FC = () => {
             }
             break;
           }
+          case 'status': {
+            const st = ev.data as { stage: string; detail: string };
+            if (st?.stage) {
+              setAgentStatus({
+                stage: st.stage,
+                detail: st.detail || '',
+              });
+            }
+            break;
+          }
           case 'message': {
             const delta = (ev.data as { delta: string })?.delta ?? '';
             accumulated += delta;
@@ -215,6 +267,9 @@ export const AskAkshPage: React.FC = () => {
               if (idx >= 0) next[idx] = { ...next[idx], text: accumulated };
               return next;
             });
+            setAgentStatus((prev) =>
+              prev?.stage === 'Responding' ? prev : { stage: 'Responding', detail: 'Formulating strategic guidance...' }
+            );
             break;
           }
           case 'approval_required':
@@ -254,6 +309,7 @@ export const AskAkshPage: React.FC = () => {
       }
     } finally {
       setStreaming(false);
+      setAgentStatus(null);
       abortRef.current = null;
     }
   };
@@ -285,7 +341,7 @@ export const AskAkshPage: React.FC = () => {
     }
   };
 
-  const switchSession = (id: string | null) => {
+  const switchSession = async (id: string | null) => {
     if (abortRef.current) abortRef.current.abort();
     setSessionId(id);
     setThread([]);
@@ -294,12 +350,28 @@ export const AskAkshPage: React.FC = () => {
     setNotice(null);
     setLiveSpend(null);
     setActiveSkill(null);
+    setAgentStatus(null);
     if (id) {
       const seq = approvalReqSeq.current;
       void akshApi.getApproval(id).then((approval) => {
         if (seq !== approvalReqSeq.current || id !== sessionIdRef.current) return;
         if (approval) void loadApprovalContext(approval);
       });
+      try {
+        const auditData = await akshApi.getAudit(id);
+        if (id === sessionIdRef.current && auditData?.messages) {
+          const bubbles: ChatBubble[] = auditData.messages
+            .filter((m) => m.role === 'user' || m.role === 'assistant' || (m.role === 'tool' && m.summaryText))
+            .map((m) => ({
+              id: m.id,
+              role: (m.role === 'user' ? 'user' : m.role === 'assistant' ? 'assistant' : 'system') as 'user' | 'assistant' | 'system',
+              text: m.role === 'tool' ? `⚙️ **[${m.toolName || 'Tool'}]** ${m.summaryText}` : m.summaryText,
+            }));
+          setThread(bubbles);
+        }
+      } catch (err) {
+        console.error('Failed to load session history:', err);
+      }
     }
   };
 
@@ -513,20 +585,28 @@ export const AskAkshPage: React.FC = () => {
             )}
 
             {streaming && (
-              <div className="flex items-center gap-3.5 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white/90 dark:bg-zinc-900/70 p-2.5 max-w-sm ml-9 mb-2 shadow-md backdrop-blur-md">
+              <div className="flex items-center gap-3.5 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white/95 dark:bg-[#16151F]/90 p-3 max-w-md ml-9 mb-2 shadow-lg backdrop-blur-md transition-all">
                 <img
                   src="/assets/loading.gif"
                   alt="Aksh is processing"
-                  className="w-10 h-10 object-cover rounded-xl border border-black/[0.08] dark:border-white/[0.1] shrink-0"
+                  className="w-11 h-11 object-cover rounded-xl border border-black/[0.08] dark:border-white/[0.1] shrink-0 shadow-sm"
                 />
-                <div className="min-w-0 flex flex-col">
-                  <span className="text-xs font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    Aksh is reasoning...
+                <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 truncate">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                      <span>{getStageDisplay(agentStatus).title}</span>
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-semibold shrink-0 uppercase tracking-wider">
+                      {getStageDisplay(agentStatus).badge}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
+                    {agentStatus?.detail || (activeSkill ? `Executing ${activeSkill.name}...` : 'Reasoning across career history and targets...')}
                   </span>
-                  <span className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate font-mono">
-                    Executing {activeSkill?.name || 'Career Copilot'}
-                  </span>
+                  <div className="w-full bg-black/[0.05] dark:bg-white/[0.06] h-1 rounded-full overflow-hidden mt-1">
+                    <div className="bg-gradient-to-r from-emerald-500 via-indigo-500 to-purple-500 h-full w-full animate-pulse rounded-full" />
+                  </div>
                 </div>
               </div>
             )}

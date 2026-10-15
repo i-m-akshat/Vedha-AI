@@ -74,7 +74,11 @@ public class TailorCommandHandler :
     private readonly IResumeExportService _exportService;
     private readonly IJobScraperService _scraperService;
     private readonly ITailoringProgressNotifier _progressNotifier;
-    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true
+    };
 
     public TailorCommandHandler(
         IApplicationDbContext context,
@@ -454,10 +458,32 @@ INSTRUCTIONS:
             ?? throw new NotFoundException(nameof(GeneratedResume), request.Id);
 
         var masterSchema = JsonSerializer.Deserialize<ResumeSchema>(generatedResume.MasterResume?.StructuredJson ?? "{}", JsonOptions) ?? new ResumeSchema();
+        if (generatedResume.MasterResume == null && generatedResume.MasterResumeId != Guid.Empty)
+        {
+            var fallbackMaster = await _context.MasterResumes
+                .FirstOrDefaultAsync(m => m.Id == generatedResume.MasterResumeId && m.UserId == userId, cancellationToken);
+            if (fallbackMaster != null && !string.IsNullOrWhiteSpace(fallbackMaster.StructuredJson))
+            {
+                masterSchema = JsonSerializer.Deserialize<ResumeSchema>(fallbackMaster.StructuredJson, JsonOptions) ?? masterSchema;
+            }
+        }
+
         var tailoredSchema = JsonSerializer.Deserialize<ResumeSchema>(generatedResume.TailoredStructuredJson, JsonOptions) ?? new ResumeSchema();
+        if ((masterSchema.PersonalInfo == null || string.IsNullOrWhiteSpace(masterSchema.PersonalInfo.FullName)) && tailoredSchema.PersonalInfo != null)
+        {
+            masterSchema.PersonalInfo = tailoredSchema.PersonalInfo;
+        }
+
         masterSchema.NormalizeAndSortExperience();
         tailoredSchema.NormalizeAndSortExperience();
         var atsScore = JsonSerializer.Deserialize<AtsScoreBreakdown>(generatedResume.AtsAnalysis?.AnalysisDataJson ?? "{}", JsonOptions) ?? new AtsScoreBreakdown();
+
+        // If AtsAnalysis is missing or had empty data, compute on the fly if JobDescription exists
+        if ((generatedResume.AtsAnalysis == null || atsScore.OverallScore == 0) && generatedResume.JobDescription != null)
+        {
+            var jdSchema = JsonSerializer.Deserialize<JobDescriptionSchema>(generatedResume.JobDescription.ExtractedSchemaJson ?? "{}", JsonOptions) ?? new JobDescriptionSchema();
+            atsScore = _atsScoringEngine.CalculateScore(tailoredSchema, jdSchema);
+        }
 
         return Result<TailoredResumeResultDto>.Success(new TailoredResumeResultDto(
             generatedResume.Id,

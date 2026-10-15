@@ -102,9 +102,23 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
     );
   }
 
-  const { masterSchema, tailoredSchema, atsAnalysis } = tailoredResult;
-  const masterExperiences = React.useMemo(() => sortExperiencesChronologically(masterSchema.experience || []), [masterSchema.experience]);
-  const tailoredExperiences = React.useMemo(() => sortExperiencesChronologically(tailoredSchema.experience || []), [tailoredSchema.experience]);
+  const masterSchema = tailoredResult?.masterSchema || ({} as any);
+  const tailoredSchema = tailoredResult?.tailoredSchema || ({} as any);
+  const atsAnalysis = tailoredResult?.atsAnalysis || ({
+    overallScore: 0,
+    keywordMatchScore: 0,
+    skillsMatchScore: 0,
+    experienceRelevanceScore: 0,
+    recruiterFeedback: 'Recruiter feedback analysis is being prepared.',
+    matchingKeywords: [],
+    missingKeywords: [],
+    matchingSkills: [],
+    missingSkills: [],
+    skillRoadmap: []
+  } as any);
+
+  const masterExperiences = React.useMemo(() => sortExperiencesChronologically(masterSchema?.experience || []), [masterSchema?.experience]);
+  const tailoredExperiences = React.useMemo(() => sortExperiencesChronologically(tailoredSchema?.experience || []), [tailoredSchema?.experience]);
 
   const handleDownload = async (format: ResumeFormat) => {
     setDownloading(format);
@@ -122,7 +136,9 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
       const link = document.createElement('a');
       link.href = downloadUrl;
       const extension = format === ResumeFormat.Pdf ? 'pdf' : format === ResumeFormat.Docx ? 'docx' : format === ResumeFormat.Json ? 'json' : 'md';
-      link.download = `${tailoredSchema.personalInfo.fullName.replace(/\s+/g, '_')}_Resume.${extension}`;
+      const rawName = tailoredSchema?.personalInfo?.fullName || masterSchema?.personalInfo?.fullName || tailoredResult?.targetRole || 'Tailored_Resume';
+      const sanitizedName = rawName.replace(/[^a-zA-Z0-9_-]/g, '_');
+      link.download = `${sanitizedName}_Resume.${extension}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -303,10 +319,16 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
 
             <div className="space-y-3 text-xs text-[#c4c7d0]">
               <div>
-                <div className="font-bold text-white text-sm">{masterSchema.personalInfo.fullName}</div>
-                <div className="text-[11px] text-[#8e929b]">{masterSchema.personalInfo.email}</div>
-                {masterSchema.personalInfo.phone && (
-                  <div className="text-[11px] text-[#8e929b]">{masterSchema.personalInfo.phone}</div>
+                <div className="font-bold text-white text-sm">
+                  {masterSchema?.personalInfo?.fullName || tailoredSchema?.personalInfo?.fullName || 'Master Profile'}
+                </div>
+                <div className="text-[11px] text-[#8e929b]">
+                  {masterSchema?.personalInfo?.email || tailoredSchema?.personalInfo?.email || ''}
+                </div>
+                {(masterSchema?.personalInfo?.phone || tailoredSchema?.personalInfo?.phone) && (
+                  <div className="text-[11px] text-[#8e929b]">
+                    {masterSchema?.personalInfo?.phone || tailoredSchema?.personalInfo?.phone}
+                  </div>
                 )}
               </div>
 
@@ -335,7 +357,7 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
                 <div className="space-y-1.5">
                   <span className="text-[10px] font-semibold text-[#8e929b] uppercase tracking-wider block">Key Skills</span>
                   <div className="flex flex-wrap gap-1">
-                    {masterSchema.skills.flatMap(s => s.skills).map((skill, i) => (
+                    {masterSchema.skills.flatMap((s: any) => s.skills || []).map((skill: string, i: number) => (
                       <span key={i} className="text-[10px] px-2 py-0.5 rounded-md bg-[#16181f] text-[#a0a4b0] border border-[#23252b]">
                         {skill}
                       </span>
@@ -353,20 +375,20 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
             {/* Header */}
             <div className="text-center space-y-1 pb-4 border-b border-neutral-300">
               <h1 className="text-2xl font-bold tracking-tight text-neutral-900 uppercase">
-                {tailoredSchema.personalInfo.fullName}
+                {tailoredSchema?.personalInfo?.fullName || masterSchema?.personalInfo?.fullName || 'Candidate Profile'}
               </h1>
-              {tailoredSchema.personalInfo.title && (
+              {(tailoredSchema?.personalInfo?.title || tailoredResult.targetRole) && (
                 <div className="text-xs font-semibold text-neutral-600 tracking-wider uppercase">
-                  {tailoredSchema.personalInfo.title}
+                  {tailoredSchema?.personalInfo?.title || tailoredResult.targetRole}
                 </div>
               )}
               <div className="text-[11px] text-neutral-500">
                 {[
-                  tailoredSchema.personalInfo.email,
-                  tailoredSchema.personalInfo.phone,
-                  tailoredSchema.personalInfo.location,
-                  tailoredSchema.personalInfo.linkedInUrl,
-                  tailoredSchema.personalInfo.gitHubUrl,
+                  tailoredSchema?.personalInfo?.email || masterSchema?.personalInfo?.email,
+                  tailoredSchema?.personalInfo?.phone || masterSchema?.personalInfo?.phone,
+                  tailoredSchema?.personalInfo?.location || masterSchema?.personalInfo?.location,
+                  tailoredSchema?.personalInfo?.linkedInUrl || masterSchema?.personalInfo?.linkedInUrl,
+                  tailoredSchema?.personalInfo?.gitHubUrl || masterSchema?.personalInfo?.gitHubUrl,
                 ].filter(Boolean).join(' • ')}
               </div>
             </div>
@@ -528,7 +550,7 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
               <div className="space-y-1 text-xs">
                 <div className="text-white font-semibold">Semantic Match Score</div>
                 <div className="text-[11px] text-[#8e929b]">
-                  <strong className="text-emerald-400">{atsAnalysis.matchingKeywords.length}</strong> matching • <strong className="text-amber-400">{atsAnalysis.missingKeywords.length}</strong> missing
+                  <strong className="text-emerald-400">{(atsAnalysis?.matchingKeywords || []).length}</strong> matching • <strong className="text-amber-400">{(atsAnalysis?.missingKeywords || []).length}</strong> missing
                 </div>
                 <div className="text-[10px] text-[#6c707d]">
                   100% Parsed &amp; Readable
@@ -541,30 +563,30 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
               <div>
                 <div className="flex justify-between text-[#8e929b] mb-1 text-[11px]">
                   <span>Keyword Match</span>
-                  <span className="font-semibold text-white">{atsAnalysis.keywordMatchScore}%</span>
+                  <span className="font-semibold text-white">{atsAnalysis?.keywordMatchScore ?? 0}%</span>
                 </div>
                 <div className="w-full bg-[#1c1e26] h-2 rounded-full overflow-hidden">
-                  <div className="bg-indigo-500 h-full rounded-full" style={{ width: `${atsAnalysis.keywordMatchScore}%` }} />
+                  <div className="bg-indigo-500 h-full rounded-full" style={{ width: `${atsAnalysis?.keywordMatchScore ?? 0}%` }} />
                 </div>
               </div>
 
               <div>
                 <div className="flex justify-between text-[#8e929b] mb-1 text-[11px]">
                   <span>Skills Coverage</span>
-                  <span className="font-semibold text-white">{atsAnalysis.skillsMatchScore}%</span>
+                  <span className="font-semibold text-white">{atsAnalysis?.skillsMatchScore ?? 0}%</span>
                 </div>
                 <div className="w-full bg-[#1c1e26] h-2 rounded-full overflow-hidden">
-                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${atsAnalysis.skillsMatchScore}%` }} />
+                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${atsAnalysis?.skillsMatchScore ?? 0}%` }} />
                 </div>
               </div>
 
               <div>
                 <div className="flex justify-between text-[#8e929b] mb-1 text-[11px]">
                   <span>Experience Relevance</span>
-                  <span className="font-semibold text-white">{atsAnalysis.experienceRelevanceScore}%</span>
+                  <span className="font-semibold text-white">{atsAnalysis?.experienceRelevanceScore ?? 0}%</span>
                 </div>
                 <div className="w-full bg-[#1c1e26] h-2 rounded-full overflow-hidden">
-                  <div className="bg-purple-500 h-full rounded-full" style={{ width: `${atsAnalysis.experienceRelevanceScore}%` }} />
+                  <div className="bg-purple-500 h-full rounded-full" style={{ width: `${atsAnalysis?.experienceRelevanceScore ?? 0}%` }} />
                 </div>
               </div>
             </div>
@@ -575,12 +597,12 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
             <div className="flex items-center justify-between pb-2 border-b border-[#23252b] text-xs">
               <span className="text-white font-bold">Matched Keywords</span>
               <span className="text-[11px] text-emerald-400 font-semibold">
-                {atsAnalysis.matchingKeywords.length} Matched
+                {(atsAnalysis?.matchingKeywords || []).length} Matched
               </span>
             </div>
 
             <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1">
-              {atsAnalysis.matchingKeywords.map((kw, i) => (
+              {(atsAnalysis?.matchingKeywords || []).map((kw: string, i: number) => (
                 <span 
                   key={i} 
                   className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-emerald-500/10 text-emerald-300 border border-emerald-500/20"
@@ -591,13 +613,13 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
               ))}
             </div>
 
-            {atsAnalysis.missingKeywords.length > 0 && (
+            {(atsAnalysis?.missingKeywords || []).length > 0 && (
               <div className="space-y-2 pt-3 border-t border-[#1c1e26]">
                 <div className="text-xs text-[#8e929b] font-medium">
-                  Missing Keywords ({atsAnalysis.missingKeywords.length})
+                  Missing Keywords ({(atsAnalysis?.missingKeywords || []).length})
                 </div>
                 <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
-                  {atsAnalysis.missingKeywords.map((kw, i) => (
+                  {(atsAnalysis?.missingKeywords || []).map((kw: string, i: number) => (
                     <span 
                       key={i} 
                       className="px-2.5 py-1 rounded-lg text-xs bg-[#16181f] text-[#8e929b] border border-[#23252b]"
@@ -614,7 +636,7 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
           <div className="p-5 rounded-2xl bg-[#111216] border border-[#23252b] space-y-3">
             <h4 className="text-xs font-bold text-white">Recruiter AI Feedback</h4>
             <p className="text-xs text-[#a0a4b0] leading-relaxed">
-              {atsAnalysis.recruiterFeedback}
+              {atsAnalysis?.recruiterFeedback || 'Recruiter feedback analysis is being prepared.'}
             </p>
 
             <button
@@ -622,7 +644,7 @@ export const ResultStudioPage: React.FC<{ setActivePage?: (p: ActivePage) => voi
               className="w-full mt-2 py-2 px-3 rounded-xl bg-[#16181f] hover:bg-[#20222a] border border-[#2a2d37] text-white text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
             >
               <Compass className="w-3.5 h-3.5 text-indigo-400" />
-              <span>View Skills Roadmap ({atsAnalysis.skillRoadmap.length})</span>
+              <span>View Skills Roadmap ({(atsAnalysis?.skillRoadmap || []).length})</span>
             </button>
           </div>
         </div>
