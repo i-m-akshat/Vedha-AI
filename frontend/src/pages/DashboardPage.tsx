@@ -16,8 +16,25 @@ import {
   Bot, 
   ShieldCheck, 
   Search,
-  ExternalLink
+  ExternalLink,
+  Bell,
+  MoreHorizontal,
+  Calendar,
+  Briefcase,
+  Target,
+  Compass
 } from 'lucide-react';
+import { 
+  AutumnHeroVector, 
+  AutumnTreeLeavesVector, 
+  AutumnUmbrellaVector, 
+  AutumnWalkingStepsVector, 
+  AutumnScarfBranchVector, 
+  AutumnAvatarVector, 
+  AutumnPumpkinVector, 
+  AutumnBenchVector, 
+  AutumnDogVector 
+} from '../components/icons/AutumnVectors';
 import { ActivePage } from '../components/layout/AppLayout';
 import { analyticsApi, applicationsApi, orchestratorApi, autonomousApi } from '../api';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -109,47 +126,209 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
   return (
     <div className="flex flex-col w-full gap-8 font-sans text-zinc-900 dark:text-[#ededed]">
       
-      {/* 1. Hero Spotlight Welcome Banner (Inspired by Autumn App & Flowbase Spotlight) */}
-      <section className="relative overflow-hidden rounded-[28px] sm:rounded-[32px] p-7 sm:p-9 border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#16151F] shadow-sm transition-all">
-        {/* Soft Ambient Backdrop Mesh */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-amber-200/40 via-rose-200/30 to-purple-200/20 dark:from-purple-900/20 dark:via-indigo-900/20 dark:to-emerald-950/20 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+      {/* Top Bar: Terracotta Squircle Notification + Pill Search Bar + Date Sprint Tag (Autumn App by Tamo) */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3 flex-1 max-w-2xl">
+          {/* Terracotta Notification Squircle with Dot */}
+          <button 
+            onClick={() => setActivePage('tracker')}
+            className="w-11 h-11 rounded-2xl bg-[#D9704F] hover:bg-[#C85F3E] text-white flex items-center justify-center relative shadow-sm cursor-pointer active:scale-95 transition-all shrink-0"
+            title="Notifications & Activity"
+          >
+            <Bell className="w-5 h-5" />
+            <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-white ring-2 ring-[#D9704F]"></span>
+          </button>
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Vedha AI Autonomous Engine Online</span>
+          {/* Pill Search Bar */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-zinc-400 absolute left-4 top-3 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search jobs, skills, or target companies..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-11 pr-4 py-2.5 rounded-full bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] text-xs text-zinc-900 dark:text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-[#D9704F]/30 shadow-sm transition-all"
+            />
+          </div>
+        </div>
+
+        {/* Sprint Tag & Quick Actions */}
+        <div className="flex items-center gap-3 self-end sm:self-auto">
+          <div className="hidden md:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FDF2EE] dark:bg-[#2A1B16] border border-[#FAD9CE] dark:border-[#542B20] text-xs font-semibold text-[#D9704F] dark:text-[#F39A7E]">
+            <span className="w-2 h-2 rounded-full bg-[#D9704F] animate-pulse"></span>
+            <span>Autumn Career Sprint • Oct 2026</span>
+          </div>
+
+          <button
+            onClick={() => setIsPaused(!isPaused)}
+            className={`px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer shadow-sm active:scale-[0.98] ${
+              isPaused 
+                ? 'bg-amber-400 hover:bg-amber-300 text-zinc-950 font-bold' 
+                : 'bg-white dark:bg-[#16151F] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-zinc-800 dark:text-zinc-200 border border-black/[0.06] dark:border-white/[0.08]'
+            }`}
+          >
+            {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+            <span>{isPaused ? 'Resume' : 'Pause Auto-Apply'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Hero Showcase Card: Autumn Day Scenic Illustration + Terracotta Banner (Exact Tamo Pattern) */}
+      <section className="relative overflow-hidden rounded-[32px] border border-black/[0.06] dark:border-white/[0.08] bg-[#FDF4ED] dark:bg-[#181622] shadow-sm transition-all">
+        {/* Top: Autumn Day Scenic Vector Artwork */}
+        <div className="w-full overflow-hidden">
+          <AutumnHeroVector className="w-full h-44 sm:h-56 object-cover" />
+        </div>
+
+        {/* Bottom Banner: Terracotta #D9704F Bar with Typography & Menu */}
+        <div className="bg-[#D9704F] p-6 sm:p-7 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-white/80 text-xs font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+              <span>Autumn Day • Active Search Mode</span>
             </div>
-            
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-zinc-900 dark:text-white">
-              Welcome back, {candidateName.split(' ')[0]} 👋
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+              Autumn Career Sprint — Hello {candidateName.split(' ')[0]}
             </h1>
-            
-            <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
-              Your autonomous career operating system is running. Monitor your live dispatch queue, calibrated ATS matches, and interview callbacks in real time.
+            <p className="text-xs sm:text-sm text-white/90 max-w-xl leading-relaxed">
+              14 new calibrated job matches ready for auto-dispatch. All applications pass 100% human-in-the-loop verification before submission.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => setIsPaused(!isPaused)}
-              className={`px-4 py-2.5 rounded-full text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer shadow-sm active:scale-[0.98] ${
-                isPaused 
-                  ? 'bg-amber-400 hover:bg-amber-300 text-zinc-950 font-bold' 
-                  : 'bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/[0.1] text-zinc-800 dark:text-zinc-200 border border-black/[0.06] dark:border-white/[0.08]'
-              }`}
-            >
-              {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
-              <span>{isPaused ? 'Resume Applications' : 'Pause Auto-Apply'}</span>
-            </button>
-
+          <div className="flex items-center gap-2.5">
             <button
               onClick={() => setActivePage('tailor-studio')}
-              className="px-5 py-2.5 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100 text-xs font-semibold flex items-center gap-2 transition-all shadow-md cursor-pointer active:scale-[0.98]"
+              className="px-5 py-2.5 rounded-full bg-white hover:bg-amber-50 text-[#D9704F] text-xs font-bold transition-all shadow-md cursor-pointer active:scale-95"
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Tailor New Resume</span>
+              Tailor New Resume
             </button>
+            <button
+              onClick={() => setActivePage('orchestrator')}
+              className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-all cursor-pointer active:scale-95"
+              title="Application Options"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 4 Stacked / Floating Pastel Squircle Tools (From Autumn App by Tamo Reference) */}
+      <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Tool 1: Sage Green (Resume Tailor) */}
+        <div 
+          onClick={() => setActivePage('tailor-studio')}
+          className="p-4 sm:p-5 rounded-[24px] bg-[#DCEEE5] dark:bg-[#1E362D] border border-[#C5E4D5] dark:border-[#2C5244] hover:shadow-md transition-all cursor-pointer flex items-center gap-3.5 group"
+        >
+          <AutumnTreeLeavesVector className="w-12 h-12 shrink-0 group-hover:scale-105 transition-transform" />
+          <div className="min-w-0">
+            <div className="text-xs font-bold text-[#23503D] dark:text-[#A8DEC6] truncate">Resume Tailor</div>
+            <div className="text-[11px] text-[#2E634D] dark:text-[#7EBFA5] truncate">Target ATS ≥ 95%</div>
+          </div>
+        </div>
+
+        {/* Tool 2: Soft Peach (Cover Letter AI) */}
+        <div 
+          onClick={() => setActivePage('tailor-studio')}
+          className="p-4 sm:p-5 rounded-[24px] bg-[#FCE1D4] dark:bg-[#3D261D] border border-[#F9CCA8] dark:border-[#5B392B] hover:shadow-md transition-all cursor-pointer flex items-center gap-3.5 group"
+        >
+          <AutumnUmbrellaVector className="w-12 h-12 shrink-0 group-hover:scale-105 transition-transform" />
+          <div className="min-w-0">
+            <div className="text-xs font-bold text-[#8C3C24] dark:text-[#F8BCA7] truncate">Cover Letter AI</div>
+            <div className="text-[11px] text-[#A64B2F] dark:text-[#D98A72] truncate">Role-Specific Drafts</div>
+          </div>
+        </div>
+
+        {/* Tool 3: Mint Cyan (Auto-Apply Queue) */}
+        <div 
+          onClick={() => setActivePage('orchestrator')}
+          className="p-4 sm:p-5 rounded-[24px] bg-[#E1F3F0] dark:bg-[#1B3633] border border-[#C7EAE3] dark:border-[#29514D] hover:shadow-md transition-all cursor-pointer flex items-center gap-3.5 group"
+        >
+          <AutumnWalkingStepsVector className="w-12 h-12 shrink-0 group-hover:scale-105 transition-transform" />
+          <div className="min-w-0">
+            <div className="text-xs font-bold text-[#20544B] dark:text-[#A7E2D8] truncate">Auto-Dispatch</div>
+            <div className="text-[11px] text-[#2D6E62] dark:text-[#7EC4B8] truncate">{activeCount} in Queue</div>
+          </div>
+        </div>
+
+        {/* Tool 4: Warm Sand (Interview Drills) */}
+        <div 
+          onClick={() => setActivePage('ask-aksh')}
+          className="p-4 sm:p-5 rounded-[24px] bg-[#F9E8D6] dark:bg-[#3B3020] border border-[#F2D7B8] dark:border-[#584830] hover:shadow-md transition-all cursor-pointer flex items-center gap-3.5 group"
+        >
+          <AutumnScarfBranchVector className="w-12 h-12 shrink-0 group-hover:scale-105 transition-transform" />
+          <div className="min-w-0">
+            <div className="text-xs font-bold text-[#6D4C24] dark:text-[#E8D1B5] truncate">Interview Drills</div>
+            <div className="text-[11px] text-[#865E2D] dark:text-[#C7A77F] truncate">STAR System Drills</div>
+          </div>
+        </div>
+      </section>
+
+      {/* Day Schedule Section (Directly from Autumn App by Tamo Reference) */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold text-zinc-900 dark:text-white tracking-tight">Day Schedule</h2>
+            <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-black/[0.04] dark:bg-white/[0.08] text-zinc-500 dark:text-zinc-400">
+              Today
+            </span>
+          </div>
+          <button className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
+            <MoreHorizontal className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Schedule 1 */}
+          <div className="p-4 rounded-[24px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] flex items-center gap-3.5 shadow-sm hover:shadow transition-all">
+            <AutumnTreeLeavesVector className="w-11 h-11 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">
+                <span>09:00 AM</span>
+                <span className="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-600 font-semibold">Done</span>
+              </div>
+              <div className="text-xs font-semibold text-zinc-900 dark:text-white truncate mt-0.5">Resume Tailoring</div>
+              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">Google • L6 Architect</div>
+            </div>
+          </div>
+
+          {/* Schedule 2 */}
+          <div className="p-4 rounded-[24px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] flex items-center gap-3.5 shadow-sm hover:shadow transition-all">
+            <AutumnUmbrellaVector className="w-11 h-11 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">
+                <span>11:30 AM</span>
+                <span className="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-600 font-semibold">Done</span>
+              </div>
+              <div className="text-xs font-semibold text-zinc-900 dark:text-white truncate mt-0.5">Cover Letter AI</div>
+              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">Stripe • Staff Platform</div>
+            </div>
+          </div>
+
+          {/* Schedule 3 */}
+          <div className="p-4 rounded-[24px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] flex items-center gap-3.5 shadow-sm hover:shadow transition-all">
+            <AutumnWalkingStepsVector className="w-11 h-11 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">
+                <span>02:15 PM</span>
+                <span className="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 font-semibold">Active</span>
+              </div>
+              <div className="text-xs font-semibold text-zinc-900 dark:text-white truncate mt-0.5">Auto-Dispatch</div>
+              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">12 Verified Positions</div>
+            </div>
+          </div>
+
+          {/* Schedule 4 */}
+          <div className="p-4 rounded-[24px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] flex items-center gap-3.5 shadow-sm hover:shadow transition-all">
+            <AutumnScarfBranchVector className="w-11 h-11 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">
+                <span>04:45 PM</span>
+                <span className="px-1.5 py-0.2 rounded bg-sky-500/10 text-sky-600 font-semibold">Ready</span>
+              </div>
+              <div className="text-xs font-semibold text-zinc-900 dark:text-white truncate mt-0.5">Mock Interview</div>
+              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">Airbnb • Systems Deep Dive</div>
+            </div>
           </div>
         </div>
       </section>
@@ -515,45 +694,174 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setActivePage }) =
           </div>
         </section>
 
-        {/* Right Column (4 cols): Spotlight Card (Autumn App & Flowbase hybrid) + Live Feed */}
+        {/* Right Column (4 cols): Jack / Candidate Profile & Career Planning (Exact Autumn App Reference) */}
         <section className="lg:col-span-4 flex flex-col gap-6">
           
-          {/* Spotlight Candidate Card */}
-          <div className="p-6 rounded-[28px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] space-y-5 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-zinc-900 dark:bg-zinc-800 text-white flex items-center justify-center text-lg font-bold border border-black/[0.08] dark:border-white/[0.1] shadow-md">
-                {candidateInitial}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <h3 className="font-bold text-zinc-900 dark:text-white text-base truncate">{candidateName}</h3>
-                  <CheckCircle2 className="w-4 h-4 text-sky-500 fill-sky-500/20 shrink-0" />
+          {/* Main Candidate Card (Pure white rounded container matching Jack's card in reference) */}
+          <div className="p-6 sm:p-7 rounded-[32px] bg-white dark:bg-[#16151F] border border-black/[0.06] dark:border-white/[0.08] space-y-6 shadow-sm">
+            
+            {/* 1. Profile Header with AutumnAvatarVector, Name, Role, and Terracotta Pill */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <AutumnAvatarVector className="w-16 h-16 shrink-0" />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="font-bold text-zinc-900 dark:text-white text-base truncate">{candidateName}</h3>
+                    <CheckCircle2 className="w-4 h-4 text-[#D9704F] fill-[#D9704F]/20 shrink-0" />
+                  </div>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
+                    Senior Systems Architect
+                  </p>
                 </div>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
-                  Senior Full-Stack Engineer
-                </p>
-                <div className="mt-1">
-                  <span className="inline-block text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-500/20">
-                    Active Job Seeker
+              </div>
+
+              {/* Terracotta Pill Button */}
+              <button
+                onClick={() => setActivePage('candidate-profile')}
+                className="px-4 py-1.5 rounded-full bg-[#D9704F] hover:bg-[#C85F3E] text-white text-xs font-semibold shadow-sm transition-all cursor-pointer active:scale-95 shrink-0"
+              >
+                Active Profile
+              </button>
+            </div>
+
+            {/* Quick Metrics Bar */}
+            <div className="grid grid-cols-2 gap-2 text-center">
+              <div className="p-3 rounded-2xl bg-[#FAF6F2] dark:bg-zinc-800/40 border border-black/[0.04] dark:border-white/[0.06]">
+                <div className="text-xl font-bold font-mono text-zinc-900 dark:text-white">{totalAppsCount}</div>
+                <div className="text-[10px] text-zinc-500 dark:text-zinc-400">Total Tracked</div>
+              </div>
+              <div className="p-3 rounded-2xl bg-[#FAF6F2] dark:bg-zinc-800/40 border border-black/[0.04] dark:border-white/[0.06]">
+                <div className="text-xl font-bold font-mono text-[#D9704F] dark:text-[#F39A7E]">{avgScore}</div>
+                <div className="text-[10px] text-zinc-500 dark:text-zinc-400">ATS Match Avg</div>
+              </div>
+            </div>
+
+            {/* 2. October Targets Section (Google, Stripe, Airbnb with Autumn Vector Badges) */}
+            <div className="space-y-3 pt-2 border-t border-black/[0.05] dark:border-white/[0.06]">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-white font-mono">
+                    October Targets
+                  </h4>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#FDF2EE] dark:bg-[#2A1B16] text-[#D9704F] dark:text-[#F39A7E] font-semibold">
+                    3 Selected
+                  </span>
+                </div>
+                <button 
+                  onClick={() => setActivePage('tracker')}
+                  className="text-[11px] text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                >
+                  Edit
+                </button>
+              </div>
+
+              <div className="space-y-2.5">
+                {/* Target 1: Google */}
+                <div className="p-3 rounded-2xl bg-[#FAF7F2] dark:bg-[#1C1B27] border border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between gap-3 hover:border-[#D9704F]/40 transition-all">
+                  <div className="flex items-center gap-3">
+                    <AutumnTreeLeavesVector className="w-10 h-10 shrink-0" />
+                    <div>
+                      <div className="text-xs font-bold text-zinc-900 dark:text-white">Google</div>
+                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Staff Architect • $174k - $240k</div>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setActivePage('tailor-studio')}
+                    className="px-3 py-1 rounded-full text-[11px] font-semibold text-[#D9704F] bg-[#FDF2EE] border border-[#FAD9CE] hover:bg-[#D9704F] hover:text-white transition-all cursor-pointer"
+                  >
+                    View
+                  </button>
+                </div>
+
+                {/* Target 2: Stripe */}
+                <div className="p-3 rounded-2xl bg-[#FAF7F2] dark:bg-[#1C1B27] border border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between gap-3 hover:border-[#D9704F]/40 transition-all">
+                  <div className="flex items-center gap-3">
+                    <AutumnPumpkinVector className="w-10 h-10 shrink-0" />
+                    <div>
+                      <div className="text-xs font-bold text-zinc-900 dark:text-white">Stripe</div>
+                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Core Infra • $320k - $380k</div>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setActivePage('tailor-studio')}
+                    className="px-3 py-1 rounded-full text-[11px] font-semibold text-[#D9704F] bg-[#FDF2EE] border border-[#FAD9CE] hover:bg-[#D9704F] hover:text-white transition-all cursor-pointer"
+                  >
+                    View
+                  </button>
+                </div>
+
+                {/* Target 3: Airbnb */}
+                <div className="p-3 rounded-2xl bg-[#FAF7F2] dark:bg-[#1C1B27] border border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between gap-3 hover:border-[#D9704F]/40 transition-all">
+                  <div className="flex items-center gap-3">
+                    <AutumnBenchVector className="w-10 h-10 shrink-0" />
+                    <div>
+                      <div className="text-xs font-bold text-zinc-900 dark:text-white">Airbnb</div>
+                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Distributed • $215k - $290k</div>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setActivePage('tailor-studio')}
+                    className="px-3 py-1 rounded-full text-[11px] font-semibold text-[#D9704F] bg-[#FDF2EE] border border-[#FAD9CE] hover:bg-[#D9704F] hover:text-white transition-all cursor-pointer"
+                  >
+                    View
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Career Planning Section (Vector Squircles Thumbnails from Autumn App Reference) */}
+            <div className="space-y-3 pt-2 border-t border-black/[0.05] dark:border-white/[0.06]">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-white font-mono">
+                  Career Planning
+                </h4>
+                <button 
+                  onClick={() => setActivePage('tracker')}
+                  className="text-[11px] text-[#D9704F] hover:underline font-medium"
+                >
+                  See all →
+                </button>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2.5">
+                {/* Planning Item 1: Dog walk / morning standup */}
+                <div 
+                  onClick={() => setActivePage('ask-aksh')}
+                  className="p-3 rounded-2xl bg-[#FAF7F2] dark:bg-[#1C1B27] border border-black/[0.04] dark:border-white/[0.06] text-center flex flex-col items-center gap-2 hover:border-[#D9704F]/40 transition-all cursor-pointer group"
+                >
+                  <AutumnDogVector className="w-10 h-10 group-hover:scale-105 transition-transform" />
+                  <span className="text-[10px] font-medium text-zinc-700 dark:text-zinc-300 leading-tight">
+                    Standup
+                  </span>
+                </div>
+
+                {/* Planning Item 2: Umbrella in rain / offer review */}
+                <div 
+                  onClick={() => setActivePage('tailor-studio')}
+                  className="p-3 rounded-2xl bg-[#FAF7F2] dark:bg-[#1C1B27] border border-black/[0.04] dark:border-white/[0.06] text-center flex flex-col items-center gap-2 hover:border-[#D9704F]/40 transition-all cursor-pointer group"
+                >
+                  <AutumnUmbrellaVector className="w-10 h-10 group-hover:scale-105 transition-transform" />
+                  <span className="text-[10px] font-medium text-zinc-700 dark:text-zinc-300 leading-tight">
+                    Offers
+                  </span>
+                </div>
+
+                {/* Planning Item 3: Bench in park / negotiation */}
+                <div 
+                  onClick={() => setActivePage('ask-aksh')}
+                  className="p-3 rounded-2xl bg-[#FAF7F2] dark:bg-[#1C1B27] border border-black/[0.04] dark:border-white/[0.06] text-center flex flex-col items-center gap-2 hover:border-[#D9704F]/40 transition-all cursor-pointer group"
+                >
+                  <AutumnBenchVector className="w-10 h-10 group-hover:scale-105 transition-transform" />
+                  <span className="text-[10px] font-medium text-zinc-700 dark:text-zinc-300 leading-tight">
+                    Negotiate
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 pt-1 text-center">
-              <div className="p-3 rounded-2xl bg-black/[0.025] dark:bg-zinc-800/40 border border-black/[0.04] dark:border-white/[0.06]">
-                <div className="text-lg font-bold font-mono text-zinc-900 dark:text-white">{totalAppsCount}</div>
-                <div className="text-[10px] text-zinc-400 dark:text-zinc-500">Applications</div>
-              </div>
-              <div className="p-3 rounded-2xl bg-black/[0.025] dark:bg-zinc-800/40 border border-black/[0.04] dark:border-white/[0.06]">
-                <div className="text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">95%</div>
-                <div className="text-[10px] text-zinc-400 dark:text-zinc-500">Avg ATS Score</div>
-              </div>
-            </div>
-
             <button
               onClick={() => setActivePage('candidate-profile')}
-              className="w-full py-2.5 rounded-full bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/[0.1] text-zinc-800 dark:text-white text-xs font-semibold border border-black/[0.06] dark:border-white/[0.08] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+              className="w-full py-2.5 rounded-full bg-[#FAF7F2] dark:bg-white/[0.06] hover:bg-[#F2ECE3] dark:hover:bg-white/[0.1] text-zinc-800 dark:text-white text-xs font-semibold border border-black/[0.06] dark:border-white/[0.08] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
             >
               <span>Edit Profile &amp; Preferences</span>
               <ChevronRight className="w-3.5 h-3.5" />

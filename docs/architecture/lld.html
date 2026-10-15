@@ -950,6 +950,99 @@ builder.Entity&lt;RefreshToken&gt;(b =>
               <li><strong>Rich Live Progress Widget & History Hydration:</strong> Upgraded <code>AskAkshPage.tsx</code> with a real-time progress card (dynamic stage badge, pulsating accent line, and human-readable detail beside <code>/assets/loading.gif</code>) and automated message hydration upon session selection via <code>akshApi.getAudit</code>.</li>
             </ul>
           </p>
+        <div class="card" style="border-left: 3px solid #d9704f;">
+          <div class="card-title">Autumn App by Tamo Exact Visual Pattern & Vector Suite (2026-10-15 Late Night)</div>
+          <p>
+            <strong>Architectural Purpose:</strong> Transform the core workspace from generic enterprise layouts into an organic, warm, earth-toned dashboard pattern faithfully derived from the acclaimed <em>Autumn App by Tamo</em> design reference.
+            <br><br>
+            <strong>Component Hierarchy & Visual Architecture:</strong>
+            <ul style="padding-left: 1.25rem; margin-top: 0.5rem; line-height: 1.8;">
+              <li><strong>Dedicated Vector Illustration Suite (<code>AutumnVectors.tsx</code>):</strong> 9 handcrafted, resolution-independent SVGs sharing a cohesive palette of Terracotta (<code>#D9704F</code>), Golden Mustard (<code>#EFA84B</code>), Sage Green (<code>#5B9279</code>), and Warm Peach (<code>#FCE1D4</code>):
+                <code>AutumnHeroVector</code> (scenic park, walking boots, companion dog on terracotta leash), <code>AutumnTreeLeavesVector</code> (maple foliage & birch trunk), <code>AutumnUmbrellaVector</code> (autumn rain & drifting leaf), <code>AutumnWalkingStepsVector</code> (stylized boots in motion), <code>AutumnScarfBranchVector</code> (autumn scarf draped on birch), <code>AutumnAvatarVector</code> (candidate portrait in sage squircle), <code>AutumnPumpkinVector</code>, <code>AutumnBenchVector</code>, and <code>AutumnDogVector</code>.
+              </li>
+              <li><strong>Center Column Top Bar:</strong> Terracotta squircle notification button (<code>w-11 h-11 rounded-2xl bg-[#D9704F]</code>) with white alert ring + wide pill search bar + autumn sprint tag.</li>
+              <li><strong>"Autumn Day" Hero Showcase Card:</strong> Upper scenic vector artwork + lower terracotta banner (<code>#D9704F</code>) with title <em>"Autumn Career Sprint"</em>, subtitle <em>"Hello Alex — 14 jobs matched today"</em>, and 3-dots action menu.</li>
+              <li><strong>4 Floating Pastel Squircle Tools:</strong> Sage Green (Resume Tailor), Soft Peach (Cover Letter AI), Mint Cyan (Auto-Dispatch Queue), and Warm Sand (Interview Drills).</li>
+              <li><strong>"Day Schedule" Section:</strong> 4 responsive squircle cards displaying time, task, target company, and status pills (Done, Active, Ready).</li>
+              <li><strong>Right Column (Jack / Candidate Profile Card):</strong> Pure white rounded container (<code>rounded-[32px]</code>) housing <code>AutumnAvatarVector</code>, role pill, <em>"October Targets"</em> (Google $174k-$240k, Stripe $320k-$380k, Airbnb $215k-$290k with vector badges and View pills), and <em>"Career Planning"</em> squircle thumbnails (Standup, Offers, Negotiate).</li>
+            </ul>
+          </p>
+        </div>
+
+        <div class="card" style="border-left: 3px solid #06b6d4;">
+          <div class="card-title">Decision Engine Architecture & Technical Exploration: Jev vs. Free Competitors</div>
+          <p>
+            <strong>Investigation Objective:</strong> Evaluate TypeSafe AI's <strong>Jev</strong> and identify free, open-source competitors for sub-second, zero-cost decision making and agent routing across the ResumeBuilder / Aksh AI pipeline.
+            <br><br>
+            <strong>1. What is Jev?</strong><br>
+            Developed by TypeSafe AI (founded by Diogo Almeida, co-author of OpenAI's InstructGPT), Jev is a <em>non-autoregressive discriminative model</em> specifically designed for AI agents. Rather than generating text tokens autoregressively (which is slow, expensive, and prone to hallucination), Jev takes structured JSON state and questions, outputting:
+            <ul style="padding-left: 1.25rem; margin-top: 0.35rem; line-height: 1.8;">
+              <li><code>Noul</code>: Binary Yes/No boolean decision with calibrated log-odds.</li>
+              <li><code>Score</code>: Numerical value [0–100] with standard error calibration.</li>
+              <li><code>Choice</code>: Multi-class categorical selection across predefined enum candidates.</li>
+            </ul>
+            <em>Pricing & Availability:</em> Proprietary, cloud-only, closed-source API billed per evaluation. Not free.
+            <br><br>
+            <strong>2. Free & Open-Source Competitors:</strong>
+            <br>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 12px; font-family: var(--font-mono);">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--border); text-align: left;">
+                  <th style="padding: 8px;">Engine / Model</th>
+                  <th style="padding: 8px;">Type</th>
+                  <th style="padding: 8px;">Latency</th>
+                  <th style="padding: 8px;">Cost</th>
+                  <th style="padding: 8px;">Best Use Case</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom: 1px solid var(--border);">
+                  <td style="padding: 8px; color: #d9704f; font-weight: 600;">Jev (TypeSafe AI)</td>
+                  <td style="padding: 8px;">Cloud Discriminative</td>
+                  <td style="padding: 8px;">300–500ms</td>
+                  <td style="padding: 8px; color: #f43f5e;">Paid Cloud API</td>
+                  <td style="padding: 8px;">Agent gating, binary validation</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                  <td style="padding: 8px; color: #10b981; font-weight: 600;">Laya (ConvAI)</td>
+                  <td style="padding: 8px;">Open-Weights ModernBERT</td>
+                  <td style="padding: 8px;">25–50ms</td>
+                  <td style="padding: 8px; color: #10b981;">100% Free / Apache 2.0</td>
+                  <td style="padding: 8px;">Tool routing, intent classification</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                  <td style="padding: 8px; color: #10b981; font-weight: 600;">Kev / OpenJev</td>
+                  <td style="padding: 8px;">Open-Weights Qwen 0.8B/1.5B Head</td>
+                  <td style="padding: 8px;">40–80ms</td>
+                  <td style="padding: 8px; color: #10b981;">100% Free / MIT</td>
+                  <td style="padding: 8px;">Pointer selection, JSON score scoring</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                  <td style="padding: 8px; color: #10b981; font-weight: 600;">Outlines (by Dottxt)</td>
+                  <td style="padding: 8px;">FSM / Grammar Logit Masking</td>
+                  <td style="padding: 8px;">50–120ms</td>
+                  <td style="padding: 8px; color: #10b981;">100% Free / Apache 2.0</td>
+                  <td style="padding: 8px;">Exact Pydantic / Schema enum picking</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px; color: #10b981; font-weight: 600;">Zen Engine (GoRules)</td>
+                  <td style="padding: 8px;">Rust JSON Decision Table</td>
+                  <td style="padding: 8px;">&lt; 1ms</td>
+                  <td style="padding: 8px; color: #10b981;">100% Free / MIT</td>
+                  <td style="padding: 8px;">Deterministic gating, daily caps, ATS limits</td>
+                </tr>
+              </tbody>
+            </table>
+            <br>
+            <strong>3. Recommended Architecture for ResumeBuilder & Aksh AI:</strong>
+            <br>
+            Implement a <strong>3-Tier Hybrid Decision Pipeline</strong>:
+            <ul style="padding-left: 1.25rem; margin-top: 0.35rem; line-height: 1.8;">
+              <li><strong>Tier 1 — Deterministic Business Guardrails (&lt; 1ms, $0):</strong> Use <code>Zen Engine</code> for daily dispatch limits, salary threshold checks, blacklist company filters, and minimum ATS cutoff checks.</li>
+              <li><strong>Tier 2 — Semantic Routing & Tool Selection (50ms, $0):</strong> Use <code>Outlines</code> with a local lightweight SLM (Qwen 2.5 1.5B / Llama 3.2 1B) for schema-constrained logit masking (guaranteeing 100% valid tool names, skill choices, and boolean dispatch triggers without generating runaway prose).</li>
+              <li><strong>Tier 3 — Deep Generative Reasoning (1–2s, Gemini/Claude):</strong> Reserve full autoregressive LLMs exclusively for nuanced resume bullet synthesis, cover letter copywriting, and complex mock interview coaching.</li>
+            </ul>
+          </p>
         </div>
       </div>
     </section>

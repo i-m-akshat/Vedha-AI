@@ -139,7 +139,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
 
             <button
               onClick={() => setActivePage('tailor-studio')}
-              className="px-4 py-1.5 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
+              className="px-4 py-1.5 rounded-full bg-[#D9704F] hover:bg-[#C85F3E] text-white text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Tailor Job</span>
@@ -194,7 +194,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
                   onClick={() => setActivePage(item.id)}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-zinc-900 text-white dark:bg-white/10 dark:text-white font-semibold dark:border dark:border-white/[0.12] shadow-sm'
+                      ? 'bg-[#D9704F] text-white font-semibold shadow-sm'
                       : 'text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-black/[0.04] dark:hover:bg-zinc-900/60'
                   }`}
                 >
@@ -205,7 +205,7 @@ export const AppShell: React.FC<AppShellProps> = ({ activePage, setActivePage, c
                   {item.badge && (
                     <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono uppercase tracking-wider ${
                       isActive 
-                        ? 'bg-white/20 text-white dark:bg-white/15' 
+                        ? 'bg-white/25 text-white' 
                         : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                     }`}>
                       {item.badge}

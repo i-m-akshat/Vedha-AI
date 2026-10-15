@@ -76,3 +76,18 @@ Minimalist Editorial Chat Bubble + Smooth Loading Indicator
     - *Reference 2 ("autumn app by tamo")*: Warm aesthetic canvas, personalized hero greeting banner ("Welcome back, Alex 👋"), and verified candidate profile spotlight card with avatar, role pill, and rapid metric counters.
     - *Reference 3 ("Premium Flowbase_co LIVE! Landing")*: Segmented pill controls (`All Applications` / `Queue` / `Interviews`), dark translucent search pill, rounded-full high-contrast action CTAs, and refined activity table.
   - **Impacted Layers**: `frontend/index.html`, `frontend/src/index.css`, `frontend/src/stores/useAuthStore.ts`, `frontend/src/components/layout/AppLayout.tsx`, `frontend/src/pages/DashboardPage.tsx`, `frontend/src/pages/AskAkshPage.tsx`, `frontend/src/pages/AuthPages.tsx`.
+- **2026-10-15 (Late Night - Autumn App by Tamo & Decision Engine Architecture)**:
+  - **Autumn App by Tamo Exact Visual Implementation**:
+    - Created dedicated vector illustration suite in [`frontend/src/components/icons/AutumnVectors.tsx`](file:///A:/AIProjects/Resumebuilder/frontend/src/components/icons/AutumnVectors.tsx) matching the warm earth tone palette (`#D9704F` terracotta, `#EFA84B` golden foliage, `#5B9279` sage, `#FCE1D4` peach, `#FDF4ED` cream).
+    - Re-architected [`DashboardPage.tsx`](file:///A:/AIProjects/Resumebuilder/frontend/src/pages/DashboardPage.tsx) into the exact 3-zone layout:
+      1. Top Bar: Terracotta squircle bell notification button with white alert dot + wide pill search bar + autumn sprint tag.
+      2. Hero Showcase Card: Scenic autumn day illustration (`AutumnHeroVector`) with trees, path, walking shoes, companion dog on leash + terracotta `#D9704F` banner with "Autumn Career Sprint" and 3-dots action menu.
+      3. 4 Floating Pastel Squircles: Sage Green (Resume Tailor), Soft Peach (Cover Letter AI), Mint Cyan (Auto-Dispatch Queue), Warm Sand (Interview Drills).
+      4. "Day Schedule" Section: 4 vector squircle cards (Resume Tailoring 09:00 AM, Cover Letter AI 11:30 AM, Auto-Dispatch 02:15 PM, Mock Interview 04:45 PM).
+      5. Right Column (Jack / Candidate Profile Card): Pure white rounded card (`rounded-[32px]`) with `AutumnAvatarVector` portrait, name, role, terracotta pill button (`Active Profile`), "October Targets" (Google $174k-$240k, Stripe $320k-$380k, Airbnb $215k-$290k with autumn badges and "View" pills), and "Career Planning" squircle thumbnails (`AutumnDogVector`, `AutumnUmbrellaVector`, `AutumnBenchVector`).
+  - **App Layout Navigation**:
+    - Refined [`AppLayout.tsx`](file:///A:/AIProjects/Resumebuilder/frontend/src/components/layout/AppLayout.tsx) with terracotta `#D9704F` active state pills and top action button.
+  - **Decision Engine Technical Exploration**:
+    - Evaluated TypeSafe AI's **Jev** (non-autoregressive discriminative decision model) versus free open-source alternatives: **Laya** (ConvAI Innovations, ModernBERT-based), **Kev** (0.8B/1.5B Qwen pointer model), **Outlines by Dottxt** (FSM/Grammar-guided logit masking for 0-hallucination agent tool/route selection), and **Zen Engine** (sub-millisecond Rust JSON decision tables).
+  - **Impacted Layers**: `frontend/src/components/icons/AutumnVectors.tsx`, `frontend/src/pages/DashboardPage.tsx`, `frontend/src/components/layout/AppLayout.tsx`, `docs/architecture/lld.html`.
+
