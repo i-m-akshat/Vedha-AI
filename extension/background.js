@@ -147,6 +147,17 @@ if (cr?.runtime?.onMessage) {
       return true;
     }
 
+    if (message.action === "TRIGGER_DISPATCH_POLL") {
+      if (dispatchModule && typeof dispatchModule.triggerDispatchPoll === "function") {
+        dispatchModule.triggerDispatchPoll()
+          .then(() => sendResponse({ success: true }))
+          .catch((err) => sendResponse({ success: false, error: err?.message || String(err) }));
+        return true;
+      }
+      sendResponse({ success: false, error: "dispatch module not loaded" });
+      return true;
+    }
+
     return false;
   });
 }
@@ -225,6 +236,9 @@ async function syncAuthFromWebApp() {
     if (webAppData && Object.keys(webAppData).length > 0) {
       await cr.storage.local.set(webAppData);
       console.log("[Vedha SW] Synced auth from web app:", Object.keys(webAppData));
+      if (dispatchModule && typeof dispatchModule.triggerDispatchPoll === "function") {
+        dispatchModule.triggerDispatchPoll().catch(() => {});
+      }
     }
   } catch (err) {
     // Silently fail - web app might not be open
@@ -293,10 +307,14 @@ syncAuthFromWebApp();
 // e2e harnesses (vm.runInContext) where static imports are a parse error.
 // Dynamic import() parses in both goals; rejection is caught. Chrome loads
 // this worker as a module per manifest, so resolution succeeds there.
+let dispatchModule = null;
 try {
   if (cr?.alarms?.create) {
     import("./dispatch.js")
-      .then((m) => { try { m.startDispatchPoller(); } catch (_) {} })
+      .then((m) => {
+        dispatchModule = m;
+        try { m.startDispatchPoller(); } catch (_) {}
+      })
       .catch(() => {});
   }
 } catch (_) { /* harness without module support: poller stays inert */ }

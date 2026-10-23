@@ -289,6 +289,11 @@ async function resumeInterruptedClaim() {
   } catch { /* lease bounds the loss */ }
 }
 
+export async function triggerDispatchPoll() {
+  console.log("[Vedha Dispatch] on-demand poll triggered.");
+  await pollOnce();
+}
+
 export function startDispatchPoller() {
   const cr = getChrome();
   if (!cr?.alarms) return false;

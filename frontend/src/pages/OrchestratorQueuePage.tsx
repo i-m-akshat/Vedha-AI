@@ -501,8 +501,17 @@ export const OrchestratorQueuePage: React.FC<OrchestratorQueuePageProps> = ({ se
                     <span>Waiting for browser extension</span>
                   </div>
                   <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                    Dispatched. Open the job posting in a tab with the Vedha extension active — it will claim and fill this run, then report back here.
+                    Dispatched to your authenticated browser session. Open the job posting in your browser where the Vedha extension is active to execute auto-fill.
                   </p>
+                  <a
+                    href={selectedQueueItem.jobUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-2 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer no-underline"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    <span>Open Job Posting in Browser Tab</span>
+                  </a>
                   <button
                     onClick={() => cancelMutation.mutate(selectedQueueItem.id)}
                     disabled={cancelMutation.isPending}

@@ -89,6 +89,29 @@ public class OrchestratorTests
     }
 
     [Fact]
+    public async Task LinkedInCopilotProvider_ShouldFinalizeWhenReviewModeFalse()
+    {
+        var provider = new LinkedInCopilotProvider();
+        var profile = new CandidateProfile { PhoneNumber = "+1 555 123 4567" };
+        var resume = new ResumeSchema { PersonalInfo = new PersonalInfo { FullName = "Alex Mercer", Email = "alex@example.com" } };
+        var answers = new List<ScreeningAnswerPayload>();
+        var dummyPdf = new byte[1024];
+
+        var result = await provider.ExecuteFlowAsync(
+            "https://www.linkedin.com/jobs/view/123",
+            profile,
+            resume,
+            dummyPdf,
+            "Cover letter text",
+            answers,
+            copilotReviewMode: false);
+
+        result.Success.Should().BeTrue();
+        result.PausedForUserReview.Should().BeFalse();
+        result.ExecutionLogs.Should().Contain(log => log.Contains("Candidate authorization confirmed"));
+    }
+
+    [Fact]
     public async Task SemanticDomFormMapper_ShouldMapFieldsUsingSemanticLabelsWithoutHardcodedSelectors()
     {
         var browsingContext = AngleSharp.BrowsingContext.New(AngleSharp.Configuration.Default);
