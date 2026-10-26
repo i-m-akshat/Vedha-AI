@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/assets/vedha-logo.png" alt="Vedha AI Logo" width="100" style="border-radius: 18px; margin-bottom: 6px;" />
+  <img src="docs/assets/vedha-terracotta-leaf-emblem.png" alt="Vedha AI Logo" width="100" style="border-radius: 18px; margin-bottom: 6px;" />
   <h1>Vedha AI — System Design & Software Architecture Guide</h1>
   <p><strong>A Masterclass in Clean Architecture, SOLID Principles, and Enterprise Design Patterns</strong></p>
 </div>

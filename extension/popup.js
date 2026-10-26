@@ -11,13 +11,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   function applyTheme(theme) {
     document.documentElement.setAttribute("data-theme", theme);
     const isDark = theme === "dark";
+    const logoSrc = "vedha-terracotta-leaf-emblem.png";
     if (headerLogo) {
-      headerLogo.src = "vedha-terracotta-leaf-emblem.png";
+      headerLogo.src = logoSrc;
       headerLogo.style.height = "24px";
       headerLogo.style.width = "24px";
     }
     if (loginLogo) {
-      loginLogo.src = "vedha-v-leaf-icon.png";
+      loginLogo.src = logoSrc;
       loginLogo.style.height = "56px";
       loginLogo.style.width = "56px";
     }
@@ -145,6 +146,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let currentUser = null;
   let currentProfile = null;
   let currentMasterResume = null;
+  let activeStagedPackage = null;
 
   const todayKey = `apply_count_${new Date().toISOString().slice(0, 10)}`;
 
@@ -357,6 +359,38 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     if (settingsUserEmail && currentUser) {
       settingsUserEmail.innerText = currentUser.email;
+    }
+  }
+
+  // -------------------------------------------------------------
+  // Backend Connectivity Health Check (Connection Pill)
+  // -------------------------------------------------------------
+  async function checkBackendHealth() {
+    if (!connectionPill || !connectionText) return;
+    try {
+      const res = await fetchWithTimeout("http://localhost:5000/api/auth/me", {
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
+      }, 3000);
+      if (res.ok || res.status === 401) {
+        connectionPill.className = "status-pill";
+        connectionPill.classList.remove("offline");
+        connectionText.innerText = "Backend Online";
+        connectionText.style.color = "var(--success)";
+        const dot = document.getElementById("connectionDot");
+        if (dot) dot.style.background = "var(--success)";
+      } else {
+        connectionPill.className = "status-pill offline";
+        connectionText.innerText = "Backend Unreachable";
+        connectionText.style.color = "var(--warning)";
+        const dot = document.getElementById("connectionDot");
+        if (dot) dot.style.background = "var(--warning)";
+      }
+    } catch (_) {
+      connectionPill.className = "status-pill offline";
+      connectionText.innerText = "Backend Offline";
+      connectionText.style.color = "var(--warning)";
+      const dot = document.getElementById("connectionDot");
+      if (dot) dot.style.background = "var(--warning)";
     }
   }
 
@@ -709,6 +743,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       showStatus("⚡ Analyzing form and auto-filling with your Master Resume...", "info", 0);
 
       try {
+        const activeCoverLetter = (coverLetterText && coverLetterText.value && !coverLetterText.value.startsWith("Drafting tailored"))
+          ? coverLetterText.value
+          : (activeStagedPackage?.coverLetterText || "");
+        const packageAnswers = activeStagedPackage?.prefilledAnswers || [];
+
         const payload = {
           fullName: currentMasterResume?.schema?.personalInfo?.fullName || currentUser?.fullName || currentProfile?.fullName,
           firstName: currentProfile?.firstName,
@@ -726,6 +765,11 @@ document.addEventListener("DOMContentLoaded", async () => {
           masterResume: currentMasterResume || null,
           company: extractedJob.company,
           title: extractedJob.title,
+          coverLetter: activeCoverLetter,
+          coverLetterText: activeCoverLetter,
+          answers: packageAnswers,
+          prefilledAnswers: packageAnswers,
+          approvedAnswers: packageAnswers,
           token: authToken,
           isSafeFill: true,
           copilotMode: isReviewGateway,
@@ -805,6 +849,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         const data = await res.json();
+        activeStagedPackage = data;
+        if (data.coverLetterText && coverLetterText && (!coverLetterText.value || coverLetterText.value.startsWith("Drafting tailored"))) {
+          coverLetterText.value = data.coverLetterText;
+        }
         showStatus("✅ Application package queued in Vedha AI Studio! Ready for pipeline review.", "success", 8000);
         preparePackageBtnLabel.innerText = "✓ Package Staged in Queue";
         setTimeout(() => {
@@ -832,7 +880,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       runAtsAnalysisBtn.disabled = true;
       runAtsAnalysisBtn.innerText = "Analyzing alignment...";
       if (atsVerdict) atsVerdict.innerText = "Evaluating candidate fit with Vedha AI...";
-      if (atsScoreCircle) atsScoreCircle.innerText = "...";
+      if (atsScoreCircle) {
+        atsScoreCircle.innerText = "";
+        atsScoreCircle.classList.add("ats-score-loading");
+      }
 
       try {
         const res = await fetch("http://localhost:5000/api/orchestrator/quick-match", {
@@ -891,6 +942,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       } catch (err) {
         showStatus(`⚠️ ${err.message || "Failed to calculate ATS match."}`, "warning", 6000);
       } finally {
+        if (atsScoreCircle) atsScoreCircle.classList.remove("ats-score-loading");
         runAtsAnalysisBtn.disabled = false;
         runAtsAnalysisBtn.innerText = "🎯 Run Full ATS Alignment Check";
       }
@@ -1122,4 +1174,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Initial Boot
   await checkAuthSession();
   await syncActiveTab();
+  await checkBackendHealth();
+  setInterval(checkBackendHealth, 30000);
 });

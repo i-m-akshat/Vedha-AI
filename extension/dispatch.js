@@ -181,13 +181,19 @@ async function executeRun(token, pkg) {
   await setBadge(1);
   await postReceipt(token, runId, { claimToken, state: "started", message: "Extension claimed the run; harness starting." }).catch(() => null);
 
+  const answersList = pkg.prefilledAnswers ?? pkg.PrefilledAnswers ?? [];
+  const coverLetterStr = norm(pkg.coverLetterText ?? pkg.CoverLetterText);
+
   const payload = {
     queueItemId: runId,
     claimToken,
     company: norm(pkg.targetCompany ?? pkg.TargetCompany),
     title: norm(pkg.targetRole ?? pkg.TargetRole),
-    coverLetter: norm(pkg.coverLetterText ?? pkg.CoverLetterText),
-    prefilledAnswers: pkg.prefilledAnswers ?? pkg.PrefilledAnswers ?? [],
+    coverLetter: coverLetterStr,
+    coverLetterText: coverLetterStr,
+    answers: answersList,
+    prefilledAnswers: answersList,
+    approvedAnswers: answersList,
     copilotMode: true,
     token,
     runStatusUrl: `${VEDHA_API_BASE}/api/orchestrator/queue/${runId}`,

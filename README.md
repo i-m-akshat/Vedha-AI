@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/assets/vedha-logo.png" alt="Vedha AI Logo" width="130" style="border-radius: 24px; margin-bottom: 8px;" />
+  <img src="docs/assets/vedha-terracotta-leaf-emblem.png" alt="Vedha AI Logo" width="130" style="border-radius: 24px; margin-bottom: 8px;" />
   <h1>Vedha AI</h1>
   <p><strong>The AI Career Operating System & Multi-Pipeline Job Application Orchestrator</strong></p>
 

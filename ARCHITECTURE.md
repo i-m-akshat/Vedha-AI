@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/assets/vedha-logo.png" alt="Vedha AI Logo" width="100" style="border-radius: 18px; margin-bottom: 6px;" />
+  <img src="docs/assets/vedha-terracotta-leaf-emblem.png" alt="Vedha AI Logo" width="100" style="border-radius: 18px; margin-bottom: 6px;" />
   <h1>Vedha AI — System Architecture</h1>
   <p><strong>Clean Architecture, CQRS, Event-Driven NATS JetStream, and Multi-Pipeline Engineering Blueprint</strong></p>
 </div>

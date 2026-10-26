@@ -853,6 +853,12 @@
           </p>
         </div>
         <div class="card">
+          <div class="card-title">Phase 4 Extension Pull Dispatch & Bidirectional Data Hydration</div>
+          <p>
+            The background service worker (<code>dispatch.js</code>) polls <code>GET /api/orchestrator/extension/runs/next</code> every 60s, atomically claiming pending runs via atomic lease tickets (10-minute lease). The claimed run delivers the complete pipeline package: <code>JobUrl</code>, <code>TargetCompany</code>, <code>TargetRole</code>, <code>CoverLetterText</code>, and <code>PrefilledAnswers</code>. The content script directly hydrates screening answers and tailored cover letters into native form inputs, while streaming live <code>AGENT_STEP_UPDATE</code> telemetry receipts back to <code>POST /api/orchestrator/extension/runs/{id}/receipt</code> to maintain synchronous tracker state.
+          </p>
+        </div>
+        <div class="card">
           <div class="card-title">Strict Gemini Thought-Signature & Transient 500 Cascading</div>
           <p>
             For frontier models (Gemini 2.5 / 3.x), tool calls emit cryptographic reasoning tokens (<code>thoughtSignature</code>). The Aksh function calling bridge captures these signatures at the part level and echoes them as sibling properties across multi-turn ReAct iterations. On HTTP 500/502/503/504/429 transient errors, it retries with exponential backoff and cascades dynamically across <code>gemini-2.5-flash</code> &rarr; <code>gemini-2.0-flash</code> &rarr; <code>gemini-1.5-flash</code> &rarr; <code>gemini-flash-lite-latest</code>.

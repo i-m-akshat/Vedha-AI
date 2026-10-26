@@ -1,17 +1,43 @@
 # ResuMate / Vedha AI — Full Build & Container Startup Script (Native Windows Podman)
+[CmdletBinding()]
+param(
+    [switch]$SkipBuild,
+    [switch]$NoProxy
+)
+
 $ErrorActionPreference = "Stop"
 
 Write-Host "=== ResuMate / Vedha AI Container Orchestrator ===" -ForegroundColor Cyan
 
-# 1. Ensure Podman machine is running
-$machineStatus = podman machine list --format "{{.Running}}" 2>$null
-if ($machineStatus -notmatch "true|Currently running") {
-    Write-Host "Podman machine is not running. Starting podman-machine-default..." -ForegroundColor Yellow
-    podman machine start podman-machine-default
+# 1. Ensure Podman machine is initialized and running
+function Ensure-PodmanMachine {
+    Write-Host "Verifying Podman machine environment..." -ForegroundColor Cyan
+    $existingMachines = podman machine list --format "{{.Name}}" 2>$null
+    if ($existingMachines -notmatch "podman-machine-default") {
+        Write-Host "Podman machine 'podman-machine-default' does not exist. Initializing..." -ForegroundColor Yellow
+        podman machine init podman-machine-default
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to initialize podman-machine-default. Please verify Podman installation."
+        }
+    }
+
+    $runningMachines = podman machine list --format "{{if .Running}}{{.Name}}{{end}}" 2>$null
+    if ($runningMachines -notmatch "podman-machine-default") {
+        Write-Host "Starting podman-machine-default..." -ForegroundColor Yellow
+        $startOutput = podman machine start podman-machine-default 2>&1
+        if ($LASTEXITCODE -ne 0 -and $startOutput -notmatch "already running") {
+            throw "Unable to start podman-machine-default: $startOutput"
+        }
+    }
+
+    # Verify Podman engine connection
+    $null = podman version 2>$null
     if ($LASTEXITCODE -ne 0) {
-        throw "Unable to start podman-machine-default. Run 'podman machine list' for details."
+        throw "Podman client cannot connect to the Podman engine socket. Please check 'podman machine list'."
     }
 }
+
+Ensure-PodmanMachine
 
 # 2. Build Container Images natively (with automated retry for network resilience)
 $repoRoot = (Resolve-Path "$PSScriptRoot\..").Path
@@ -28,6 +54,7 @@ function Invoke-PodmanBuildWithRetry {
         Write-Host "Building $Tag (Attempt $attempt of $MaxRetries)..." -ForegroundColor Cyan
         podman build -t $Tag -f $DockerfilePath $ContextPath
         if ($LASTEXITCODE -eq 0) {
+            Write-Host "Successfully built and tagged $Tag." -ForegroundColor Green
             return
         }
         Write-Warning "Build failed for $Tag on attempt $attempt of $MaxRetries."
@@ -40,9 +67,14 @@ function Invoke-PodmanBuildWithRetry {
     throw "Podman build failed for $Tag after $MaxRetries attempts."
 }
 
-Invoke-PodmanBuildWithRetry -Tag "localhost/infra-backend:latest" -DockerfilePath "$PSScriptRoot\Dockerfile.backend" -ContextPath $repoRoot
-Invoke-PodmanBuildWithRetry -Tag "localhost/infra-frontend:latest" -DockerfilePath "$PSScriptRoot\Dockerfile.frontend" -ContextPath $repoRoot
-Invoke-PodmanBuildWithRetry -Tag "localhost/infra-worker:latest" -DockerfilePath "$PSScriptRoot\Dockerfile.worker" -ContextPath $repoRoot
+if (-not $SkipBuild) {
+    Write-Host "Building application container images..." -ForegroundColor Cyan
+    Invoke-PodmanBuildWithRetry -Tag "localhost/infra-backend:latest" -DockerfilePath "$PSScriptRoot\Dockerfile.backend" -ContextPath $repoRoot
+    Invoke-PodmanBuildWithRetry -Tag "localhost/infra-frontend:latest" -DockerfilePath "$PSScriptRoot\Dockerfile.frontend" -ContextPath $repoRoot
+    Invoke-PodmanBuildWithRetry -Tag "localhost/infra-worker:latest" -DockerfilePath "$PSScriptRoot\Dockerfile.worker" -ContextPath $repoRoot
+} else {
+    Write-Host "Skipping image build step as requested (-SkipBuild)." -ForegroundColor Yellow
+}
 
 # 3. Load Environment Variables from infra/.env
 $envMap = @{}
@@ -57,8 +89,9 @@ $postgresUser = if ($envMap["POSTGRES_USER"]) { $envMap["POSTGRES_USER"] } else 
 $postgresPass = if ($envMap["POSTGRES_PASSWORD"]) { $envMap["POSTGRES_PASSWORD"] } else { "resumate_secret_password_change_me" }
 $postgresDb   = if ($envMap["POSTGRES_DB"]) { $envMap["POSTGRES_DB"] } else { "resumate_db" }
 $jwtSecret    = if ($envMap["JWT_SECRET"]) { $envMap["JWT_SECRET"] } else { "super_secret_jwt_key_at_least_32_characters_long_for_security_hs256" }
-$jwtIssuer    = if ($envMap["JWT_ISSUER"]) { $envMap["JWT_ISSUER"] } else { "ResuMateApi" }
-$jwtAudience  = if ($envMap["JWT_AUDIENCE"]) { $envMap["JWT_AUDIENCE"] } else { "ResuMateClient" }
+$jwtIssuer    = if ($envMap["JWT_ISSUER"]) { $envMap["JWT_ISSUER"] } else { "VedhaApi" }
+$jwtAudience  = if ($envMap["JWT_AUDIENCE"]) { $envMap["JWT_AUDIENCE"] } else { "VedhaClient" }
+$jwtExpiry    = if ($envMap["JWT_EXPIRY_MINUTES"]) { $envMap["JWT_EXPIRY_MINUTES"] } else { "1440" }
 $geminiKey    = if ($envMap["GEMINI_API_KEY"]) { $envMap["GEMINI_API_KEY"] } else { "" }
 $geminiModel  = if ($envMap["GEMINI_MODEL"]) { $envMap["GEMINI_MODEL"] } else { "gemini-2.5-flash" }
 $aiProvider   = if ($envMap["DEFAULT_AI_PROVIDER"]) { $envMap["DEFAULT_AI_PROVIDER"] } else { "Gemini" }
@@ -72,6 +105,11 @@ $akshBudget   = if ($envMap["Aksh__DailyTokenBudget"]) { $envMap["Aksh__DailyTok
 $akshModel    = if ($envMap["Aksh__Model"]) { $envMap["Aksh__Model"] } else { "" }
 $akshMaxRuns  = if ($envMap["Aksh__MaxConcurrentRuns"]) { $envMap["Aksh__MaxConcurrentRuns"] } else { "3" }
 $dispatchEnabled = if ($envMap["Dispatch__Enabled"]) { $envMap["Dispatch__Enabled"] } else { "true" }
+$crawlerToken = if ($envMap["CRAWL4AI_API_TOKEN"]) { $envMap["CRAWL4AI_API_TOKEN"] } else { "vedha_crawler_token_2026" }
+$crawlerEnabled = if ($envMap["CRAWLER_ENABLED"]) { $envMap["CRAWLER_ENABLED"] } else { "true" }
+$minioAccess  = if ($envMap["MINIO_ACCESS_KEY"]) { $envMap["MINIO_ACCESS_KEY"] } else { "minioadmin" }
+$minioSecret  = if ($envMap["MINIO_SECRET_KEY"]) { $envMap["MINIO_SECRET_KEY"] } else { "minioadmin" }
+$minioBucket  = if ($envMap["MINIO_BUCKET"]) { $envMap["MINIO_BUCKET"] } else { "vedha-resumes" }
 
 # 4. Ensure Network exists
 $networks = podman network ls --format "{{.Name}}" 2>$null
@@ -80,8 +118,8 @@ if ($networks -notcontains "infra_vedha-network") {
     podman network create infra_vedha-network
 }
 
-# 5. Start Core Infrastructure (PostgreSQL, Redis, NATS)
-Write-Host "Checking core services (PostgreSQL, Redis, NATS)..." -ForegroundColor Cyan
+# 5. Start Core Infrastructure (PostgreSQL, Redis, NATS, MinIO, Crawler)
+Write-Host "Checking core infrastructure services..." -ForegroundColor Cyan
 $existingContainers = podman ps -a --format "{{.Names}}" 2>$null
 
 if ($existingContainers -notcontains "vedha-postgres") {
@@ -113,14 +151,13 @@ if ($existingContainers -notcontains "vedha-minio") {
     Write-Host "Creating vedha-minio container..." -ForegroundColor Cyan
     podman run -d --name vedha-minio --network infra_vedha-network --network-alias minio --network-alias vedha-minio `
         -p 9000:9000 -p 9001:9001 `
-        -e MINIO_ROOT_USER="minioadmin" -e MINIO_ROOT_PASSWORD="minioadmin" `
+        -e MINIO_ROOT_USER=$minioAccess -e MINIO_ROOT_PASSWORD=$minioSecret `
         -v minio_data:/data `
         cgr.dev/chainguard/minio:latest server /data --console-address :9001
 } else {
     podman start vedha-minio 2>$null | Out-Null
 }
 
-$crawlerToken = if ($envMap["CRAWL4AI_API_TOKEN"]) { $envMap["CRAWL4AI_API_TOKEN"] } else { "vedha_crawler_token_2026" }
 if ($existingContainers -notcontains "vedha-crawler") {
     Write-Host "Creating vedha-crawler container..." -ForegroundColor Cyan
     podman run -d --name vedha-crawler --network infra_vedha-network --network-alias crawler --network-alias vedha-crawler `
@@ -132,7 +169,24 @@ if ($existingContainers -notcontains "vedha-crawler") {
     podman start vedha-crawler 2>$null | Out-Null
 }
 
-# 6. Start Application Containers (Backend, Frontend)
+# 6. Wait for Database & Redis Readiness
+Write-Host "Waiting for PostgreSQL & Redis readiness..." -ForegroundColor Cyan
+$ready = $false
+for ($i = 1; $i -le 30; $i++) {
+    $pgReady = podman exec vedha-postgres pg_isready -U $postgresUser -d $postgresDb 2>$null
+    $redisReady = podman exec vedha-redis redis-cli ping 2>$null
+    if ($LASTEXITCODE -eq 0 -and $redisReady -match "PONG") {
+        Write-Host "PostgreSQL and Redis are ready!" -ForegroundColor Green
+        $ready = $true
+        break
+    }
+    Start-Sleep -Seconds 1
+}
+if (-not $ready) {
+    Write-Warning "PostgreSQL or Redis did not report healthy within 30 seconds; continuing startup."
+}
+
+# 7. Start Application Containers (Backend, Frontend, Worker)
 Write-Host "Starting vedha-backend..." -ForegroundColor Cyan
 podman rm -f vedha-backend *>$null
 Start-Sleep -Milliseconds 300
@@ -145,12 +199,13 @@ podman run -d --name vedha-backend --network infra_vedha-network --network-alias
     -e NatsSettings__Url="nats://nats:4222" `
     -e S3Settings__Endpoint="minio:9000" `
     -e S3Settings__PublicEndpoint="http://localhost:9000" `
-    -e S3Settings__AccessKey="minioadmin" `
-    -e S3Settings__SecretKey="minioadmin" `
-    -e S3Settings__BucketName="vedha-resumes" `
+    -e S3Settings__AccessKey="$minioAccess" `
+    -e S3Settings__SecretKey="$minioSecret" `
+    -e S3Settings__BucketName="$minioBucket" `
     -e JwtSettings__Secret="$jwtSecret" `
     -e JwtSettings__Issuer="$jwtIssuer" `
     -e JwtSettings__Audience="$jwtAudience" `
+    -e JwtSettings__ExpiryMinutes="$jwtExpiry" `
     -e AiSettings__GeminiApiKey="$geminiKey" `
     -e AiSettings__DefaultProvider="$aiProvider" `
     -e AiSettings__DefaultModel="$aiModel" `
@@ -161,7 +216,7 @@ podman run -d --name vedha-backend --network infra_vedha-network --network-alias
     -e Aksh__MaxConcurrentRuns="$akshMaxRuns" `
     -e Dispatch__Enabled="$dispatchEnabled" `
     -e Crawl4AiSettings__BaseUrl="http://crawler:11235" `
-    -e Crawl4AiSettings__Enabled="true" `
+    -e Crawl4AiSettings__Enabled="$crawlerEnabled" `
     -e Crawl4AiSettings__ApiToken="$crawlerToken" `
     -e EnableSwagger="true" `
     localhost/infra-backend:latest
@@ -170,7 +225,7 @@ if ($LASTEXITCODE -ne 0) { throw "Failed to start vedha-backend container." }
 Write-Host "Starting vedha-frontend..." -ForegroundColor Cyan
 podman rm -f vedha-frontend *>$null
 Start-Sleep -Milliseconds 300
-podman run -d --name vedha-frontend --network infra_vedha-network -p 3000:80 localhost/infra-frontend:latest
+podman run -d --name vedha-frontend --network infra_vedha-network --network-alias frontend -p 3000:80 localhost/infra-frontend:latest
 if ($LASTEXITCODE -ne 0) { throw "Failed to start vedha-frontend container." }
 
 Write-Host "Starting vedha-worker..." -ForegroundColor Cyan
@@ -180,9 +235,9 @@ podman run -d --name vedha-worker --network infra_vedha-network --network-alias 
     -p 8000:8000 `
     -e NATS_URL="nats://nats:4222" `
     -e MINIO_ENDPOINT="minio:9000" `
-    -e MINIO_ACCESS_KEY="minioadmin" `
-    -e MINIO_SECRET_KEY="minioadmin" `
-    -e MINIO_BUCKET="vedha-resumes" `
+    -e MINIO_ACCESS_KEY="$minioAccess" `
+    -e MINIO_SECRET_KEY="$minioSecret" `
+    -e MINIO_BUCKET="$minioBucket" `
     -e AGENTQL_API_KEY="$agentqlKey" `
     -e RESIDENTIAL_PROXY_URL="$resProxy" `
     -e WORKER_STEALTH_ENGINE="$stealthEngine" `
@@ -191,11 +246,13 @@ podman run -d --name vedha-worker --network infra_vedha-network --network-alias 
     localhost/infra-worker:latest
 if ($LASTEXITCODE -ne 0) { throw "Failed to start vedha-worker container." }
 
-# 7. Start Transparent Localhost Proxy
-$proxyRunning = Get-CimInstance Win32_Process -Filter "CommandLine LIKE '%localhost_proxy.py%'" -ErrorAction SilentlyContinue
-if (-not $proxyRunning) {
-    Write-Host "Starting localhost transparent proxy..." -ForegroundColor Cyan
-    Start-Process python -ArgumentList "$PSScriptRoot\localhost_proxy.py" -WindowStyle Hidden
+# 8. Start Transparent Localhost Proxy
+if (-not $NoProxy) {
+    $proxyRunning = Get-CimInstance Win32_Process -Filter "CommandLine LIKE '%localhost_proxy.py%'" -ErrorAction SilentlyContinue
+    if (-not $proxyRunning) {
+        Write-Host "Starting localhost transparent proxy..." -ForegroundColor Cyan
+        Start-Process python -ArgumentList "$PSScriptRoot\localhost_proxy.py" -WindowStyle Hidden
+    }
 }
 
 Write-Host "`n=== Build & Startup Complete ===" -ForegroundColor Green

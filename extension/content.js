@@ -1394,6 +1394,7 @@
   function screeningIntent(question, fieldType) {
     const n = normalizeQuestion(question);
     if (!n) return "custom";
+    if (/\b(cover\s*letter|letter of intent|note to (the )?hiring manager|message to (the )?recruiter)\b/i.test(n)) return "coverLetter";
     if (/\b(gender|race|ethnicity|veteran|disability|pronouns?)\b/.test(n)) return "eeo";
     if (/\b(first name|given name)\b/.test(n)) return "firstName";
     if (/\b(last name|family name|surname)\b/.test(n)) return "lastName";
@@ -1433,10 +1434,14 @@
     const wanted = normalizeQuestion(question);
     if (!wanted || !Array.isArray(answers)) return null;
     for (const entry of answers) {
-      const asked = normalizeQuestion(entry.questionText || entry.question || "");
-      const answerText = entry.answerText || entry.answer || "";
-      if (asked && asked === wanted && String(answerText).trim()) {
-        return groundedAnswer(String(answerText).trim(), 1, "approved");
+      if (!entry || typeof entry !== "object") continue;
+      const asked = normalizeQuestion(entry.questionText || entry.question || entry.QuestionText || "");
+      const answerText = entry.answerText || entry.answer || entry.AnswerText || "";
+      if (asked && (asked === wanted || (asked.length > 10 && (asked.includes(wanted) || wanted.includes(asked)))) && String(answerText).trim()) {
+        const rawScore = entry.confidenceScore ?? entry.ConfidenceScore;
+        const confidence = rawScore !== undefined && rawScore !== null ? Number(rawScore) : 1;
+        const source = entry.source || entry.Source || "approved";
+        return groundedAnswer(String(answerText).trim(), Number.isFinite(confidence) ? confidence : 1, source);
       }
     }
     return null;
@@ -1570,11 +1575,15 @@
     const options = typeof question === "string" ? [] : (question?.options || []);
     const safe = payload || {};
     const bag = safe.candidateProfile || {};
-    const approved = matchApprovedAnswer(qText, safe.answers || safe.approvedAnswers || bag.approvedAnswers);
+    const approved = matchApprovedAnswer(qText, safe.answers || safe.approvedAnswers || safe.prefilledAnswers || bag.approvedAnswers || bag.prefilledAnswers);
     if (approved) return approved;
 
     const intent = screeningIntent(qText, fieldType);
     if (intent === "eeo") return groundedAnswer("", 0, "eeo-hold");
+    if (intent === "coverLetter") {
+      const cl = safe.coverLetter || safe.coverLetterText || bag.coverLetter || "";
+      return hasGroundedValue(cl) ? groundedAnswer(String(cl).trim(), 0.98, "coverletter") : null;
+    }
 
     const textOrNull = (value, confidence, source) => (
       hasGroundedValue(value) ? groundedAnswer(value, confidence, source) : null
@@ -3987,7 +3996,7 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
       }
 
       button:focus-visible {
-        outline: 2px solid #6366f1 !important;
+        outline: 2px solid #D9704F !important;
         outline-offset: 2px !important;
       }
 
@@ -4024,9 +4033,9 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
     pill.style.cssText = `
       background: #09090b;
       color: #fafafa;
-      border: 1.5px solid #6366f1;
+      border: 1.5px solid #D9704F;
       border-radius: 9999px;
-      box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 10px 25px -5px rgba(217, 112, 79, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
       padding: 10px 18px;
       display: ${dockExpanded ? "none" : "flex"};
       align-items: center;
@@ -4040,19 +4049,19 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
       touch-action: none;
     `;
     pill.innerHTML = `
-      <span style="font-size: 13px; color: #6366f1; opacity: 0.8; margin-right: -2px; letter-spacing: -2px;">⋮⋮</span>
+      <span style="font-size: 13px; color: #D9704F; opacity: 0.8; margin-right: -2px; letter-spacing: -2px;">⋮⋮</span>
       <span style="font-size: 16px;">⚡</span>
       <span>Vedha Copilot</span>
-      <span style="font-size: 10px; background: rgba(99, 102, 241, 0.2); color: #a5b4fc; padding: 2px 7px; border-radius: 9999px; font-weight: 600;">Tools Ready</span>
+      <span style="font-size: 10px; background: rgba(217, 112, 79, 0.2); color: #F4B8A5; padding: 2px 7px; border-radius: 9999px; font-weight: 600;">Tools Ready</span>
     `;
 
     pill.onmouseenter = () => {
       pill.style.transform = "scale(1.04)";
-      pill.style.boxShadow = "0 15px 35px -5px rgba(99, 102, 241, 0.7)";
+      pill.style.boxShadow = "0 15px 35px -5px rgba(217, 112, 79, 0.7)";
     };
     pill.onmouseleave = () => {
       pill.style.transform = "scale(1)";
-      pill.style.boxShadow = "0 10px 25px -5px rgba(99, 102, 241, 0.5)";
+      pill.style.boxShadow = "0 10px 25px -5px rgba(217, 112, 79, 0.5)";
     };
 
     // Expanded Floating Dock Card (Always elevated over modals)
@@ -4065,7 +4074,7 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
       color: #fafafa;
       border: 1.5px solid #27272a;
       border-radius: 14px;
-      box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.9), 0 0 25px rgba(99, 102, 241, 0.35);
+      box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.9), 0 0 25px rgba(217, 112, 79, 0.35);
       padding: 14px;
       flex-direction: column;
       gap: 10px;
@@ -4078,10 +4087,10 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
         <div style="display: flex; align-items: center; gap: 7px;">
           <span style="font-size: 13px; color: #71717a; letter-spacing: -2px;">⋮⋮</span>
           <span style="font-size: 16px;">⚡</span>
-          <span style="font-size: 13px; font-weight: 800; color: #818cf8;">Vedha AI Copilot</span>
+          <span style="font-size: 13px; font-weight: 800; color: #D9704F;">Vedha AI Copilot</span>
         </div>
         <div style="display: flex; align-items: center; gap: 6px;">
-          <button id="vedha-dock-pin" title="Pin over all screens & modals" style="background: ${isPinned ? 'rgba(16, 185, 129, 0.25)' : 'rgba(99, 102, 241, 0.15)'}; border: 1px solid ${isPinned ? '#10b981' : 'rgba(99, 102, 241, 0.3)'}; color: ${isPinned ? '#34d399' : '#a5b4fc'}; font-size: 10px; cursor: pointer; padding: 3px 8px; border-radius: 6px; display: flex; align-items: center; gap: 4px; font-weight: 700;">
+          <button id="vedha-dock-pin" title="Pin over all screens & modals" style="background: ${isPinned ? 'rgba(16, 185, 129, 0.25)' : 'rgba(217, 112, 79, 0.15)'}; border: 1px solid ${isPinned ? '#10b981' : 'rgba(217, 112, 79, 0.3)'}; color: ${isPinned ? '#34d399' : '#F4B8A5'}; font-size: 10px; cursor: pointer; padding: 3px 8px; border-radius: 6px; display: flex; align-items: center; gap: 4px; font-weight: 700;">
             <span id="vedha-pin-icon">📌</span>
             <span id="vedha-pin-label">${isPinned ? 'Pinned' : 'Pin'}</span>
           </button>
@@ -4097,13 +4106,13 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
         </div>
       </div>
 
-      <div id="vedha-dock-status" style="display: none; font-size: 11px; padding: 8px 10px; border-radius: 6px; background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.3); color: #c7d2fe;"></div>
+      <div id="vedha-dock-status" style="display: none; font-size: 11px; padding: 8px 10px; border-radius: 6px; background: rgba(217, 112, 79, 0.12); border: 1px solid rgba(217, 112, 79, 0.3); color: #F4B8A5;"></div>
 
       <div style="display: flex; flex-direction: column; gap: 7px;">
-        <button id="vedha-dock-autoadvance" style="background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; padding: 10px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);">
+        <button id="vedha-dock-autoadvance" style="background: linear-gradient(135deg, #D9704F, #C85F3E); color: white; border: none; padding: 10px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px; box-shadow: 0 4px 12px rgba(217, 112, 79, 0.35);">
           <span>⚡</span><span>Autonomous Auto-Fill & Next Step</span>
         </button>
-        <button id="vedha-dock-easyapply" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: white; border: none; padding: 9px 12px; border-radius: 7px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px;">
+        <button id="vedha-dock-easyapply" style="background: linear-gradient(135deg, #D9704F, #C85F3E); color: white; border: none; padding: 9px 12px; border-radius: 7px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px; box-shadow: 0 4px 12px rgba(217, 112, 79, 0.35);">
           <span>💼</span><span>Auto-Apply (LinkedIn Easy Apply)</span>
         </button>
         <button id="vedha-dock-safefill" style="background: linear-gradient(135deg, #059669, #047857); color: white; border: none; padding: 9px 12px; border-radius: 7px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px;">
@@ -4112,7 +4121,7 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
         <button id="vedha-dock-ats" style="background: #18181b; color: #e4e4e7; border: 1px solid #3f3f46; padding: 8px 12px; border-radius: 7px; font-size: 11px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
           <span>🎯</span><span>Check ATS Match Score</span>
         </button>
-        <button id="vedha-dock-studio" style="background: #18181b; color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.3); padding: 8px 12px; border-radius: 7px; font-size: 11px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+        <button id="vedha-dock-studio" style="background: #18181b; color: #F4B8A5; border: 1px solid rgba(217, 112, 79, 0.3); padding: 8px 12px; border-radius: 7px; font-size: 11px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
           <span>✨</span><span>Open in Vedha Studio ↗</span>
         </button>
       </div>
@@ -4123,9 +4132,9 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
       if (!s) return;
       s.style.display = "block";
       s.innerText = msg;
-      s.style.background = isSuccess ? "rgba(16, 185, 129, 0.15)" : "rgba(99, 102, 241, 0.15)";
-      s.style.borderColor = isSuccess ? "rgba(16, 185, 129, 0.3)" : "rgba(99, 102, 241, 0.3)";
-      s.style.color = isSuccess ? "#6ee7b7" : "#c7d2fe";
+      s.style.background = isSuccess ? "rgba(16, 185, 129, 0.15)" : "rgba(217, 112, 79, 0.15)";
+      s.style.borderColor = isSuccess ? "rgba(16, 185, 129, 0.3)" : "rgba(217, 112, 79, 0.3)";
+      s.style.color = isSuccess ? "#6ee7b7" : "#F4B8A5";
     }
 
     // Draggable Implementation (Supports both Pill and Dock Header)
@@ -4253,23 +4262,23 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
       try { sessionStorage.setItem("vedha_dock_pinned", String(isPinned)); } catch (_) {}
       const pinBtn = dock.querySelector("#vedha-dock-pin");
       const pinLabel = dock.querySelector("#vedha-pin-label");
-      if (isPinned) {
-        if (pinBtn) {
-          pinBtn.style.background = "rgba(16, 185, 129, 0.25)";
-          pinBtn.style.borderColor = "#10b981";
-          pinBtn.style.color = "#34d399";
+        if (isPinned) {
+          if (pinBtn) {
+            pinBtn.style.background = "rgba(16, 185, 129, 0.25)";
+            pinBtn.style.borderColor = "#10b981";
+            pinBtn.style.color = "#34d399";
+          }
+          if (pinLabel) pinLabel.innerText = "Pinned";
+          setDockStatus("📌 Pinned on screen above all modals!", true);
+        } else {
+          if (pinBtn) {
+            pinBtn.style.background = "rgba(217, 112, 79, 0.15)";
+            pinBtn.style.borderColor = "rgba(217, 112, 79, 0.3)";
+            pinBtn.style.color = "#F4B8A5";
+          }
+          if (pinLabel) pinLabel.innerText = "Pin";
+          setDockStatus("Unpinned from screen.");
         }
-        if (pinLabel) pinLabel.innerText = "Pinned";
-        setDockStatus("📌 Pinned on screen above all modals!", true);
-      } else {
-        if (pinBtn) {
-          pinBtn.style.background = "rgba(99, 102, 241, 0.15)";
-          pinBtn.style.borderColor = "rgba(99, 102, 241, 0.3)";
-          pinBtn.style.color = "#a5b4fc";
-        }
-        if (pinLabel) pinLabel.innerText = "Pin";
-        setDockStatus("Unpinned from screen.");
-      }
     });
 
     function resolveCandidatePayload(stored, job, options = {}) {
@@ -4624,7 +4633,7 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
       //    remain interactive above modal backdrops.
       //    When pinned, the dock stays expanded; when unpinned, it collapses to the pill.
       const isUserPinned = readDockPinned();
-      placeDockRoot(dockRoot, DOCK_Z_FOREGROUND);
+      placeDockRoot(dockRoot, isUserPinned ? DOCK_Z_FOREGROUND : DOCK_Z_BELOW_DIALOGS);
       if (isUserPinned) {
         dockExpandedBeforeModal = null;
         presentDock(dockCard, dockPill, true);

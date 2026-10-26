@@ -735,19 +735,19 @@ builder.Entity&lt;RefreshToken&gt;(b =>
       </p>
       <div class="grid-2">
         <div class="card">
-          <div class="card-title">Content Script Relay (content.js)</div>
+          <div class="card-title">Content Script Relay & Form Hydration (content.js)</div>
           <p>
             Injected into <code>http://localhost:3000/*</code> to listen for authentication postMessages, and into job portals (LinkedIn, Greenhouse, Lever, Ashby, Workday, Indeed, Naukri) to extract specifications and execute biometric form auto-filling.
             Enhanced scraper heuristics support modern LinkedIn containers (<code>#job-details</code>, <code>.jobs-description-content__text</code>, <code>article.jobs-description__container</code>) and dedicated Workday selectors (<code>[data-automation-id='jobPostingHeader']</code>, <code>[data-automation-id='jobPostingDescription']</code>), with OpenGraph and JSON-LD fallbacks.
-            Safe auto-fill pairs questions with labels via <code>extractFormQuestions</code>, dispatches React synthetic events using descriptor prototype setters and <code>_valueTracker</code> resets, and retains z-index <code>2147483647</code> to float above modal dialogs.
+            Safe auto-fill pairs questions with labels via <code>extractFormQuestions</code>, dispatches React synthetic events using descriptor prototype setters and <code>_valueTracker</code> resets. Per ADR-009, an unpinned dock drops to z-index <code>2147482000</code> to yield to open modal dialogs, while a pinned dock remains elevated at <code>2147483647</code>.
+            Directly hydrates pipeline-tailored screening answers (<code>prefilledAnswers</code>, <code>answers</code>) and tailored cover letters (<code>coverLetterText</code>) before falling back to profile heuristics or on-the-fly LLM grounding.
           </p>
         </div>
         <div class="card">
-          <div class="card-title">Background & Popup Orchestrators (background.js & popup.js)</div>
+          <div class="card-title">Background & Dispatch Poller (background.js & dispatch.js)</div>
           <p>
-            Coordinates <code>chrome.storage.local</code> state, manages <code>AUTH_STORAGE_KEYS</code> including <code>vedha_refresh_token</code>, and transparently refreshes expired access tokens via <code>POST /api/auth/refresh</code> before showing unauthenticated views.
-            Tab messaging features dynamic timeout budgets (60,000ms for multi-step autonomous actions; 3,000ms for operational pings), preventing premature failure during humanized keystroke delays.
-            Header actions feature a dedicated Side Panel launcher triggering <code>chrome.sidePanel.open()</code> alongside the in-page screen pin.
+            Coordinates <code>chrome.storage.local</code> state, manages <code>AUTH_STORAGE_KEYS</code> including <code>vedha_refresh_token</code>, and transparently refreshes expired access tokens via <code>POST /api/auth/refresh</code>.
+            Hosts the Phase 4 <code>dispatch.js</code> pull poller (running on a 60-second <code>chrome.alarms</code> cadence), claiming dispatched runs via <code>GET /api/orchestrator/extension/runs/next</code>, opening target posting tabs, forwarding package payloads (prefilled answers, cover letters, and review HUD controls), and streaming live step receipts back to <code>POST /api/orchestrator/extension/runs/{id}/receipt</code>.
           </p>
         </div>
       </div>

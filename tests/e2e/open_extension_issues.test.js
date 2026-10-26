@@ -140,4 +140,53 @@ describe('Open extension issues #4 and #5', () => {
     assert.ok(list.includes('555-0100'));
     env.cleanup();
   });
+
+  it('pipeline prefilledAnswers hydrate into screening question resolution', () => {
+    const env = createBrowserEnvironment({ url: 'https://www.linkedin.com/jobs/view/42' });
+    const exports = loadExtensionContentScript(env);
+    const payload = {
+      prefilledAnswers: [
+        {
+          questionText: 'Why do you want to work at Acme?',
+          answerText: 'I have 8 years building scalable distributed .NET systems.',
+          confidenceScore: 0.99,
+          source: 'AI Grounding'
+        },
+        {
+          QuestionText: 'What is your primary cloud platform?',
+          AnswerText: 'AWS and GCP',
+          ConfidenceScore: 1.0,
+          Source: 'Memory'
+        }
+      ]
+    };
+
+    const res1 = exports.resolveScreeningAnswer('Why do you want to work at Acme?', payload);
+    assert.ok(res1, 'Should resolve prefilled answer');
+    assert.strictEqual(res1.answerText, 'I have 8 years building scalable distributed .NET systems.');
+    assert.strictEqual(res1.confidence, 0.99);
+
+    const res2 = exports.resolveScreeningAnswer('What is your primary cloud platform?', payload);
+    assert.ok(res2, 'Should resolve PascalCase QuestionText/AnswerText prefilled answer');
+    assert.strictEqual(res2.answerText, 'AWS and GCP');
+    assert.strictEqual(res2.confidence, 1.0);
+
+    env.cleanup();
+  });
+
+  it('pipeline coverLetter hydrates into cover letter question resolution', () => {
+    const env = createBrowserEnvironment({ url: 'https://boards.greenhouse.io/acme/jobs/42' });
+    const exports = loadExtensionContentScript(env);
+    const payload = {
+      coverLetter: 'Dear Hiring Manager,\nI am thrilled to apply for the Principal Engineer role...'
+    };
+
+    const res = exports.resolveScreeningAnswer('Please attach or paste your Cover Letter', payload);
+    assert.ok(res, 'Should resolve cover letter answer');
+    assert.strictEqual(res.answerText, 'Dear Hiring Manager,\nI am thrilled to apply for the Principal Engineer role...');
+    assert.strictEqual(res.confidence, 0.98);
+    assert.strictEqual(res.source, 'coverletter');
+
+    env.cleanup();
+  });
 });

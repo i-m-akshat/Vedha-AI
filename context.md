@@ -703,3 +703,11 @@ A:\AIProjects\Resumebuilder\
 - **Crawler**: `JobPostingTitleParser` stops saving `Company | motto` as the target role and reads the job-title heading instead (issue #12).
 - **Extension**: Easy Apply detection ignores form messages that merely contain `msg`, polls the details pane for 2.5 seconds, binds an already-open modal, and clicks with a pointer event sequence (issue #3).
 
+### 2026-10-26T20:45:00+05:30 — Extension Copilot Pipeline Data Hydration, ADR-009 Dock Elevation & Brand Logo Sync
+- **Infrastructure**: Executed native Windows Podman container orchestrator (`infra/build_and_start.ps1`), rebuilding backend, frontend, and worker images. All 8 microservice containers active and verified (`vedha-postgres`, `vedha-redis`, `vedha-nats`, `vedha-minio`, `vedha-crawler`, `vedha-backend`, `vedha-frontend`, `vedha-worker`).
+- **Pipeline Data Hydration**:
+  - `extension/dispatch.js`: Forwarded `answers`, `prefilledAnswers`, `approvedAnswers`, and `coverLetterText` from claimed `ExtensionRunPackageDto`.
+  - `extension/content.js`: Updated `matchApprovedAnswer` and `resolveScreeningAnswer` to match pipeline prefilled answers before fallback; added dedicated `coverLetter` intent to inject tailored cover letters into portal textareas.
+  - `extension/popup.js`: Propagated active cover letters and queued package answers into direct autofill actions.
+- **ADR-009 Compliance**: Resolved unpinned copilot widget modal z-index (`DOCK_Z_BELOW_DIALOGS = 2147482000`) in `extension/content.js`. 100% of E2E tests passing (156/156 passed, 0 failures). .NET unit tests 100% green (208/208 passed).
+- **Brand Identity Sync**: Updated all markdown documentation (`README.md`, `ARCHITECTURE.md`, `INTERESTING_THINGS.md`, `SYSTEM_DESIGN_AND_PATTERNS.md`) to feature the new Terracotta Leaf Emblem (`docs/assets/vedha-terracotta-leaf-emblem.png`).

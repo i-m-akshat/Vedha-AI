@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/assets/vedha-logo.png" alt="Vedha AI Logo" width="100" style="border-radius: 18px; margin-bottom: 6px;" />
+  <img src="docs/assets/vedha-terracotta-leaf-emblem.png" alt="Vedha AI Logo" width="100" style="border-radius: 18px; margin-bottom: 6px;" />
   <h1>Vedha AI — Engineering Highlights & Innovations</h1>
   <p><strong>How we solved the hardest problems in automated resume tailoring, truth preservation, anti-ban safety, and multi-pipeline orchestration.</strong></p>
 </div>
