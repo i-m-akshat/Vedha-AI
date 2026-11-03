@@ -547,6 +547,9 @@ Test results and verification status (unit tests, build checks).
 ## 6. Risks & Future Improvements
 Any remaining risks and recommended next steps.
 
+## 7. Interactive Visual Code Walkthrough (HTML)
+Clickable link to `docs/walkthroughs/<feature-name>/index.html` featuring animated visual flows, cross-layer execution paths, and line-by-line code explanations.
+
 ---
 
 # Decision Making

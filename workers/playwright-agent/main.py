@@ -120,8 +120,9 @@ async def analyze_screen_with_ai_vision(
     stage_goal: str,
     screening_answers: Optional[List[Dict[str, Any]]] = None
 ) -> Dict[str, Any]:
-    """Uses Google Gemini Multimodal Vision to inspect the page screenshot and visible DOM controls,
-    determining the next optimal browser action (click, fill, upload, review_pause, completed, etc.).
+    """Uses Google Gemini Multimodal Vision to inspect the page screenshot with Set-of-Marks (SoM)
+    visual grounding and visible DOM controls, determining the next optimal browser action
+    (click, fill, upload, review_pause, completed, etc.).
     """
     if not GEMINI_API_KEY:
         logger.info("[AI Vision] GEMINI_API_KEY not configured; skipping visual inference.")
@@ -131,12 +132,12 @@ async def analyze_screen_with_ai_vision(
         # Resolve Page object if target is a Locator
         actual_page = page.page if hasattr(page, "page") else page
 
-        # Capture screenshot
-        screenshot_bytes = await actual_page.screenshot(type="jpeg", quality=75)
-        b64_img = base64.b64encode(screenshot_bytes).decode("utf-8")
-
-        # Extract visible interactive elements with exact center click coordinates
+        # Step 1: Inject Set-of-Marks (SoM) high-contrast visual badges and extract interactive metadata
         interactive_elements = await actual_page.evaluate("""() => {
+            // Clean up any stale badges and mark attributes first
+            document.querySelectorAll('.vedha-som-badge').forEach(b => b.remove());
+            document.querySelectorAll('[data-vedha-mark-id]').forEach(el => el.removeAttribute('data-vedha-mark-id'));
+
             const list = [];
             const nodes = document.querySelectorAll("button, a, input, select, textarea, [role='button'], [tabindex='0']");
             for (let i = 0; i < nodes.length; i++) {
@@ -144,8 +145,33 @@ async def analyze_screen_with_ai_vision(
                 const rect = el.getBoundingClientRect();
                 const style = window.getComputedStyle(el);
                 if (rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none') {
+                    const markId = list.length + 1;
+                    el.setAttribute('data-vedha-mark-id', String(markId));
+
+                    // Inject visual numbered marker badge
+                    const badge = document.createElement('div');
+                    badge.className = 'vedha-som-badge';
+                    badge.innerText = String(markId);
+                    badge.style.position = 'absolute';
+                    badge.style.left = `${Math.round(window.scrollX + rect.left)}px`;
+                    badge.style.top = `${Math.round(window.scrollY + rect.top)}px`;
+                    badge.style.zIndex = '2147483647';
+                    badge.style.backgroundColor = '#e11d48';
+                    badge.style.color = '#ffffff';
+                    badge.style.fontSize = '11px';
+                    badge.style.fontWeight = 'bold';
+                    badge.style.fontFamily = 'monospace';
+                    badge.style.padding = '1px 5px';
+                    badge.style.borderRadius = '3px';
+                    badge.style.border = '1.5px solid #ffffff';
+                    badge.style.boxShadow = '0 2px 5px rgba(0,0,0,0.4)';
+                    badge.style.pointerEvents = 'none';
+                    badge.style.lineHeight = '1.2';
+                    document.body.appendChild(badge);
+
                     const text = (el.innerText || el.value || el.placeholder || el.getAttribute('aria-label') || '').trim();
                     list.push({
+                        mark_id: markId,
                         index: list.length,
                         tag: el.tagName.toLowerCase(),
                         id: el.id || '',
@@ -159,13 +185,24 @@ async def analyze_screen_with_ai_vision(
                         width: Math.round(rect.width),
                         height: Math.round(rect.height)
                     });
+                    if (list.length >= 60) break;
                 }
             }
-            return list.slice(0, 50);
+            return list;
+        }""")
+
+        # Step 2: Capture screenshot with Set-of-Marks tags visually rendered
+        screenshot_bytes = await actual_page.screenshot(type="jpeg", quality=75)
+        b64_img = base64.b64encode(screenshot_bytes).decode("utf-8")
+
+        # Step 3: Remove visual badges immediately so page remains natural
+        await actual_page.evaluate("""() => {
+            document.querySelectorAll('.vedha-som-badge').forEach(b => b.remove());
         }""")
 
         prompt = f"""You are the AI Vision Decision Engine for an autonomous job application agent.
-Analyze this browser screenshot and the visible interactive DOM elements below.
+Analyze this browser screenshot and the visible interactive DOM controls below.
+Each interactive element on the screen is visually labeled with a high-contrast red numeric badge [1], [2], [3], etc. (Set-of-Marks).
 
 Candidate Profile:
 - Full Name: {candidate_profile.get('fullName') or candidate_profile.get('full_name') or ''}
@@ -181,12 +218,12 @@ Candidate Profile:
 Current Stage / Goal:
 {stage_goal}
 
-Visible Interactive Controls:
+Visible Tagged Controls (numbered by mark_id):
 {json.dumps(interactive_elements, indent=2)}
 
 Decide the best single next action to advance the application:
 Actions:
-- "click": Click an element (e.g. Apply, Easy Apply, Next, Continue, Review, Submit, or a radio option).
+- "click": Click an element (e.g. Apply, Easy Apply, Next, Continue, Review, Submit, or a radio/checkbox option).
 - "fill": Fill a text, number, or tel input.
 - "upload": Attach resume PDF to an input[type='file'].
 - "review_pause": We have arrived at the final review / summary screen (before final submission).
@@ -197,11 +234,12 @@ Actions:
 Respond ONLY with valid JSON:
 {{
     "action": "click" | "fill" | "upload" | "review_pause" | "completed" | "auth_required" | "cannot_proceed",
+    "mark_id": 1,
     "element_index": 0,
     "coordinates": {{"x": 450, "y": 620}},
     "selector": "CSS selector to target the element, e.g. button:has-text('Apply') or input[name='phone'] or #submit",
     "value": "string value to type if action is fill, else empty string",
-    "reasoning": "brief explanation based on the screenshot"
+    "reasoning": "brief explanation based on the visual screenshot and mark ID"
 }}"""
 
         for model_name in VISION_MODEL_CASCADES:
@@ -236,7 +274,7 @@ Respond ONLY with valid JSON:
                         text_part = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
                         if text_part:
                             parsed = json.loads(text_part)
-                            logger.info(f"[AI Vision] Decision ({model_name}): action={parsed.get('action')}, element_index={parsed.get('element_index')}, coords={parsed.get('coordinates')}, reasoning={parsed.get('reasoning')}")
+                            logger.info(f"[AI Vision] Decision ({model_name}): action={parsed.get('action')}, mark_id={parsed.get('mark_id')}, element_index={parsed.get('element_index')}, coords={parsed.get('coordinates')}, reasoning={parsed.get('reasoning')}")
                             return parsed
                 else:
                     logger.warning(f"[AI Vision] Gemini returned {resp.status_code}: {resp.text[:200]}")
@@ -254,7 +292,8 @@ async def execute_vision_action(
     decision: Dict[str, Any],
     resume_pdf_path: Optional[str] = None
 ) -> bool:
-    """Executes a decision rendered by Gemini Multimodal Vision across 3 progressive execution tiers:
+    """Executes a decision rendered by Gemini Multimodal Vision across 4 progressive execution tiers:
+    0. Set-of-Marks direct attribute targeting ([data-vedha-mark-id='X'])
     1. CSS Selector targeting
     2. Element Index DOM query
     3. Direct Viewport Coordinates via physical Playwright Mouse Click (page.mouse.click(x, y))
@@ -264,96 +303,127 @@ async def execute_vision_action(
 
     actual_page = target.page if hasattr(target, "page") else target
     action = decision.get("action", "")
+    mark_id = decision.get("mark_id")
     selector = decision.get("selector", "")
     idx = decision.get("element_index", -1)
     coords = decision.get("coordinates")
 
-    if action == "click":
-        # Tier 1: Targeted CSS Selector
-        if selector:
+    try:
+        # Tier 0: Direct Set-of-Marks Attribute Target (highest precision, zero coordinate drift)
+        if mark_id is not None:
             try:
-                loc = target.locator(selector).first
-                if await loc.count() > 0 and await loc.is_visible():
-                    await loc.scroll_into_view_if_needed()
-                    await loc.click(timeout=3000)
-                    logger.info(f"[AI Vision Executor] Clicked via CSS selector: '{selector}'")
-                    return True
+                mark_loc = target.locator(f"[data-vedha-mark-id='{mark_id}']").first
+                if await mark_loc.count() > 0:
+                    if action == "click":
+                        await mark_loc.scroll_into_view_if_needed()
+                        await mark_loc.click(timeout=3000)
+                        logger.info(f"[AI Vision Executor] Clicked via Set-of-Marks ID #{mark_id}")
+                        return True
+                    elif action == "fill":
+                        val = decision.get("value", "")
+                        await human_type(mark_loc, str(val))
+                        logger.info(f"[AI Vision Executor] Filled input Mark #{mark_id} with '{val}'")
+                        return True
+                    elif action == "upload" and resume_pdf_path:
+                        await mark_loc.set_input_files(resume_pdf_path)
+                        logger.info(f"[AI Vision Executor] Uploaded resume PDF via Mark #{mark_id}")
+                        return True
             except Exception as e:
-                logger.debug(f"[AI Vision Executor] Selector click failed for '{selector}': {e}")
+                logger.debug(f"[AI Vision Executor] Tier 0 Set-of-Marks execution failed for mark_id={mark_id}: {e}")
 
-        # Tier 2: Element Index from DOM extract
-        if isinstance(idx, int) and idx >= 0:
-            try:
-                clicked = await actual_page.evaluate("""(targetIdx) => {
-                    const nodes = document.querySelectorAll("button, a, input, select, textarea, [role='button'], [tabindex='0']");
-                    let visibleCount = 0;
-                    for (let i = 0; i < nodes.length; i++) {
-                        const el = nodes[i];
-                        const rect = el.getBoundingClientRect();
-                        const style = window.getComputedStyle(el);
-                        if (rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none') {
-                            if (visibleCount === targetIdx) {
-                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                el.click();
-                                return true;
+        if action == "click":
+            # Tier 1: Targeted CSS Selector
+            if selector:
+                try:
+                    loc = target.locator(selector).first
+                    if await loc.count() > 0 and await loc.is_visible():
+                        await loc.scroll_into_view_if_needed()
+                        await loc.click(timeout=3000)
+                        logger.info(f"[AI Vision Executor] Clicked via CSS selector: '{selector}'")
+                        return True
+                except Exception as e:
+                    logger.debug(f"[AI Vision Executor] Selector click failed for '{selector}': {e}")
+
+            # Tier 2: Element Index from DOM extract
+            if isinstance(idx, int) and idx >= 0:
+                try:
+                    clicked = await actual_page.evaluate("""(targetIdx) => {
+                        const nodes = document.querySelectorAll("button, a, input, select, textarea, [role='button'], [tabindex='0']");
+                        let visibleCount = 0;
+                        for (let i = 0; i < nodes.length; i++) {
+                            const el = nodes[i];
+                            const rect = el.getBoundingClientRect();
+                            const style = window.getComputedStyle(el);
+                            if (rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none') {
+                                if (visibleCount === targetIdx) {
+                                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    el.click();
+                                    return true;
+                                }
+                                visibleCount++;
                             }
-                            visibleCount++;
                         }
-                    }
-                    return false;
-                }""", idx)
-                if clicked:
-                    logger.info(f"[AI Vision Executor] Clicked via DOM element index: {idx}")
+                        return false;
+                    }""", idx)
+                    if clicked:
+                        logger.info(f"[AI Vision Executor] Clicked via DOM element index: {idx}")
+                        return True
+                except Exception as e:
+                    logger.debug(f"[AI Vision Executor] Element index click failed for {idx}: {e}")
+
+            # Tier 3: Direct Visual Viewport Coordinates
+            if isinstance(coords, dict) and "x" in coords and "y" in coords:
+                try:
+                    cx, cy = int(coords["x"]), int(coords["y"])
+                    await actual_page.mouse.move(cx, cy, steps=5)
+                    await actual_page.mouse.click(cx, cy)
+                    logger.info(f"[AI Vision Executor] Clicked via physical viewport coordinates: ({cx}, {cy})")
                     return True
-            except Exception as e:
-                logger.debug(f"[AI Vision Executor] Element index click failed for {idx}: {e}")
+                except Exception as e:
+                    logger.debug(f"[AI Vision Executor] Coordinate click failed at ({coords}): {e}")
 
-        # Tier 3: Direct Visual Viewport Coordinates
-        if isinstance(coords, dict) and "x" in coords and "y" in coords:
-            try:
-                cx, cy = int(coords["x"]), int(coords["y"])
-                await actual_page.mouse.move(cx, cy, steps=5)
-                await actual_page.mouse.click(cx, cy)
-                logger.info(f"[AI Vision Executor] Clicked via physical viewport coordinates: ({cx}, {cy})")
-                return True
-            except Exception as e:
-                logger.debug(f"[AI Vision Executor] Coordinate click failed at ({coords}): {e}")
-
-    elif action == "fill":
-        val = decision.get("value", "")
-        # Tier 1: Try CSS Selector
-        if selector:
-            try:
-                loc = target.locator(selector).first
-                if await loc.count() > 0:
-                    await human_type(loc, str(val))
-                    logger.info(f"[AI Vision Executor] Filled input '{selector}' with '{val}'")
+        elif action == "fill":
+            val = decision.get("value", "")
+            # Tier 1: Try CSS Selector
+            if selector:
+                try:
+                    loc = target.locator(selector).first
+                    if await loc.count() > 0:
+                        await human_type(loc, str(val))
+                        logger.info(f"[AI Vision Executor] Filled input '{selector}' with '{val}'")
+                        return True
+                except Exception:
+                    pass
+            # Tier 3: Click coordinates and type
+            if isinstance(coords, dict) and "x" in coords and "y" in coords:
+                try:
+                    cx, cy = int(coords["x"]), int(coords["y"])
+                    await actual_page.mouse.click(cx, cy)
+                    await actual_page.keyboard.type(str(val), delay=random.randint(30, 80))
+                    logger.info(f"[AI Vision Executor] Clicked ({cx}, {cy}) and typed '{val}'")
                     return True
-            except Exception:
-                pass
-        # Tier 2: Click coordinates and type
-        if isinstance(coords, dict) and "x" in coords and "y" in coords:
-            try:
-                cx, cy = int(coords["x"]), int(coords["y"])
-                await actual_page.mouse.click(cx, cy)
-                await actual_page.keyboard.type(str(val), delay=random.randint(30, 80))
-                logger.info(f"[AI Vision Executor] Clicked ({cx}, {cy}) and typed '{val}'")
-                return True
-            except Exception:
-                pass
+                except Exception:
+                    pass
 
-    elif action == "upload" and resume_pdf_path:
-        file_loc = target.locator(selector or "input[type='file']").first
-        if await file_loc.count() > 0:
-            try:
-                await file_loc.set_input_files(resume_pdf_path)
-                logger.info(f"[AI Vision Executor] Uploaded resume PDF via '{selector or 'input[type=file]'}'")
-                return True
-            except Exception as e:
-                logger.debug(f"[AI Vision Executor] File upload failed: {e}")
+        elif action == "upload" and resume_pdf_path:
+            file_loc = target.locator(selector or "input[type='file']").first
+            if await file_loc.count() > 0:
+                try:
+                    await file_loc.set_input_files(resume_pdf_path)
+                    logger.info(f"[AI Vision Executor] Uploaded resume PDF via '{selector or 'input[type=file]'}'")
+                    return True
+                except Exception as e:
+                    logger.debug(f"[AI Vision Executor] File upload failed: {e}")
 
-    return False
-
+        return False
+    finally:
+        # Cleanup temporary mark attributes
+        try:
+            await actual_page.evaluate("""() => {
+                document.querySelectorAll('[data-vedha-mark-id]').forEach(el => el.removeAttribute('data-vedha-mark-id'));
+            }""")
+        except Exception:
+            pass
 
 
 SUBMIT_SUCCESS_PATTERNS = [

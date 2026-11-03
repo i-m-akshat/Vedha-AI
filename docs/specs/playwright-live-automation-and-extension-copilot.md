@@ -68,11 +68,13 @@ Deliver authentic, verifiable end-to-end job application submission across Linke
   - Locates and triggers the Apply button (`button.apply-button`, `button:has-text('Apply')`, `.apply-button-container`).
   - Handles the Naukri in-page application drawer/chatbot (`.drawer-wrapper`, `chatbot-container`, etc.), injecting profile experience, current CTC, expected CTC, notice period, and attaching tailored ATS PDF.
   - In Copilot mode, pauses at the final Review screen before submission.
-- **Gemini Multimodal AI Vision Decision Engine**:
+- **Gemini Multimodal AI Vision Decision Engine & Set-of-Marks (SoM) Grounding**:
   - Multimodal fallback chain: `gemini-2.5-flash` -> `gemini-2.0-flash` -> `gemini-1.5-flash`.
-  - Captures high-res viewport screenshot + interactive DOM tree.
+  - **Set-of-Marks (SoM) Visual Grounding**: Injects high-contrast numeric mark badges (`[1]`, `[2]`, `[3]`, ...) directly into the DOM over each visible interactive control immediately before capturing the viewport screenshot.
+  - Captures high-res tagged viewport screenshot + interactive DOM metadata.
   - Analyzes ambiguous controls, recruiter screening dropdowns, custom radio options, or multi-step wizards when fixed selectors fail.
-  - Returns structured JSON decision (`action`, `selector`, `value`, `reasoning`).
+  - Returns structured JSON decision (`action`, `mark_id`, `element_index`, `selector`, `coordinates`, `value`, `reasoning`).
+  - Eliminates coordinate drift and display scaling errors by executing Tier 0 directly on the tagged `[data-vedha-mark-id='${mark_id}']`.
 - **Components**:
   - `workers/playwright-agent/main.py`:
     - FastAPI HTTP interface listening on port 8000:
@@ -96,8 +98,8 @@ Deliver authentic, verifiable end-to-end job application submission across Linke
 3. **Real Verification**: For ATS portals and Naukri, verify the confirmation URL or DOM element (`Thank you for applying`, `Application submitted`, etc.) before reporting `Submitted`.
 
 ## 5. Changelog
+- **2026-11-03 (Set-of-Marks Visual Grounding & Tier 0 Execution)**: Upgraded `analyze_screen_with_ai_vision` in `workers/playwright-agent/main.py` with Set-of-Marks (SoM) visual badge injection, capturing numbered badges on screenshots for unambiguous visual reasoning by Gemini 2.5 Flash, and wired `execute_vision_action` to target `[data-vedha-mark-id]` directly as Tier 0.
 - **2026-10-15 (Extension Fingerprint Recovery)**: Added active step blocker diagnosis, 1000ms transition grace period, missing radio/required field remediation, visual amber glow highlight on blocking fields, and secondary native click fallback in `extension/content.js` to resolve `Step fingerprint unchanged after Next click` stalling.
 - **2026-10-15 (Naukri Bot-Manager Stealth & AI Vision Blocker Handling)**: Added `STEALTH_HEADERS`, `navigator.webdriver` removal, `window.chrome` mocking, post-navigation WAF detection, and explicit `action == "cannot_proceed"` blocker handling with extension guidance in `workers/playwright-agent/main.py`.
 - **2026-10-15**: Added Gemini Multimodal AI Vision Decision Engine (`gemini-2.5-flash` / `gemini-2.0-flash`), dedicated Naukri (`naukri.com`) application drawer and chatbot automation flow, and C# Orchestrator live copilot dispatch. Configured Gemini model fallback cascade (`gemini-2.5-flash` -> `gemini-2.0-flash` -> `gemini-1.5-flash` -> `gemini-flash-lite-latest`) in `GeminiFunctionCallingClient.cs` to eliminate 404 and tool calling stalls.
 - **2026-10-04**: Initial specification for Real Playwright Browser Automation & Desktop Extension Copilot. Eliminated simulated mock submissions, added real LinkedIn Easy Apply modal state machine to Chrome extension, and wired FastAPI HTTP endpoints to the Python Playwright agent.
-

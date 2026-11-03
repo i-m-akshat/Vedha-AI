@@ -3,7 +3,7 @@
 ## 1. Overview
 Eliminate simulated C# pipeline logs. Equip the system with:
 1. **Desktop Extension Copilot**: Full LinkedIn Easy Apply modal automation with human typing cadence, question grounding, resume upload, and Review Gateway HUD overlay.
-2. **Playwright Agent Service**: FastAPI HTTP + NATS worker in `workers/playwright-agent/main.py` executing genuine browser automation with Playwright.
+2. **Playwright Agent Service**: FastAPI HTTP + NATS worker in `workers/playwright-agent/main.py` executing genuine browser automation with Playwright and Set-of-Marks (SoM) visual perception grounding.
 3. **C# Orchestrator & Providers**: `JobApplicationProviders.cs` and `JobApplicationOrchestrator.cs` wired to call the Playwright Agent or guide to Extension Copilot, strictly enforcing truthful states.
 4. **Frontend Orchestrator UI**: Clear execution guidance for LinkedIn (Extension Copilot vs Playwright Agent), direct link to open the posting, and manual/automated confirmation controls.
 
@@ -21,7 +21,8 @@ Eliminate simulated C# pipeline logs. Equip the system with:
 - `workers/playwright-agent/main.py`:
   - Add FastAPI HTTP app alongside NATS JetStream listener.
   - Implement `apply_job` endpoint supporting LinkedIn Easy Apply (with `li_at` cookie), Naukri (`naukri.com` apply button, drawer/chatbot, CTC/notice/experience injection), and ATS portals (Greenhouse, Lever, Ashby, Workday).
-  - Implement `analyze_screen_with_ai_vision(page, candidate_profile, intent_description, candidate_answers)` using Gemini Vision API (`gemini-2.5-flash` / `gemini-2.0-flash` / `gemini-1.5-flash`) with screenshot capture and interactive DOM tree analysis.
+  - Implement `analyze_screen_with_ai_vision(page, candidate_profile, intent_description, candidate_answers)` using Gemini Vision API (`gemini-2.5-flash` / `gemini-2.0-flash` / `gemini-1.5-flash`) with Set-of-Marks (SoM) visual badge injection.
+  - Implement `execute_vision_action(target, decision, resume_pdf_path)` with Tier 0 `mark_id` targeting, Tier 1 CSS selector, Tier 2 element index, and Tier 3 viewport coordinates.
   - Implement `scrape_job` endpoint for dynamic SPA job descriptions.
   - Add genuine submission confirmation check and truthful error reporting.
 
@@ -62,13 +63,13 @@ Eliminate simulated C# pipeline logs. Equip the system with:
 5. **Live Verification**:
    - Verify Playwright worker API responds to `/health` and accepts `/api/playwright/apply`.
    - Verify Gemini function calling client correctly cascades through fallback models on 404.
-   - Verify LinkedIn and Naukri copilot flows invoke the browser agent properly.
+   - Verify Set-of-Marks visual overlay badges render and are cleaned up without leaking into DOM.
 
 ---
 
 ## 4. Changelog
+- **2026-11-03 (Set-of-Marks Visual Grounding & Tier 0 Execution)**: Upgraded `analyze_screen_with_ai_vision` in `workers/playwright-agent/main.py` with Set-of-Marks (SoM) visual badge injection, capturing numbered badges on screenshots for unambiguous visual reasoning by Gemini 2.5 Flash, and wired `execute_vision_action` to target `[data-vedha-mark-id]` directly as Tier 0.
 - **2026-10-15 (Extension Fingerprint Recovery)**: Added active step blocker diagnosis, 1000ms transition grace period, missing radio/required field remediation, visual amber glow highlight on blocking fields, and secondary native click fallback in `extension/content.js` to resolve `Step fingerprint unchanged after Next click` stalling.
 - **2026-10-15 (Naukri Bot-Manager Stealth & AI Vision Blocker Handling)**: Added `STEALTH_HEADERS`, `navigator.webdriver` removal, `window.chrome` mocking, post-navigation WAF detection, and explicit `action == "cannot_proceed"` blocker handling with extension guidance in `workers/playwright-agent/main.py`.
 - **2026-10-15**: Added Multimodal AI Vision Decision Engine to Playwright worker, dedicated Naukri (`naukri.com`) application drawer and chatbot automation flow, C# Orchestrator live copilot dispatch to worker, and Gemini model fallback cascade (`gemini-2.5-flash` -> `gemini-2.0-flash` -> `gemini-1.5-flash` -> `gemini-flash-lite-latest`) in `GeminiFunctionCallingClient.cs`.
 - **2026-10-04**: Created plan for real browser automation and desktop extension copilot.
-
