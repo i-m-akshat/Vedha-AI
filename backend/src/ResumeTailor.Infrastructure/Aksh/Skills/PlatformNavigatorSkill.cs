@@ -9,12 +9,21 @@ public class PlatformNavigatorSkill : IAkshSkill
     public string Description => "Guides candidates through Vedha AI features, pages, workflows, Chrome extension, and settings.";
     public IReadOnlyList<string> RequiredTools => new[] { AkshTools.GetCandidateProfile, AkshTools.GetApplicationQueue };
 
+    public IReadOnlyList<string> SuggestedChips => new[]
+    {
+        "How do I use the Chrome extension on LinkedIn?",
+        "Explain the Job Orchestrator & Review Gateway",
+        "Where do I configure my Gemini API key in Settings?",
+        "How does Master Resume parsing work?"
+    };
+
     private static readonly string[] TriggerKeywords =
     [
         "how do i use", "how to use the", "where can i", "where do i", "in the studio",
         "in settings", "chrome extension", "features of vedha", "what can this app do",
         "features of this app", "how does vedha work", "review gateway", "orchestrator page",
-        "tailor page", "tracker page", "walkthrough", "autofill extension"
+        "tailor page", "tracker page", "walkthrough", "autofill extension", "how does the extension",
+        "how does the review gateway", "extension works"
     ];
 
     public bool CanHandle(string message, AkshSession session)
@@ -29,15 +38,16 @@ public class PlatformNavigatorSkill : IAkshSkill
         return
             "SKILL ACTIVE: Platform Guide & Workflow Navigator\n" +
             "Specialized Directives:\n" +
-            "1. You are the official interactive guide for the Vedha AI platform.\n" +
-            "2. Provide accurate, formatted, step-by-step instructions with clickable markdown navigation links:\n" +
+            "1. You are the official interactive guide for the Vedha AI platform. Converse naturally, clearly, and enthusiastically.\n" +
+            "2. Provide accurate, formatted, step-by-step guidance with clickable markdown navigation links:\n" +
             "   - **Master Resume Studio** (`/studio`): Upload and parse Master Resumes (PDF/DOCX), edit verified work experience, and craft impact bullets using Google's XYZ formula.\n" +
             "   - **AI Resume Tailoring** (`/tailor`): Paste any Job Description (JD) to generate bespoke ATS-optimized resumes with match scores, keyword density audits, and bullet adjustments.\n" +
             "   - **Job Orchestrator & Review Gateway** (`/orchestrator`): Track automated application jobs across `PendingReview`, `Approved`, and `Submitted` states. Inspect AI-generated screening answers and approve submission with one click.\n" +
             "   - **Chrome Extension Copilot**: Injects floating HUD directly into LinkedIn Easy Apply, Greenhouse, Lever, Ashby, Workday, Indeed, and Naukri. Extracts job specs, auto-fills multi-step forms using React synthetic event dispatch, and syncs session tokens.\n" +
             "   - **Ask Aksh AI Agent** (`/aksh`): Your conversational career copilot for instant resume tailoring, interview prep, salary negotiation, and queue audits.\n" +
             "   - **Settings & AI Providers** (`/settings`): Configure custom API keys (Google Gemini 2.5 Flash, OpenAI GPT-4o, Anthropic Claude 3.5 Sonnet) and set autonomy levels (Supervised, SemiAutonomous, Autonomous).\n" +
-            "3. If the user asks about their own account status, tokens, or profile, retrieve their candidate profile or application queue to provide personalized answers (without disclosing internal tool function names).\n" +
-            "4. Enforce the strict domain guardrail: only answer questions regarding Vedha AI features and the candidate's professional career data.";
+            "3. For informational and feature walkthrough queries, respond directly using clear Markdown without executing tools.\n" +
+            "4. If the candidate asks about their own account status, tokens, or profile, retrieve their candidate profile or application queue to provide personalized answers (without disclosing internal tool function names).\n" +
+            "5. Enforce the strict domain guardrail: only answer questions regarding Vedha AI features and the candidate's professional career data.";
     }
 }

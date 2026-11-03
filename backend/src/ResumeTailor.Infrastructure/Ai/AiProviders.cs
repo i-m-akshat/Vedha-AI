@@ -670,9 +670,27 @@ public class GeminiProvider : IAiProvider
 
                 break;
             }
-            catch (Exception ex) when (attempt < 3 && !cancellationToken.IsCancellationRequested)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                _logger.LogWarning(ex, "Gemini HTTP request exception on attempt {Attempt}. Retrying...", attempt);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                if (attempt < 3 && !cancellationToken.IsCancellationRequested)
+                {
+                    _logger.LogWarning(ex, "Gemini HTTP request exception on attempt {Attempt}. Retrying with fallback model if available...", attempt);
+                    var nextModel = GetNextFallbackModel(model);
+                    if (!string.IsNullOrEmpty(nextModel) && !string.Equals(nextModel, model, StringComparison.OrdinalIgnoreCase))
+                    {
+                        model = nextModel;
+                        url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
+                    }
+                }
+                else
+                {
+                    _logger.LogError(ex, "Gemini HTTP request failed permanently on attempt {Attempt}: {Message}", attempt, ex.Message);
+                    return Result<TResponse>.Failure($"Gemini HTTP request failed or timed out: {ex.Message}");
+                }
                 await Task.Delay(attempt * 1000, cancellationToken);
             }
         }
@@ -810,9 +828,33 @@ public class GeminiProvider : IAiProvider
 
                     break;
                 }
-                catch (Exception ex) when (attempt < 3 && !cancellationToken.IsCancellationRequested)
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Gemini HTTP request exception on attempt {Attempt}. Retrying...", attempt);
+                    if (attempt < 3 && !cancellationToken.IsCancellationRequested)
+                {
+                    _logger.LogWarning(ex, "Gemini text HTTP request exception on attempt {Attempt}. Retrying with fallback model if available...", attempt);
+                    var nextModel = GetNextFallbackModel(model);
+                    if (!string.IsNullOrEmpty(nextModel) && !string.Equals(nextModel, model, StringComparison.OrdinalIgnoreCase))
+                    {
+                        model = nextModel;
+                        url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
+                        body = new
+                        {
+                            system_instruction = new { parts = new[] { new { text = systemPrompt } } },
+                            contents = new[] { new { parts = new[] { new { text = userPrompt } } } },
+                            generationConfig = CreateGenerationConfig(maxTokens, 0.2, false, model)
+                        };
+                    }
+                }
+                else
+                {
+                    _logger.LogError(ex, "Gemini text HTTP request failed permanently on attempt {Attempt}: {Message}", attempt, ex.Message);
+                    return Result<string>.Failure($"Gemini text HTTP request failed or timed out: {ex.Message}");
+                }
                     await Task.Delay(attempt * 1000, cancellationToken);
                 }
             }
@@ -1186,7 +1228,20 @@ public class ResilientAiProviderDecorator : IAiProvider
         CancellationToken cancellationToken = default)
     {
         // 1. Try Primary Provider
-        var result = await _primaryProvider.GenerateStructuredJsonAsync<TResponse>(systemPrompt, userPrompt, customApiKey, modelName, cancellationToken);
+        Result<TResponse> result;
+        try
+        {
+            result = await _primaryProvider.GenerateStructuredJsonAsync<TResponse>(systemPrompt, userPrompt, customApiKey, modelName, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Primary AI provider {Provider} threw unhandled exception: {Message}. Initiating fallback chain...", _primaryProvider.ProviderType, ex.Message);
+            result = Result<TResponse>.Failure($"Primary provider exception: {ex.Message}");
+        }
         if (result.IsSuccess || !IsTransientOrQuotaError(result.Error))
             return result;
 
@@ -1197,7 +1252,20 @@ public class ResilientAiProviderDecorator : IAiProvider
         foreach (var fallback in fallbacks)
         {
             _logger.LogInformation("Attempting AI fallback to {FallbackProvider}...", fallback.ProviderType);
-            var fallbackResult = await fallback.GenerateStructuredJsonAsync<TResponse>(systemPrompt, userPrompt, null, null, cancellationToken);
+            Result<TResponse> fallbackResult;
+            try
+            {
+                fallbackResult = await fallback.GenerateStructuredJsonAsync<TResponse>(systemPrompt, userPrompt, null, null, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Fallback AI provider {FallbackProvider} threw unhandled exception: {Message}.", fallback.ProviderType, ex.Message);
+                continue;
+            }
             if (fallbackResult.IsSuccess)
             {
                 _logger.LogInformation("Successfully recovered using fallback provider {FallbackProvider}.", fallback.ProviderType);
@@ -1216,7 +1284,20 @@ public class ResilientAiProviderDecorator : IAiProvider
         CancellationToken cancellationToken = default)
     {
         // 1. Try Primary Provider
-        var result = await _primaryProvider.GenerateTextAsync(systemPrompt, userPrompt, customApiKey, modelName, cancellationToken);
+        Result<string> result;
+        try
+        {
+            result = await _primaryProvider.GenerateTextAsync(systemPrompt, userPrompt, customApiKey, modelName, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Primary AI provider {Provider} threw unhandled exception during text generation: {Message}. Initiating fallback...", _primaryProvider.ProviderType, ex.Message);
+            result = Result<string>.Failure($"Primary provider exception: {ex.Message}");
+        }
         if (result.IsSuccess || !IsTransientOrQuotaError(result.Error))
             return result;
 
@@ -1227,7 +1308,20 @@ public class ResilientAiProviderDecorator : IAiProvider
         foreach (var fallback in fallbacks)
         {
             _logger.LogInformation("Attempting fallback text generation via {FallbackProvider}...", fallback.ProviderType);
-            var fallbackResult = await fallback.GenerateTextAsync(systemPrompt, userPrompt, null, null, cancellationToken);
+            Result<string> fallbackResult;
+            try
+            {
+                fallbackResult = await fallback.GenerateTextAsync(systemPrompt, userPrompt, null, null, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Fallback AI provider {FallbackProvider} threw unhandled exception during text generation: {Message}.", fallback.ProviderType, ex.Message);
+                continue;
+            }
             if (fallbackResult.IsSuccess)
             {
                 return fallbackResult;
@@ -1247,7 +1341,20 @@ public class ResilientAiProviderDecorator : IAiProvider
         CancellationToken cancellationToken = default)
     {
         // 1. Try Primary Provider
-        var result = await _primaryProvider.ParseDocumentBytesAsync<TResponse>(fileBytes, mimeType, systemPrompt, userPrompt, customApiKey, modelName, cancellationToken);
+        Result<TResponse> result;
+        try
+        {
+            result = await _primaryProvider.ParseDocumentBytesAsync<TResponse>(fileBytes, mimeType, systemPrompt, userPrompt, customApiKey, modelName, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Primary AI provider {Provider} threw unhandled exception during document parsing: {Message}. Initiating fallback...", _primaryProvider.ProviderType, ex.Message);
+            result = Result<TResponse>.Failure($"Primary provider exception: {ex.Message}");
+        }
         if (result.IsSuccess || !IsTransientOrQuotaError(result.Error))
             return result;
 
@@ -1258,7 +1365,20 @@ public class ResilientAiProviderDecorator : IAiProvider
         foreach (var fallback in fallbacks)
         {
             _logger.LogInformation("Attempting fallback multimodal document parsing via {FallbackProvider}...", fallback.ProviderType);
-            var fallbackResult = await fallback.ParseDocumentBytesAsync<TResponse>(fileBytes, mimeType, systemPrompt, userPrompt, null, null, cancellationToken);
+            Result<TResponse> fallbackResult;
+            try
+            {
+                fallbackResult = await fallback.ParseDocumentBytesAsync<TResponse>(fileBytes, mimeType, systemPrompt, userPrompt, null, null, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Fallback AI provider {FallbackProvider} threw unhandled exception during document parsing: {Message}.", fallback.ProviderType, ex.Message);
+                continue;
+            }
             if (fallbackResult.IsSuccess)
             {
                 _logger.LogInformation("Successfully parsed document using fallback provider {FallbackProvider}.", fallback.ProviderType);
@@ -1279,7 +1399,9 @@ public class ResilientAiProviderDecorator : IAiProvider
                lower.Contains("not configured") || lower.Contains("401") || lower.Contains("404") ||
                lower.Contains("403") || lower.Contains("400") ||
                lower.Contains("unauthorized") || lower.Contains("forbidden") || lower.Contains("not found") ||
-               lower.Contains("bad request") || lower.Contains("timeout") || lower.Contains("service unavailable");
+               lower.Contains("bad request") || lower.Contains("timeout") || lower.Contains("service unavailable") ||
+               lower.Contains("canceled") || lower.Contains("socket") || lower.Contains("connection") ||
+               lower.Contains("network") || lower.Contains("transport") || lower.Contains("eof") || lower.Contains("reset");
     }
 }
 

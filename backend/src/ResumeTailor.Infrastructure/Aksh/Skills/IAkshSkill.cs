@@ -4,8 +4,8 @@ namespace ResumeTailor.Infrastructure.Aksh.Skills;
 
 /// <summary>
 /// Defines a discrete capability/skill that Aksh can dynamically load and execute.
-/// Each skill bundles specialized domain instructions, trigger conditions, and
-/// the specific tool catalog required for that domain.
+/// Each skill bundles specialized domain instructions, trigger conditions,
+/// the specific tool catalog required for that domain, and contextual prompt chips.
 /// </summary>
 public interface IAkshSkill
 {
@@ -20,6 +20,9 @@ public interface IAkshSkill
 
     /// <summary>Tools required/recommended for this skill.</summary>
     IReadOnlyList<string> RequiredTools { get; }
+
+    /// <summary>Recommended prompt chips/starters for this domain skill.</summary>
+    IReadOnlyList<string> SuggestedChips => Array.Empty<string>();
 
     /// <summary>Determines if this skill should be activated for the candidate's turn.</summary>
     bool CanHandle(string message, AkshSession session);

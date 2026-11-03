@@ -799,8 +799,24 @@ builder.Entity&lt;RefreshToken&gt;(b =>
             <tr><td><code>AkshChatClientAdapter</code></td><td><code>IChatClient</code></td><td>Singleton bridge resolving scoped AI services, carrying candidate API credentials and routing tool calls.</td></tr>
             <tr><td><code>AkshTools</code></td><td>Static Factory</td><td>Catalog of 7 server-bound tools with closure-bound <code>userId</code>/<code>sessionId</code> preventing cross-tenant leakage.</td></tr>
             <tr><td><code>AkshAgentRunner</code></td><td><code>IAkshAgentRunner</code></td><td>Scoped orchestrator managing turn budget gates, session persistence, SSE stream events, and approval gates.</td></tr>
+            <tr><td><code>AkshSkillRegistry</code></td><td><code>IAkshSkillRegistry</code></td><td>In-memory skill resolver evaluating 7 modular skills (Profile & Queue Audit, Platform Navigator, Interview Coach, Salary Negotiator, Resume Optimizer, Job Application Copilot, Career Strategist) by specificity.</td></tr>
+            <tr><td><code>IAkshSkill</code></td><td>Interface</td><td>Contract declaring skill ID, display name, description, required tools, contextual prompt chips (<code>SuggestedChips</code>), intent matcher, and specialized prompt instructions.</td></tr>
           </tbody>
         </table>
+      </div>
+    </section>
+
+      <div class="card" style="margin-top: 20px; border-left: 3px solid #38bdf8;">
+        <div class="card-title">9.1 Dynamic Prompt-Adaptive Skill Routing &amp; Dual-Mode Conversational Engine (Phase 4)</div>
+        <p>
+          Aksh AI is engineered with dual-mode operational fluidity:
+        </p>
+        <ul style="padding-left: 1.25rem; margin-top: 0.5rem; line-height: 1.8;">
+          <li><strong>Conversational Chatbot Mode:</strong> For greetings, conceptual queries, behavioral STAR coaching, salary benchmarks, and platform navigation, Aksh responds directly in rich Markdown with zero unnecessary tool overhead (<code>toolsForTurn = Array.Empty&lt;string&gt;()</code>), eliminating latency and robotic execution stalls.</li>
+          <li><strong>Autonomous Action Copilot Mode:</strong> When the candidate provides a target job URL or explicitly instructs application tailoring/staging, the structured <code>PLAN -&gt; GROUND -&gt; ACT -&gt; REPORT -&gt; GATE</code> pipeline executes deterministically.</li>
+          <li><strong>Real-Time Contextual Prompt Chips:</strong> Every active skill provides 4 curated prompt chips streamed via the SSE <code>"skill"</code> event payload and rendered above the chat composer in <code>AskAkshPage.tsx</code> for effortless steering.</li>
+          <li><strong>Lexical Boundary Intent Filtering:</strong> <code>AkshIntent</code> enforces word-boundary regexes and formula exclusions, preventing conversational phrases like "application status" or "apply XYZ formula" from falsely triggering the autonomous job apply pipeline.</li>
+        </ul>
       </div>
     </section>
 

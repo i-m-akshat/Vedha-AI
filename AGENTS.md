@@ -378,11 +378,50 @@ Whenever generating specifications, implementation plans, bug fix documents, arc
 - **Implementation Plans**: Save to `docs/plan/<feature-name>.md` (strictly Markdown `.md`)
 - **Bug Fix Plans / Root Cause**: Save to `docs/bugfixes/<bug-name>.md` (strictly Markdown `.md`)
 - **Architecture Decision Records (ADR)**: Save to `docs/adr/<adr-id>-<title>.html` (strictly HTML `.html`, NO markdown files permitted in `docs/adr/`)
+- **Interactive Feature Code Walkthroughs & Animated Flows**: Save to `docs/walkthroughs/<feature-name>/index.html` (strictly HTML `.html`, NO markdown files permitted in `docs/walkthroughs/`)
 - **Architecture & System Design Documentation (HLD, LLD, System Design)**: Save to `docs/architecture/<document-name>.html` (strictly HTML `.html`):
   - `docs/architecture/index.html` (Architecture Hub & Overview)
   - `docs/architecture/hld.html` (High-Level Design)
   - `docs/architecture/lld.html` (Low-Level Design)
   - `docs/architecture/system-design.html` (System Design, Infrastructure & Distributed Flow)
+
+# Mandatory Animated Visual Code Walkthrough Rule (`docs/walkthroughs/<feature-name>/index.html`)
+
+For **every feature or major implementation**, you MUST generate a rich, self-contained, beautifully styled, interactive **HTML document** inside a dedicated folder for that feature:
+`docs/walkthroughs/<feature-name>/index.html` (strictly `.html`, NEVER `.md`).
+
+### 1. Problem Being Solved:
+When team members, developers, or interviewers ask:
+- *"What did line X or code block Y do?"*
+- *"What is the exact execution flow inside the code block (e.g. from Controller ➔ MediatR ➔ Command Handler ➔ Domain Entity ➔ Repository / Database / NATS)?"*
+Text files or flat markdown summaries fail to convey multi-step code execution. A rich visual HTML document with animations, syntax-highlighted code blocks, and granular bottom-to-top explanations guarantees that the developer can explain and defend every single line of code with 100% confidence.
+
+### 2. Mandatory Contents of `docs/walkthroughs/<feature-name>/index.html`:
+1. **Animated Visual Flows (CSS / SVG Animations)**:
+   - Dynamic, visually animated flowcharts depicting the request/execution path:
+     `Client UI / Extension` ➔ `Controller Endpoint` ➔ `Middleware / Validation` ➔ `MediatR Command / Query` ➔ `Domain Logic & Business Invariants` ➔ `EF Core / PostgreSQL / Redis / S3 / NATS Worker` ➔ `Response / SignalR Event`.
+   - Use CSS keyframes, glowing node pulses, moving data packet indicators, or step-by-step interactive tracers so the flow is immediately intuitive.
+2. **Granular Code Block & Line-by-Line Breakdown ("What Did What")**:
+   - For every key method and code block introduced or modified:
+     - Exact file path with line references.
+     - Syntax-highlighted code snippet.
+     - Detailed line-by-line / section-by-section breakdown:
+       - What this line does.
+       - Why it was written this way (engineering rationale).
+       - Inputs, outputs, exceptions caught, and state mutations.
+3. **Bottom-to-Top & Top-to-Bottom Explanation**:
+   - **Top-to-Bottom (Execution Order)**: How the incoming request starts at the entry point and cascades down to persistence.
+   - **Bottom-to-Top (Foundational Assembly)**: How low-level Domain Entities, Value Objects, and DB Schemas are constructed, encapsulated, and bubbled up into application contracts and presentation responses.
+4. **"Explain Like I'm Interviewing / Code Review Defense" Section**:
+   - Explicit answers to common technical review questions:
+     - *"Where does the request begin and end?"*
+     - *"Why was this architectural pattern chosen over alternatives?"*
+     - *"What line guarantees thread safety or data consistency?"*
+     - *"How does the system fail safely if line N throws an exception?"*
+5. **Interactive Polish & Typography**:
+   - Dark/Light mode theme switch.
+   - Self-contained styles using modern Geist & JetBrains Mono typography.
+   - Collapsible sections, interactive tabs for layers, and copy-friendly code snippets.
 
 # Mandatory Visual HTML Documentation Rule for Architecture & ADRs (`docs/architecture/*.html` & `docs/adr/*.html`)
 

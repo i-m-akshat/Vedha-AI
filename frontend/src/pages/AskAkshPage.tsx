@@ -40,6 +40,7 @@ interface AkshActiveSkill {
   id: string;
   name: string;
   description: string;
+  suggestedChips?: string[];
 }
 
 interface AgentStatus {
@@ -625,6 +626,27 @@ export const AskAkshPage: React.FC = () => {
                 <span className="hidden sm:inline text-zinc-500 dark:text-zinc-400 truncate">· {activeSkill.description}</span>
               </div>
               <span className="shrink-0 text-[9px] font-mono uppercase tracking-wider text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 font-semibold">Skill Active</span>
+            </div>
+          )}
+
+          {activeSkill?.suggestedChips && activeSkill.suggestedChips.length > 0 && !streaming && (
+            <div className="flex items-center gap-2 overflow-x-auto px-5 py-2 border-t border-black/[0.04] dark:border-white/[0.05] bg-black/[0.015] dark:bg-zinc-900/20 scrollbar-none">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 dark:text-zinc-500 shrink-0">
+                Suggested:
+              </span>
+              <div className="flex items-center gap-1.5 flex-nowrap shrink-0">
+                {activeSkill.suggestedChips.map((chip, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => sendMessage(undefined, chip)}
+                    className="inline-flex items-center gap-1 rounded-full border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-zinc-800/80 px-2.5 py-1 text-[11px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-zinc-700/80 transition-all cursor-pointer whitespace-nowrap shadow-xs active:scale-[0.98]"
+                  >
+                    <span>💬</span>
+                    <span>{chip}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 

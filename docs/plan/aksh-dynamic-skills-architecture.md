@@ -59,6 +59,27 @@ Build a first-class Skill Architecture for Aksh AI in Vedha AI. Allow Aksh to dy
    - Include user messages in prompt history (`m.SessionId == session.Id`) with a 14-turn sliding window.
    - Add pre-turn candidate grounding context injection.
 
+### G. Backend & Frontend - Conversational Chatbot & Prompt-Adaptive Dynamic Skill Switching (Phase 4)
+17. `backend/src/ResumeTailor.Infrastructure/Aksh/Skills/IAkshSkill.cs`:
+    - Add `IReadOnlyList<string> SuggestedChips { get; }` property.
+18. `backend/src/ResumeTailor.Infrastructure/Aksh/Skills/*.cs`:
+    - Implement `SuggestedChips` across all 7 skills.
+    - Soften instructions so that tools are called only when candidate-specific data is needed; conceptual/advisory queries respond conversationally.
+19. `backend/src/ResumeTailor.Infrastructure/Aksh/Skills/AkshSkillRegistry.cs`:
+    - Reorder skill resolution priority: `PlatformNavigator` -> `ProfileAndQueueAudit` -> `InterviewCoach` -> `SalaryNegotiator` -> `ResumeOptimizer` -> `JobApplicationCopilot` -> `CareerStrategist`.
+20. `backend/src/ResumeTailor.Application/Features/Aksh/AkshIntent.cs`:
+    - Refactor `HasApplyIntent` and `HasGenerateIntent` with word boundary regexes to prevent conversational collisions (e.g., "application status" or "apply formula").
+    - Expand `IsGreetingOrGeneralChat` to recognize common conversational acknowledgements, thanks, and inquiries.
+21. `backend/src/ResumeTailor.Infrastructure/Aksh/AkshAgentRunner.cs`:
+    - Extract URLs for scraping strictly from the current turn message (`cleanMessage`), not concatenating stale session URLs.
+    - Stream `suggestedChips` in the SSE `"skill"` event payload.
+    - Enforce conversational responses in prompt rules when no tools execute this turn.
+22. `backend/src/ResumeTailor.Infrastructure/Aksh/AkshPrompts.cs`:
+    - Refine system prompt to explicitly establish dual capability: Conversational Chatbot vs. Autonomous Action Copilot.
+23. `frontend/src/pages/AskAkshPage.tsx`:
+    - Update `AkshActiveSkill` type with `suggestedChips?: string[]`.
+    - Render interactive suggested prompt chips above the composer so users can easily switch topics or explore skill capabilities.
+
 ---
 
 ## 3. Testing & Verification
@@ -72,4 +93,5 @@ Build a first-class Skill Architecture for Aksh AI in Vedha AI. Allow Aksh to dy
 - **2026-10-15 (Phase 1)**: Created implementation plan for Aksh Dynamic Skill Architecture.
 - **2026-10-15 (Phase 2)**: Added chat-first conversational redesign, Gemini 500 cascading fallback, in-chat resume export link, anime girl sprint indicator, and dynamic plan milestone generation.
 - **2026-10-15 (Phase 3)**: Added Proactive Input Elicitation (intelligently requesting JDs/links or offer numbers), Strict Application & Career Data Domain Guardrails, PlatformNavigatorSkill for app guidance, and multi-turn user/assistant conversational history restoration.
+- **2026-10-28 (Phase 4)**: Added Conversational Chatbot Fluidity & Prompt-Adaptive Dynamic Skill Switching: word boundary intent parsing, `SuggestedChips` on `IAkshSkill`, priority-reordered skill registry, SSE streaming of prompt chips, frontend chips component, and dual-mode prompt instructions.
 

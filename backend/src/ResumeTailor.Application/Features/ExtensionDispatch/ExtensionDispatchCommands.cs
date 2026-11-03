@@ -25,6 +25,7 @@ public class ExtensionRunPackageDto
     public string TargetRole { get; set; } = string.Empty;
     public string CoverLetterText { get; set; } = string.Empty;
     public List<ScreeningQuestionAnswerDto> PrefilledAnswers { get; set; } = new();
+    public Guid? GeneratedResumeId { get; set; }
     public bool Headed { get; set; }
     public DateTime ExpiresAtUtc { get; set; }
 }
@@ -158,6 +159,7 @@ public class ExtensionDispatchHandlers :
             TargetRole = item.TargetRole,
             CoverLetterText = item.CoverLetterText,
             PrefilledAnswers = ParseAnswers(item.PrefilledAnswersJson),
+            GeneratedResumeId = item.GeneratedResumeId,
             Headed = false,
             ExpiresAtUtc = now + ClaimLease,
         };

@@ -47,6 +47,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // -------------------------------------------------------------
+  let API_BASE = "http://localhost:5000";
+  chrome.storage?.local?.get(["vedha_api_base", "apiBaseUrl"], (s) => {
+    if (s?.vedha_api_base) API_BASE = s.vedha_api_base;
+    else if (s?.apiBaseUrl) API_BASE = s.apiBaseUrl;
+  });
+
+  async function getApiBaseUrl() {
+    return new Promise((resolve) => {
+      chrome.storage?.local?.get(["vedha_api_base", "apiBaseUrl"], (s) => {
+        resolve(s?.vedha_api_base || s?.apiBaseUrl || API_BASE);
+      });
+    });
+  }
+
   // DOM References
   // -------------------------------------------------------------
   const viewLogin = document.getElementById("view-login");
@@ -86,6 +100,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   const preparePackageBtnLabel = document.getElementById("preparePackageBtnLabel");
   const sendBtn = document.getElementById("sendBtn");
   const fillStatusEl = document.getElementById("fillStatus");
+  const dispatchedRunCard = document.getElementById("dispatchedRunCard");
+  const dispatchedRunJob = document.getElementById("dispatchedRunJob");
+  const dispatchedRunUrl = document.getElementById("dispatchedRunUrl");
+  const dispatchedRunBadge = document.getElementById("dispatchedRunBadge");
+  const btnRunDispatched = document.getElementById("btnRunDispatched");
+  const btnDismissDispatched = document.getElementById("btnDismissDispatched");
 
   // Tab 2: AI Match Elements
   const atsScoreCircle = document.getElementById("atsScoreCircle");
@@ -251,7 +271,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         try {
           const refreshRes = await fetchWithTimeout(
-            "http://localhost:5000/api/auth/refresh",
+            `${API_BASE}/api/auth/refresh`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -286,6 +306,65 @@ document.addEventListener("DOMContentLoaded", async () => {
       masterResumeBadge.style.color = "var(--success)";
     }
     renderProfileFields();
+    checkDispatchedRuns();
+  }
+
+  async function checkDispatchedRuns() {
+    if (!dispatchedRunCard) return;
+    try {
+      chrome.runtime?.sendMessage?.({ action: "GET_ACTIVE_CLAIM" }, (res) => {
+        const claim = res?.claim;
+        if (claim && (claim.pkg || claim.runId)) {
+          const pkg = claim.pkg || {};
+          const title = pkg.targetRole || pkg.TargetRole || "Target Position";
+          const company = pkg.targetCompany || pkg.TargetCompany || "Company";
+          if (dispatchedRunJob) dispatchedRunJob.innerText = `${title} at ${company}`;
+          if (dispatchedRunUrl) dispatchedRunUrl.innerText = pkg.jobUrl || pkg.JobUrl || "Ready to execute";
+          dispatchedRunCard.style.display = "block";
+          return;
+        }
+
+        if (authToken) {
+          getApiBaseUrl().then((apiBase) => {
+            fetch(`${apiBase}/api/orchestrator/extension/runs/next`, {
+              headers: { Authorization: `Bearer ${authToken}` }
+            }).then(async (r) => {
+              if (r.ok && r.status !== 204) {
+                const pkg = await r.json();
+                if (pkg && (pkg.runId || pkg.RunId)) {
+                  const title = pkg.targetRole || pkg.TargetRole || "Target Position";
+                  const company = pkg.targetCompany || pkg.TargetCompany || "Company";
+                  if (dispatchedRunJob) dispatchedRunJob.innerText = `${title} at ${company}`;
+                  if (dispatchedRunUrl) dispatchedRunUrl.innerText = pkg.jobUrl || pkg.JobUrl || "Ready to execute";
+                  dispatchedRunCard.style.display = "block";
+                }
+              }
+            }).catch(() => {});
+          });
+        }
+      });
+    } catch (_) {}
+  }
+
+  if (btnRunDispatched) {
+    btnRunDispatched.addEventListener("click", async () => {
+      btnRunDispatched.disabled = true;
+      btnRunDispatched.innerText = "⏳ Dispatching...";
+      chrome.runtime?.sendMessage?.({ action: "TRIGGER_DISPATCH_POLL" }, () => {
+        showStatus("🚀 Application launched in browser tab!", "success", 4000);
+        setTimeout(() => {
+          btnRunDispatched.disabled = false;
+          btnRunDispatched.innerText = "⚡ Launch & Auto-Apply Now";
+          dispatchedRunCard.style.display = "none";
+        }, 1500);
+      });
+    });
+  }
+
+  if (btnDismissDispatched) {
+    btnDismissDispatched.addEventListener("click", () => {
+      if (dispatchedRunCard) dispatchedRunCard.style.display = "none";
+    });
   }
 
   async function checkAuthSession() {
@@ -300,7 +379,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     paintCachedCopilot();
 
     try {
-      const meRes = await fetchWithTimeout("http://localhost:5000/api/auth/me", {
+      const meRes = await fetchWithTimeout(`${API_BASE}/api/auth/me`, {
         headers: { Authorization: `Bearer ${authToken}` }
       });
 
@@ -368,7 +447,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function checkBackendHealth() {
     if (!connectionPill || !connectionText) return;
     try {
-      const res = await fetchWithTimeout("http://localhost:5000/api/auth/me", {
+      const res = await fetchWithTimeout(`${API_BASE}/api/auth/me`, {
         headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
       }, 3000);
       if (res.ok || res.status === 401) {
@@ -402,10 +481,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     try {
       const [profileRes, resumeRes] = await Promise.all([
-        fetch("http://localhost:5000/api/candidateprofile", {
+        fetch(`${API_BASE}/api/candidateprofile`, {
           headers: { Authorization: `Bearer ${authToken}` }
         }),
-        fetch("http://localhost:5000/api/masterresume", {
+        fetch(`${API_BASE}/api/masterresume`, {
           headers: { Authorization: `Bearer ${authToken}` }
         })
       ]);
@@ -430,6 +509,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       renderProfileFields();
+    checkDispatchedRuns();
     } catch (err) {
       console.warn("[Vedha AI Popup] Failed to fetch real user data:", err);
     }
@@ -516,7 +596,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const password = loginPassword.value;
 
       try {
-        const res = await fetch("http://localhost:5000/api/auth/login", {
+        const res = await fetch(`${API_BASE}/api/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password })
@@ -829,7 +909,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       showStatus("🚀 Generating tailored resume, cover letter & answers in backend queue...", "info", 0);
 
       try {
-        const res = await fetch("http://localhost:5000/api/orchestrator/prepare-package", {
+        const res = await fetch(`${API_BASE}/api/orchestrator/prepare-package`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -886,7 +966,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       try {
-        const res = await fetch("http://localhost:5000/api/orchestrator/quick-match", {
+        const res = await fetch(`${API_BASE}/api/orchestrator/quick-match`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -976,7 +1056,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const tone = coverLetterTone?.value || "Professional and confident";
 
       try {
-        const res = await fetch("http://localhost:5000/api/orchestrator/quick-cover-letter", {
+        const res = await fetch(`${API_BASE}/api/orchestrator/quick-cover-letter`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

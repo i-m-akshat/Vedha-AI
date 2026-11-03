@@ -18,11 +18,19 @@ public class JobApplicationCopilotSkill : IAkshSkill
         AkshTools.LaunchApply
     };
 
+    public IReadOnlyList<string> SuggestedChips => new[]
+    {
+        "Prepare tailored application package for this job link",
+        "Verify truth score against my master resume",
+        "Draft a personalized cover letter",
+        "Stage application for LinkedIn Easy Apply"
+    };
+
     public bool CanHandle(string message, AkshSession session)
     {
         if (string.IsNullOrWhiteSpace(message)) return false;
 
-        // Triggers if a job URL is present in the message or session
+        // Triggers if a job URL is present in the current turn message
         var urls = AkshIntent.ExtractJobUrls(message);
         if (urls.Count > 0) return true;
 

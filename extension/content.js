@@ -39,6 +39,22 @@
 
   syncWebAppToken();
 
+  function getApiBaseUrl() {
+    return new Promise((resolve) => {
+      try {
+        if (typeof chrome !== "undefined" && chrome.storage?.local) {
+          chrome.storage.local.get(["vedha_api_base", "apiBaseUrl"], (s) => {
+            resolve(s?.vedha_api_base || s?.apiBaseUrl || "http://localhost:5000");
+          });
+        } else {
+          resolve("http://localhost:5000");
+        }
+      } catch {
+        resolve("http://localhost:5000");
+      }
+    });
+  }
+
   // Unknown-safe default profile: every key exists (fill code + tests reference
   // them) but NO value is synthesized. Blanks stay blank and flow into the
   // amber "needs you" escalation path (Step E) instead of filing someone
@@ -1081,7 +1097,8 @@
         const token = stored.jwtToken || stored.vedha_token || stored.token;
         if (token && queueItemId) {
           try {
-            await fetch(`http://localhost:5000/api/orchestrator/queue/${queueItemId}/status`, {
+            const apiBase = await getApiBaseUrl();
+            await fetch(`${apiBase}/api/orchestrator/queue/${queueItemId}/status`, {
               method: "PUT",
               headers: {
                 "Content-Type": "application/json",
@@ -1863,7 +1880,8 @@
     // 1. Try backend endpoint first (grounded with Master Resume + Candidate Profile + Memories)
     if (token) {
       try {
-        const resp = await fetch("http://localhost:5000/api/orchestrator/generate-answers", {
+        const apiBase = await getApiBaseUrl();
+        const resp = await fetch(`${apiBase}/api/orchestrator/generate-answers`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -2105,6 +2123,33 @@ Return JSON array in format:
     const fileInputs = Array.from(container.querySelectorAll("input[type='file']")).filter(isFieldActionable);
     for (const fi of fileInputs) {
       if (fi.files && fi.files.length > 0) continue;
+
+      let attachedSynthetic = false;
+      const resumeId = payload?.generatedResumeId || payload?.GeneratedResumeId;
+      if (resumeId && payload?.token && typeof DataTransfer !== "undefined") {
+        try {
+          const apiBase = await getApiBaseUrl();
+          const resumeRes = await fetch(`${apiBase}/api/tailor/${resumeId}/export?format=Pdf`, {
+            headers: { Authorization: `Bearer ${payload.token}` }
+          });
+          if (resumeRes.ok) {
+            const blob = await resumeRes.blob();
+            const fileName = `${(payload.company || "Candidate").replace(/[^a-zA-Z0-9]/g, "_")}_Resume.pdf`;
+            const file = new File([blob], fileName, { type: "application/pdf" });
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            fi.files = dt.files;
+            fi.dispatchEvent(new Event("change", { bubbles: true }));
+            fi.dispatchEvent(new Event("input", { bubbles: true }));
+            attachedSynthetic = true;
+            filledCount++;
+            console.log("[Vedha AI] Synthetic tailored resume attached to ATS input:", fi);
+          }
+        } catch (uploadErr) {
+          console.warn("[Vedha AI] Could not auto-attach resume file:", uploadErr);
+        }
+      }
+      if (attachedSynthetic) continue;
       markPleaseReview(fi);
       escalateFillField(fi, "Please attach your resume file here");
       unansweredElements.push(fi);
@@ -2385,7 +2430,8 @@ Return JSON array in format:
       // 1. Try Backend Orchestrator API if token is available
       if (authToken) {
         try {
-          const resp = await fetch("http://localhost:5000/api/orchestrator/generate-answers", {
+          const apiBase = await getApiBaseUrl();
+        const resp = await fetch(`${apiBase}/api/orchestrator/generate-answers`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -4372,7 +4418,24 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
       try {
         chrome.storage.local.get(["vedha_token", "jwtToken", "token", "candidateProfile", "cachedMasterResume", "cachedUser", "vedha_review_gateway"], async (stored) => {
           const payload = resolveCandidatePayload(stored, job, {
-            copilotMode: stored?.vedha_review_gateway !== false
+            copilotMode: stored?.vedha_review_gateway !== false,
+            ...(await (async () => {
+              try {
+                const claimResp = await new Promise((r) => chrome.runtime?.sendMessage?.({ action: "GET_OR_CLAIM_RUN_FOR_TAB", url: window.location.href }, r));
+                const claimed = claimResp?.run;
+                if (!claimed) return {};
+                return {
+                  queueItemId: claimed.runId || claimed.RunId,
+                  claimToken: claimed.claimToken || claimed.ClaimToken,
+                  answers: claimed.prefilledAnswers || claimed.PrefilledAnswers || [],
+                  prefilledAnswers: claimed.prefilledAnswers || claimed.PrefilledAnswers || [],
+                  approvedAnswers: claimed.prefilledAnswers || claimed.PrefilledAnswers || [],
+                  coverLetter: claimed.coverLetterText || claimed.CoverLetterText || "",
+                  coverLetterText: claimed.coverLetterText || claimed.CoverLetterText || "",
+                  generatedResumeId: claimed.generatedResumeId || claimed.GeneratedResumeId || null
+                };
+              } catch (_) { return {}; }
+            })())
           });
           const res = await runAutonomousMultiStepFill(payload);
           if (res.success) {
@@ -4390,7 +4453,26 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
       setDockStatus("⚡ Running Easy Apply with Review Gateway...");
       try {
         chrome.storage.local.get(["vedha_token", "jwtToken", "token", "candidateProfile", "cachedMasterResume", "cachedUser"], async (stored) => {
-          const payload = resolveCandidatePayload(stored, job, { copilotMode: true });
+          const payload = resolveCandidatePayload(stored, job, {
+            copilotMode: true,
+            ...(await (async () => {
+              try {
+                const claimResp = await new Promise((r) => chrome.runtime?.sendMessage?.({ action: "GET_OR_CLAIM_RUN_FOR_TAB", url: window.location.href }, r));
+                const claimed = claimResp?.run;
+                if (!claimed) return {};
+                return {
+                  queueItemId: claimed.runId || claimed.RunId,
+                  claimToken: claimed.claimToken || claimed.ClaimToken,
+                  answers: claimed.prefilledAnswers || claimed.PrefilledAnswers || [],
+                  prefilledAnswers: claimed.prefilledAnswers || claimed.PrefilledAnswers || [],
+                  approvedAnswers: claimed.prefilledAnswers || claimed.PrefilledAnswers || [],
+                  coverLetter: claimed.coverLetterText || claimed.CoverLetterText || "",
+                  coverLetterText: claimed.coverLetterText || claimed.CoverLetterText || "",
+                  generatedResumeId: claimed.generatedResumeId || claimed.GeneratedResumeId || null
+                };
+              } catch (_) { return {}; }
+            })())
+          });
           const res = await autoApplyLinkedInEasyApply(payload);
           if (res.success) {
             setDockStatus(res.pausedForReview ? "✅ Paused at Review Screen for confirmation!" : "✅ Application submitted!", true);
@@ -4433,7 +4515,8 @@ Provide ONLY a single, corrected, compliant value that satisfies the validation 
             setDockStatus("⚠️ Upload a Master Resume in Vedha Studio to analyze match");
             return;
           }
-          const res = await fetch("http://localhost:5000/api/orchestrator/quick-match", {
+          const apiBase = await getApiBaseUrl();
+          const res = await fetch(`${apiBase}/api/orchestrator/quick-match`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

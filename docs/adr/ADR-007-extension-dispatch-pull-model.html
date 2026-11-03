@@ -136,6 +136,19 @@
       Related fix folded in: popup <code>ABORT_AGENT</code> vs content <code>ABORT_AGENT_LOOP</code> mismatch normalized (kill switch must work for dispatched runs).
     </p>
   </div>
+
+  <div class="card">
+    <h2>6. 2026-10-28 Amendment: ATS File Upload &amp; Autonomous Pipeline Hardening</h2>
+    <p>
+      <b>File Upload Support:</b> Added <code>GeneratedResumeId</code> to <code>ExtensionRunPackageDto</code>. The extension harness downloads the tailored PDF via <code>/api/tailor/{id}/export?format=Pdf</code> and attaches it to file inputs via standard <code>DataTransfer</code> simulation, preventing Step 1 escalation halts on external ATS portals (Workday, Greenhouse, Lever, Ashby).
+    </p>
+    <p>
+      <b>Island Gap Closure:</b> In-page floating dock actions query <code>GET_OR_CLAIM_RUN_FOR_TAB</code> to atomically bind to backend dispatched queue items, restoring bidirectional progress streaming and terminal receipts.
+    </p>
+    <p>
+      <b>Reliability &amp; MV3 Lifecycle:</b> Synchronously registered alarms listener at the top level of <code>background.js</code> to eliminate dropped wakeups from Chrome idle termination; replaced arbitrary 2.5s delays with event-driven <code>waitForTabLoaded</code>; parameterized API base URL.
+    </p>
+  </div>
 </div>
 </body>
 </html>

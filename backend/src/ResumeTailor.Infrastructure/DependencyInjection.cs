@@ -73,7 +73,7 @@ public static class DependencyInjection
         // 5. AI Providers & Factory
         services.AddHttpClient<OpenAiProvider>();
         services.AddHttpClient<ClaudeProvider>();
-        services.AddHttpClient<GeminiProvider>();
+        services.AddHttpClient<GeminiProvider>(client => client.Timeout = TimeSpan.FromSeconds(120));
 
         services.AddScoped<IAiProvider, OpenAiProvider>();
         services.AddScoped<IAiProvider, ClaudeProvider>();

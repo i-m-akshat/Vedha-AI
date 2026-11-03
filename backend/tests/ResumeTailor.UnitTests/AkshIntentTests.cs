@@ -36,11 +36,28 @@ public class AkshIntentTests
     [InlineData("yes, apply now", false, false, true)]
     [InlineData("finalize the submit", false, false, true)]
     [InlineData("hello there", false, false, false)]
+    [InlineData("can you apply the xyz formula to my bullet?", false, false, false)]
+    [InlineData("how do I apply the star method?", false, false, false)]
     public void Intents_Classify_Candidate_Phrasing(string text, bool cont, bool gen, bool apply)
     {
         AkshIntent.HasContinueIntent(text).Should().Be(cont);
         AkshIntent.HasGenerateIntent(text).Should().Be(gen);
         AkshIntent.HasApplyIntent(text).Should().Be(apply);
+    }
+
+    [Theory]
+    [InlineData("hi", true)]
+    [InlineData("hello!", true)]
+    [InlineData("hey there", true)]
+    [InlineData("who are you", true)]
+    [InlineData("what can you do?", true)]
+    [InlineData("thanks a lot", true)]
+    [InlineData("thank you!", true)]
+    [InlineData("Please apply to https://boards.greenhouse.io/job/1", false)]
+    [InlineData("Tailor my resume for a backend engineer role", false)]
+    public void IsGreetingOrGeneralChat_Classifies_Greetings_Accurately(string text, bool expectedGreeting)
+    {
+        AkshIntent.IsGreetingOrGeneralChat(text).Should().Be(expectedGreeting);
     }
 
     [Fact]

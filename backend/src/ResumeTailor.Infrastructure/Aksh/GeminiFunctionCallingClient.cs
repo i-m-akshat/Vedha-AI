@@ -199,6 +199,14 @@ public class GeminiFunctionCallingClient
         var body = bodyDict;
 
         var httpClient = _httpClientFactory.CreateClient();
+        try
+        {
+            httpClient.Timeout = TimeSpan.FromSeconds(120);
+        }
+        catch
+        {
+            // Ignore if timeout cannot be mutated on shared client
+        }
 
         // Fresh usage per call: never let a previous turn's numbers leak in.
         LastUsage = null;
@@ -243,9 +251,27 @@ public class GeminiFunctionCallingClient
 
                     break;
                 }
-                catch (Exception ex) when (attempt < 2 && !cancellationToken.IsCancellationRequested)
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
-                    _logger.LogWarning(ex, "Gemini function-calling request failed on attempt {Attempt}; retrying.", attempt);
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    if (attempt < 2 && !cancellationToken.IsCancellationRequested)
+                    {
+                        _logger.LogWarning(ex, "Gemini function-calling request failed on attempt {Attempt}; cascading to fallback model if available.", attempt);
+                        var nextModel = GetNextFallbackModel(model);
+                        if (!string.IsNullOrEmpty(nextModel) && !string.Equals(nextModel, model, StringComparison.OrdinalIgnoreCase))
+                        {
+                            model = nextModel;
+                            url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogError(ex, "Gemini function-calling request failed on attempt {Attempt} with transport/timeout error: {Message}", attempt, ex.Message);
+                        return Result<ChatMessage>.Failure($"Gemini API call timed out or failed: {ex.Message}");
+                    }
                     await Task.Delay(attempt * 1000, cancellationToken);
                 }
             }

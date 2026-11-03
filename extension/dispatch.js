@@ -10,7 +10,6 @@
  * All chrome access is guarded so the module also parses under Node checks.
  */
 
-const VEDHA_API_BASE = "http://localhost:5000"; // matches existing extension convention (content/popup hardcode)
 const POLL_ALARM = "vedha-dispatch-poll";
 const POLL_MINUTES = 1;
 const TOKEN_KEYS = ["jwtToken", "vedha_token", "token"];
@@ -19,6 +18,17 @@ function getChrome() {
   if (typeof chrome !== "undefined") return chrome;
   if (typeof globalThis !== "undefined" && globalThis.chrome) return globalThis.chrome;
   return null;
+}
+
+export async function getApiBaseUrl() {
+  const cr = getChrome();
+  if (!cr?.storage?.local) return "http://localhost:5000";
+  try {
+    const s = await cr.storage.local.get(["vedha_api_base", "apiBaseUrl"]);
+    return s.vedha_api_base || s.apiBaseUrl || "http://localhost:5000";
+  } catch {
+    return "http://localhost:5000";
+  }
 }
 
 async function getToken() {
@@ -33,7 +43,8 @@ async function getToken() {
 }
 
 async function apiFetch(token, path, options = {}) {
-  const res = await fetch(`${VEDHA_API_BASE}${path}`, {
+  const baseUrl = await getApiBaseUrl();
+  const res = await fetch(`${baseUrl}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -49,7 +60,7 @@ async function apiFetch(token, path, options = {}) {
   return res;
 }
 
-async function getSessionClaim() {
+export async function getSessionClaim() {
   const cr = getChrome();
   try {
     const s = await cr.storage.session.get(["vedhaActiveClaim"]);
@@ -110,6 +121,56 @@ async function ensureContentScript(tabId) {
   } catch { /* injection may fail on restricted pages; caller handles */ }
 }
 
+function waitForTabLoaded(tabId, timeoutMs = 15000) {
+  const cr = getChrome();
+  if (!cr?.tabs) return Promise.resolve();
+  return new Promise((resolve) => {
+    let resolved = false;
+    const timer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        if (cr?.tabs?.onUpdated?.removeListener) {
+          try { cr.tabs.onUpdated.removeListener(onUpdated); } catch (_) {}
+        }
+        resolve();
+      }
+    }, timeoutMs);
+
+    function onUpdated(updatedTabId, changeInfo) {
+      if (updatedTabId === tabId && changeInfo.status === "complete") {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timer);
+          if (cr?.tabs?.onUpdated?.removeListener) {
+            try { cr.tabs.onUpdated.removeListener(onUpdated); } catch (_) {}
+          }
+          // Dynamic SPA hydration margin
+          setTimeout(resolve, 800);
+        }
+      }
+    }
+
+    if (cr?.tabs?.onUpdated?.addListener) {
+      try { cr.tabs.onUpdated.addListener(onUpdated); } catch (_) {}
+    }
+
+    if (cr?.tabs?.get) {
+      try {
+        cr.tabs.get(tabId, (tab) => {
+          if (tab && tab.status === "complete" && !resolved) {
+            resolved = true;
+            clearTimeout(timer);
+            if (cr?.tabs?.onUpdated?.removeListener) {
+              try { cr.tabs.onUpdated.removeListener(onUpdated); } catch (_) {}
+            }
+            setTimeout(resolve, 800);
+          }
+        });
+      } catch (_) {}
+    }
+  });
+}
+
 async function findOrOpenTab(jobUrl) {
   const cr = getChrome();
   try {
@@ -117,12 +178,15 @@ async function findOrOpenTab(jobUrl) {
     const match = (tabs || []).find((t) => t.url && (t.url === jobUrl || (jobUrl && t.url.split("?")[0] === jobUrl.split("?")[0])));
     if (match?.id) {
       await cr.tabs.update(match.id, { active: true });
+      await waitForTabLoaded(match.id, 5000);
       return match.id;
     }
     const created = await cr.tabs.create({ url: jobUrl, active: true });
-    // Give the posting page a moment to load before the harness runs.
-    await new Promise((r) => setTimeout(r, 2500));
-    return created?.id || null;
+    if (created?.id) {
+      await waitForTabLoaded(created.id, 15000);
+      return created.id;
+    }
+    return null;
   } catch {
     return null;
   }
@@ -177,12 +241,13 @@ async function executeRun(token, pkg) {
     return;
   }
 
-  await setSessionClaim({ runId, claimToken, tabId });
+  await setSessionClaim({ runId, claimToken, tabId, pkg });
   await setBadge(1);
   await postReceipt(token, runId, { claimToken, state: "started", message: "Extension claimed the run; harness starting." }).catch(() => null);
 
   const answersList = pkg.prefilledAnswers ?? pkg.PrefilledAnswers ?? [];
   const coverLetterStr = norm(pkg.coverLetterText ?? pkg.CoverLetterText);
+  const baseUrl = await getApiBaseUrl();
 
   const payload = {
     queueItemId: runId,
@@ -194,9 +259,10 @@ async function executeRun(token, pkg) {
     answers: answersList,
     prefilledAnswers: answersList,
     approvedAnswers: answersList,
+    generatedResumeId: pkg.generatedResumeId ?? pkg.GeneratedResumeId ?? null,
     copilotMode: true,
     token,
-    runStatusUrl: `${VEDHA_API_BASE}/api/orchestrator/queue/${runId}`,
+    runStatusUrl: `${baseUrl}/api/orchestrator/queue/${runId}`,
     candidateProfile: undefined, // content falls back to cached profile
   };
 
@@ -298,6 +364,39 @@ async function resumeInterruptedClaim() {
 export async function triggerDispatchPoll() {
   console.log("[Vedha Dispatch] on-demand poll triggered.");
   await pollOnce();
+}
+
+export async function claimRunForUrl(url) {
+  const token = await getToken();
+  if (!token) return null;
+
+  const existing = await getSessionClaim();
+  if (existing?.pkg) return existing.pkg;
+
+  let res;
+  try {
+    res = await apiFetch(token, "/api/orchestrator/extension/runs/next");
+  } catch (err) {
+    return null;
+  }
+  if (!res || !res.ok || res.status === 204) return null;
+  let pkg = null;
+  try { pkg = await res.json(); } catch { pkg = null; }
+  if (!pkg || (!pkg.runId && !pkg.RunId)) return null;
+
+  const runId = pkg.runId || pkg.RunId;
+  const claimToken = pkg.claimToken || pkg.ClaimToken;
+  const cr = getChrome();
+  let tabId = null;
+  try {
+    const tabs = await cr.tabs.query({ active: true, currentWindow: true });
+    tabId = tabs?.[0]?.id || null;
+  } catch (_) {}
+
+  await setSessionClaim({ runId, claimToken, tabId, pkg });
+  await setBadge(1);
+  await postReceipt(token, runId, { claimToken, state: "started", message: "In-page dock claimed run; execution beginning." }).catch(() => null);
+  return pkg;
 }
 
 export function startDispatchPoller() {

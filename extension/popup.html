@@ -837,6 +837,27 @@
           <span id="masterResumeBadge" style="color: var(--success); font-weight: 600;">● Resume Ready</span>
         </div>
 
+        <!-- Active Dispatched Run Card (Visible when backend dispatched an application to extension) -->
+        <div class="card" id="dispatchedRunCard" style="display: none; border: 1px solid var(--accent); background: var(--accent-dim); padding: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent);"></span>
+              <strong style="color: var(--accent-text); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Dispatched Application</strong>
+            </div>
+            <span class="tag" id="dispatchedRunBadge" style="background: var(--accent); color: white;">Ready</span>
+          </div>
+          <div style="font-weight: 600; font-size: 13px; color: var(--text-main);" id="dispatchedRunJob">Role at Company</div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;" id="dispatchedRunUrl">Dispatched from Web App</div>
+          <div style="display: flex; gap: 8px; margin-top: 10px;">
+            <button class="btn btn-primary" id="btnRunDispatched" style="flex: 1; padding: 7px 10px; font-size: 11px;">
+              ⚡ Launch &amp; Auto-Apply Now
+            </button>
+            <button class="btn btn-secondary" id="btnDismissDispatched" style="padding: 7px 10px; font-size: 11px;">
+              Dismiss
+            </button>
+          </div>
+        </div>
+
         <!-- Target Job Card -->
         <div class="card">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">

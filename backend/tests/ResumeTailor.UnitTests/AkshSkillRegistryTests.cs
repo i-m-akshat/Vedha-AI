@@ -28,6 +28,19 @@ public class AkshSkillRegistryTests
         });
     }
 
+    [Fact]
+    public void Registry_AllSkills_DefineNonEmptySuggestedChips()
+    {
+        var skills = _registry.GetAllSkills();
+
+        foreach (var skill in skills)
+        {
+            skill.SuggestedChips.Should().NotBeNull();
+            skill.SuggestedChips.Should().NotBeEmpty($"Skill {skill.Id} must have suggested chips");
+            skill.SuggestedChips.Count.Should().BeGreaterThanOrEqualTo(3);
+        }
+    }
+
     [Theory]
     [InlineData("How do I use the Chrome extension on LinkedIn?", "platform-navigator")]
     [InlineData("Where can I upload my master resume in the studio?", "platform-navigator")]
@@ -45,6 +58,7 @@ public class AkshSkillRegistryTests
     [InlineData("Rewrite this bullet point: built microservices in go", "resume-optimizer")]
     [InlineData("I want my resume to be tailored", "resume-optimizer")]
     [InlineData("Tailor my resume for a backend engineer role", "resume-optimizer")]
+    [InlineData("Can you help me apply the XYZ formula to my resume?", "resume-optimizer")]
     public void ResolveSkill_ResumeOptimizationQueries_MatchesResumeOptimizer(string prompt, string expectedId)
     {
         var skill = _registry.ResolveSkill(prompt, _session);
@@ -55,6 +69,7 @@ public class AkshSkillRegistryTests
     [InlineData("Can we do a mock interview for senior distributed systems?", "interview-coach")]
     [InlineData("Give me behavioral questions using the STAR method", "interview-coach")]
     [InlineData("How do I answer tell me about yourself for an engineering manager role?", "interview-coach")]
+    [InlineData("Conduct a technical drill on concurrency and locking", "interview-coach")]
     public void ResolveSkill_InterviewQueries_MatchesInterviewCoach(string prompt, string expectedId)
     {
         var skill = _registry.ResolveSkill(prompt, _session);
@@ -65,6 +80,7 @@ public class AkshSkillRegistryTests
     [InlineData("How should I negotiate my salary counter offer?", "salary-negotiator")]
     [InlineData("Is 180k base compensation competitive with 50k equity?", "salary-negotiator")]
     [InlineData("Draft an email counter-offer for sign-on bonus", "salary-negotiator")]
+    [InlineData("How do RSUs vest and what is a 1-year cliff?", "salary-negotiator")]
     public void ResolveSkill_CompensationQueries_MatchesSalaryNegotiator(string prompt, string expectedId)
     {
         var skill = _registry.ResolveSkill(prompt, _session);
@@ -75,6 +91,7 @@ public class AkshSkillRegistryTests
     [InlineData("What is the status of my application queue?", "profile-queue-audit")]
     [InlineData("Show me my candidate profile and work authorization", "profile-queue-audit")]
     [InlineData("Check recent applications in my queue", "profile-queue-audit")]
+    [InlineData("Where can I see applications I've applied to?", "profile-queue-audit")]
     public void ResolveSkill_QueueQueries_MatchesProfileAndQueueAudit(string prompt, string expectedId)
     {
         var skill = _registry.ResolveSkill(prompt, _session);
@@ -95,6 +112,7 @@ public class AkshSkillRegistryTests
     [InlineData("Should I transition from frontend to fullstack or platform engineering?", "career-strategist")]
     [InlineData("Hello, what can you help me with today?", "career-strategist")]
     [InlineData("How do I build a personal brand on GitHub and LinkedIn?", "career-strategist")]
+    [InlineData("What is the difference between a Staff and Principal engineer?", "career-strategist")]
     public void ResolveSkill_GeneralQueries_FallsBackToCareerStrategist(string prompt, string expectedId)
     {
         var skill = _registry.ResolveSkill(prompt, _session);

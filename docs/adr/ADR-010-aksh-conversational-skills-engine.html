@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADR-010 — Dual-Mode Conversational Chatbot & Prompt-Adaptive Dynamic Skill Routing</title>
+<style>
+  :root { --bg:#0b0d12; --card:#14161d; --line:#262932; --txt:#e6e8ee; --mut:#9aa0ae; --sky:#38bdf8; --grn:#34d399; --amb:#fbbf24; --rose:#fb7185; --purp:#a855f7; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; line-height:1.65; }
+  .wrap { max-width:960px; margin:0 auto; padding:40px 24px 80px; }
+  .crumb { color:var(--mut); font-size:13px; margin-bottom:12px; }
+  .crumb a { color:var(--sky); text-decoration:none; }
+  h1 { font-size:32px; margin:0 0 6px; letter-spacing:-.5px; }
+  .meta { display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 28px; }
+  .badge { font-size:12px; font-weight:700; padding:4px 12px; border-radius:999px; border:1px solid; }
+  .b-grn { color:var(--grn); border-color:#34d39955; background:#34d39914; }
+  .b-sky { color:var(--sky); border-color:#38bdf855; background:#38bdf814; }
+  .b-purp { color:var(--purp); border-color:#a855f755; background:#a855f714; }
+  .b-mut { color:var(--mut); border-color:#9aa0ae44; background:#9aa0ae14; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:24px; margin:20px 0; }
+  .card h2 { margin:0 0 12px; font-size:20px; }
+  .card h3 { margin:18px 0 8px; font-size:15px; color:var(--sky); }
+  p, li { color:#c9cdd8; font-size:15px; }
+  code { background:#0e1015; border:1px solid var(--line); border-radius:6px; padding:1px 7px; font-size:13.5px; color:var(--amb); }
+  table { width:100%; border-collapse:collapse; font-size:14px; margin-top:10px; }
+  th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--mut); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.06em; }
+  .human { background:#0e1420; border-left:3px solid var(--sky); padding:16px 20px; border-radius:0 12px 12px 0; margin:16px 0; }
+  svg.flow { width:100%; height:auto; background:#0e1015; border:1px solid var(--line); border-radius:12px; margin:16px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="crumb"><a href="index.html">Architecture decisions</a> · ADR-010</div>
+  <h1>Dual-Mode Conversational Chatbot & Prompt-Adaptive Dynamic Skill Routing</h1>
+  <div class="meta">
+    <span class="badge b-grn">ACCEPTED</span>
+    <span class="badge b-purp">Agent Architecture</span>
+    <span class="badge b-sky">Full-Stack Aksh</span>
+    <span class="badge b-mut">2026-10-28</span>
+  </div>
+
+  <div class="human">
+    <strong>Human-First Summary.</strong> Aksh AI is transformed into a natural, conversational career chatbot capable of open-ended discussion, strategic mentorship, behavioral STAR interview coaching, salary negotiation advice, and resume critique—without forcibly executing tools or getting stuck in a rigid multi-step pipeline. Based on the candidate's prompt, Aksh dynamically detects intent, activates the optimal specialized skill, streams real-time contextual prompt chips to the UI, and responds conversationally in rich Markdown.
+  </div>
+
+  <div class="card">
+    <h2>Context & Problem Statement</h2>
+    <p>
+      Originally, Aksh AI was designed as a strict harness execution agent under the constraint: <em>"The harness injects todo/plan/execute tools — these instructions bind them into a strict order so the model acts instead of chats."</em> While effective for automated job application pipelines, this created three critical limitations:
+    </p>
+    <ul>
+      <li><strong>Robotic Execution Resistance</strong>: When a candidate asked general questions (e.g., <em>"What is the STAR method?"</em>, <em>"How does leveling work between Staff and Principal?"</em>, or <em>"Hi, how can you help me?"</em>), the model felt forced to invoke tools (like <code>get_master_resume</code> or <code>todos_add</code>) or apologized for not executing actions, degrading the user experience.</li>
+      <li><strong>Keyword Collisions & False Pipeline Triggers</strong>: Intent matching checked for substrings like <code>"apply"</code> without word boundaries. Asking <em>"What is the status of my application?"</em> or <em>"Can you apply the XYZ formula to my resume?"</em> inadvertently matched <code>HasApplyIntent</code> and triggered the autonomous apply pipeline instead of queue auditing or resume optimization.</li>
+      <li><strong>Cross-Turn URL Pollution</strong>: Pasting a job URL in turn 1 contaminated the session string buffer in subsequent turns, causing later conversational questions to re-scrape or attempt re-packaging.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>Architecture Decision & Flow</h2>
+    <svg class="flow" viewBox="0 0 880 420" role="img" aria-label="Aksh Prompt-Adaptive Skill Routing & Dual-Mode Execution">
+      <!-- Background groups -->
+      <rect x="20" y="20" width="840" height="380" rx="14" fill="#10121a" stroke="#262932"/>
+      
+      <!-- User Prompt Node -->
+      <rect x="50" y="50" width="220" height="50" rx="8" fill="#1e2230" stroke="#38bdf8"/>
+      <text x="160" y="80" text-anchor="middle" fill="#38bdf8" font-size="13" font-weight="700">Candidate Prompt Input</text>
+
+      <!-- Intent & Boundary Filter -->
+      <path d="M 270 75 L 330 75" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow)"/>
+      <rect x="330" y="45" width="230" height="60" rx="8" fill="#182822" stroke="#34d399"/>
+      <text x="445" y="70" text-anchor="middle" fill="#34d399" font-size="12" font-weight="700">AkshIntent Lexical Parser</text>
+      <text x="445" y="90" text-anchor="middle" fill="#9aa0ae" font-size="10">Word boundary regex & formula exclusions</text>
+
+      <!-- Skill Registry Hierarchy -->
+      <path d="M 560 75 L 620 75" stroke="#34d399" stroke-width="2"/>
+      <rect x="620" y="35" width="210" height="80" rx="8" fill="#24192e" stroke="#a855f7"/>
+      <text x="725" y="60" text-anchor="middle" fill="#a855f7" font-size="12" font-weight="700">AkshSkillRegistry (Priority)</text>
+      <text x="725" y="80" text-anchor="middle" fill="#c9cdd8" font-size="10">1. Queue 2. Navigator 3. Coach</text>
+      <text x="725" y="98" text-anchor="middle" fill="#c9cdd8" font-size="10">4. Salary 5. Resume 6. Apply 7. Chat</text>
+
+      <!-- Split: Mode 1 vs Mode 2 -->
+      <path d="M 445 105 L 445 160" stroke="#9aa0ae" stroke-width="2"/>
+      <path d="M 445 160 L 220 160 L 220 200" stroke="#38bdf8" stroke-width="2"/>
+      <path d="M 445 160 L 660 160 L 660 200" stroke="#fbbf24" stroke-width="2"/>
+
+      <!-- Mode 1: Conversational Chatbot -->
+      <rect x="80" y="200" width="280" height="110" rx="10" fill="#0d1b2a" stroke="#38bdf8"/>
+      <text x="220" y="228" text-anchor="middle" fill="#38bdf8" font-size="13" font-weight="700">Mode 1: Conversational Chatbot</text>
+      <text x="220" y="250" text-anchor="middle" fill="#c9cdd8" font-size="11">• Zero tool overhead (Array.Empty&lt;string&gt;)</text>
+      <text x="220" y="270" text-anchor="middle" fill="#c9cdd8" font-size="11">• Warm, insightful Markdown formatting</text>
+      <text x="220" y="290" text-anchor="middle" fill="#c9cdd8" font-size="11">• Concrete examples (STAR, XYZ, TC)</text>
+
+      <!-- Mode 2: Action Copilot -->
+      <rect x="520" y="200" width="280" height="110" rx="10" fill="#241b10" stroke="#fbbf24"/>
+      <text x="660" y="228" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="700">Mode 2: Autonomous Action Copilot</text>
+      <text x="660" y="250" text-anchor="middle" fill="#c9cdd8" font-size="11">• Scrapes & verifies target job posting</text>
+      <text x="660" y="270" text-anchor="middle" fill="#c9cdd8" font-size="11">• Prepares ATS package & Truth Gate</text>
+      <text x="660" y="290" text-anchor="middle" fill="#c9cdd8" font-size="11">• Human Review Gateway approval gate</text>
+
+      <!-- SSE Stream & Frontend Suggested Chips -->
+      <path d="M 220 310 L 220 340 L 440 340" stroke="#38bdf8" stroke-width="2"/>
+      <path d="M 660 310 L 660 340 L 440 340" stroke="#fbbf24" stroke-width="2"/>
+      <rect x="310" y="340" width="260" height="46" rx="8" fill="#141e17" stroke="#34d399"/>
+      <text x="440" y="362" text-anchor="middle" fill="#34d399" font-size="11" font-weight="700">SSE Event: "skill" + Suggested Chips</text>
+      <text x="440" y="378" text-anchor="middle" fill="#9aa0ae" font-size="10">Active skill chip + 4 contextual action buttons in UI</text>
+    </svg>
+
+    <h3>1. Dual-Mode Persona Architecture</h3>
+    <p>
+      In <code>AkshPrompts.cs</code>, instructions now explicitly establish dual capabilities:
+    </p>
+    <ul>
+      <li><strong>Conversational Chatbot Mode</strong>: When candidates greet, explore options, ask conceptual questions, or request advice, the model responds directly in rich Markdown without forcing tools or executing pipeline tasks.</li>
+      <li><strong>Autonomous Action Copilot Mode</strong>: When a job URL is provided or the candidate explicitly instructs Aksh to tailor, prepare, or apply, the model enters the <code>PLAN -> GROUND -> ACT -> REPORT -> GATE</code> pipeline.</li>
+    </ul>
+
+    <h3>2. Dynamic Skill Priority Hierarchy</h3>
+    <p>
+      <code>AkshSkillRegistry</code> reorders skill resolution so that specific domain queries always resolve to their dedicated expert skills before falling into the autonomous application copilot:
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>Priority</th>
+          <th>Skill Identifier</th>
+          <th>Domain Focus</th>
+          <th>Sample Triggers</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td><code>profile-queue-audit</code></td>
+          <td>Applications, statuses, screening memory, work auth</td>
+          <td>"What is the status of my applications?", "Where did I apply?"</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td><code>platform-navigator</code></td>
+          <td>Vedha AI features, extension, review gateway, settings</td>
+          <td>"How do I use the Chrome extension?", "Where do I configure Gemini?"</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td><code>interview-coach</code></td>
+          <td>STAR behavioral answers, system design drills, mock interview</td>
+          <td>"Conduct a mock interview", "STAR behavioral questions"</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td><code>salary-negotiator</code></td>
+          <td>Total compensation benchmarks, counter-offer scripting</td>
+          <td>"How do I negotiate my counter offer?", "RSU vesting cliff"</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td><code>resume-optimizer</code></td>
+          <td>Google XYZ impact bullets, ATS keyword gaps, tailoring</td>
+          <td>"Optimize my resume bullets", "Apply XYZ formula to my resume"</td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td><code>job-application-copilot</code></td>
+          <td>Autonomous job application pipeline, Review Gateway staging</td>
+          <td>Pasted job URLs, "Apply to this role", "Auto-apply"</td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td><code>career-strategist</code></td>
+          <td>General career mentorship, tech transitions, greetings</td>
+          <td>"Hi", "Staff vs Principal difference", "Tech roadmap"</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>3. Dynamic Contextual Prompt Chips (`SuggestedChips`)</h3>
+    <p>
+      Each skill implementation exposes a curated list of prompt chips. The SSE <code>skill</code> event streams these chips to the frontend, rendering a horizontal quick-action tray directly above the chat composer in <code>AskAkshPage.tsx</code>. Clicking any chip immediately delivers the prompt.
+    </p>
+
+    <h3>4. Pure Current-Turn URL Extraction</h3>
+    <p>
+      In <code>AkshAgentRunner.cs</code>, URL scraping is isolated strictly to URLs found in the candidate's current turn message (<code>AkshIntent.ExtractJobUrls(cleanMessage)</code>), preventing old job links from hijacking new conversational turns.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Consequences & Verification</h2>
+    <ul>
+      <li><strong>Natural Conversations</strong>: Aksh chats warmly and answers complex career, technical, and platform questions immediately without tool stalls.</li>
+      <li><strong>Zero Regression on Autonomous Application</strong>: Pasting a job URL or requesting application immediately engages the full truth-checked package preparation and Review Gateway approval gate.</li>
+      <li><strong>Test Verification</strong>: All 225 unit tests in <code>ResumeTailor.UnitTests</code> passed 100%, and all 156 E2E tests in <code>tests/e2e/runner.js</code> passed 100%.</li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>

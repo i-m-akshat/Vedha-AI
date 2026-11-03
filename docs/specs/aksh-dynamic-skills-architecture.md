@@ -113,3 +113,45 @@ Transform Aksh from a single-purpose application bot into an **All-in-One AI Car
 - **2026-10-15 (Phase 1)**: Created Feature Specification for Aksh Dynamic Skill Architecture. Decoupled conversational tasks from the automated application pipeline and added 6 modular career skills.
 - **2026-10-15 (Phase 2)**: Added chat-first conversational overhaul, dynamic context-aware plan generation, anime girl running streaming indicator, in-chat PDF export links, and Gemini 500 transient error resilience with multi-model fallback cascading.
 - **2026-10-15 (Phase 3)**: Added Proactive Input Elicitation (intelligently requesting JDs, links, or offer details when users initiate workflows), Strict Application & Career Data Domain Guardrails, PlatformNavigatorSkill for comprehensive app guidance, and multi-turn user/assistant conversational history restoration.
+- **2026-10-28 (Phase 4)**: Added Conversational Chatbot Fluidity and Prompt-Adaptive Dynamic Skill Switching. Refactored intent classification to use word boundaries preventing false triggers on conversational keywords, added `SuggestedChips` to `IAkshSkill` streamed via SSE, optimized tool catalogs to eliminate unnecessary tool overhead during advisory/conceptual discussions, and enriched prompt instructions for fluid, natural dialogue.
+
+---
+
+## 13. Conversational Chatbot & Dynamic Skill Switching Engine (Phase 4)
+
+### 13.1 Dual-Mode Operation: Conversational Chatbot vs. Action Copilot
+Aksh AI operates in two complementary modes seamlessly within the same session:
+1. **Conversational Chatbot Mode**:
+   - Engages when the candidate greets, asks conceptual or strategic questions (e.g. STAR method overview, leveling criteria, tech stack roadmaps), seeks general career advice, or engages in open-ended discussion.
+   - Responds conversationally, warmly, and with high intellectual rigor using rich Markdown formatting (bullet points `- `, bold headers, code snippets).
+   - Operates with zero unnecessary tool overhead (`toolsForTurn = Array.Empty<string>()` or optional non-blocking tools) so responses stream instantly without latency.
+2. **Autonomous Action Copilot Mode**:
+   - Engages when the candidate provides a job URL, explicitly asks to tailor a resume, prepare an application package, or dispatch an application.
+   - Activates the structured `PLAN -> GROUND -> ACT -> REPORT -> GATE` pipeline, executes tools, records usage in the single-writer ledger, and raises Review Gateway approval gates before any external submission.
+
+### 13.2 Precision Skill Resolution Order
+To eliminate keyword collisions (e.g. "application" in "What is the status of my application?" triggering the apply pipeline), skill resolution follows a strict priority chain:
+1. `PlatformNavigatorSkill` (`platform-navigator`): Explicit questions regarding platform pages, extension, or settings.
+2. `ProfileAndQueueAuditSkill` (`profile-queue-audit`): Application queue queries, status checks, work auth, and stored memories.
+3. `InterviewCoachSkill` (`interview-coach`): Behavioral STAR drills, mock interviews, system design drills.
+4. `SalaryNegotiatorSkill` (`salary-negotiator`): Total compensation benchmarks, counter-offer scripting, offer evaluation.
+5. `ResumeOptimizerSkill` (`resume-optimizer`): Resume critiques, bullet rewrites using Google XYZ formula, ATS keyword gaps.
+6. `JobApplicationCopilotSkill` (`job-application-copilot`): Explicit job apply directives or URLs with application intent.
+7. `CareerStrategistSkill` (`career-strategist`): General career advisory, mentorship, transition planning, greetings, and fallback chat.
+
+### 13.3 Real-Time Dynamic Suggested Prompt Chips
+Each `IAkshSkill` defines domain-specific quick-action chips (`SuggestedChips`). When a skill is resolved for a turn, the SSE `"skill"` event delivers:
+```json
+{
+  "id": "interview-coach",
+  "name": "Behavioral & Technical Interview Coach",
+  "description": "Simulates mock interviews, structures answers with STAR format, and coaches on technical & system design questions.",
+  "suggestedChips": [
+    "Ask me a STAR behavioral interview question",
+    "How should I answer 'Tell me about yourself'?",
+    "Simulate a System Design interview question",
+    "What questions should I ask the hiring manager?"
+  ]
+}
+```
+The frontend dynamically displays these chips above the composer, enabling one-click exploratory steering.

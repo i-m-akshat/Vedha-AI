@@ -6,6 +6,7 @@
  * 2. Service worker lifecycle management (onInstalled, onStartup, top-level boot)
  * 3. Graceful fallback on chrome.action.onClicked for legacy or unsupported browsers
  * 4. Runtime message coordination (ping health check, side panel programmatic open)
+ * 5. Synchronous MV3 alarms listener for dispatch pull model (never drops wakeup alarms)
  */
 
 function getChrome() {
@@ -117,7 +118,33 @@ if (cr?.action?.onClicked) {
   cr.action.onClicked.addListener(handleActionClick);
 }
 
-// 4. Runtime Message Listener for Extension Coordination
+// Lazy/cached dispatch module loader
+let dispatchModule = null;
+async function getDispatchModule() {
+  if (dispatchModule) return dispatchModule;
+  try {
+    dispatchModule = await import("./dispatch.js");
+    return dispatchModule;
+  } catch (err) {
+    console.warn("[Vedha SW] Could not import dispatch module:", err?.message || err);
+    return null;
+  }
+}
+
+// 4. MV3 Synchronous Alarm Listener (CRITICAL: Registered top-level so wakeups are never dropped)
+if (cr?.alarms?.onAlarm) {
+  cr.alarms.onAlarm.addListener((alarm) => {
+    if (alarm?.name === "vedha-dispatch-poll") {
+      getDispatchModule().then((m) => {
+        if (m && typeof m.triggerDispatchPoll === "function") {
+          m.triggerDispatchPoll().catch(() => {});
+        }
+      }).catch(() => {});
+    }
+  });
+}
+
+// 5. Runtime Message Listener for Extension Coordination
 if (cr?.runtime?.onMessage) {
   cr.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (!message || typeof message !== "object") return false;
@@ -148,13 +175,42 @@ if (cr?.runtime?.onMessage) {
     }
 
     if (message.action === "TRIGGER_DISPATCH_POLL") {
-      if (dispatchModule && typeof dispatchModule.triggerDispatchPoll === "function") {
-        dispatchModule.triggerDispatchPoll()
-          .then(() => sendResponse({ success: true }))
-          .catch((err) => sendResponse({ success: false, error: err?.message || String(err) }));
-        return true;
-      }
-      sendResponse({ success: false, error: "dispatch module not loaded" });
+      getDispatchModule()
+        .then((m) => {
+          if (m && typeof m.triggerDispatchPoll === "function") {
+            return m.triggerDispatchPoll().then(() => sendResponse({ success: true }));
+          }
+          sendResponse({ success: false, error: "dispatch module not loaded" });
+        })
+        .catch((err) => sendResponse({ success: false, error: err?.message || String(err) }));
+      return true;
+    }
+
+    if (message.action === "GET_OR_CLAIM_RUN_FOR_TAB") {
+      getDispatchModule()
+        .then(async (m) => {
+          if (m && typeof m.claimRunForUrl === "function") {
+            const res = await m.claimRunForUrl(message.url);
+            sendResponse({ success: true, run: res });
+          } else {
+            sendResponse({ success: false, error: "dispatch module not available" });
+          }
+        })
+        .catch((err) => sendResponse({ success: false, error: err?.message || String(err) }));
+      return true;
+    }
+
+    if (message.action === "GET_ACTIVE_CLAIM") {
+      getDispatchModule()
+        .then(async (m) => {
+          if (m && typeof m.getActiveClaim === "function") {
+            const claim = await m.getActiveClaim();
+            sendResponse({ success: true, claim });
+          } else {
+            sendResponse({ success: true, claim: null });
+          }
+        })
+        .catch((err) => sendResponse({ success: false, error: err?.message || String(err) }));
       return true;
     }
 
@@ -201,7 +257,8 @@ const AUTH_STORAGE_KEYS = [
   "candidateProfile",
   "cachedMasterResume",
   "cachedUser",
-  "vedha_review_gateway"
+  "vedha_review_gateway",
+  "vedha_api_base"
 ];
 const WEBAPP_ORIGIN = "http://localhost:3000";
 
@@ -236,9 +293,11 @@ async function syncAuthFromWebApp() {
     if (webAppData && Object.keys(webAppData).length > 0) {
       await cr.storage.local.set(webAppData);
       console.log("[Vedha SW] Synced auth from web app:", Object.keys(webAppData));
-      if (dispatchModule && typeof dispatchModule.triggerDispatchPoll === "function") {
-        dispatchModule.triggerDispatchPoll().catch(() => {});
-      }
+      getDispatchModule().then((m) => {
+        if (m && typeof m.triggerDispatchPoll === "function") {
+          m.triggerDispatchPoll().catch(() => {});
+        }
+      }).catch(() => {});
     }
   } catch (err) {
     // Silently fail - web app might not be open
@@ -301,19 +360,15 @@ setInterval(syncAuthFromWebApp, 30000);
 syncAuthFromWebApp();
 
 // ==========================================
-// Phase 4 Extension Dispatch Poller
+// Phase 4 Extension Dispatch Poller Boot
 // ==========================================
-// Dynamic import (not static): background.js is also executed in classic-script
-// e2e harnesses (vm.runInContext) where static imports are a parse error.
-// Dynamic import() parses in both goals; rejection is caught. Chrome loads
-// this worker as a module per manifest, so resolution succeeds there.
-let dispatchModule = null;
 try {
   if (cr?.alarms?.create) {
-    import("./dispatch.js")
+    getDispatchModule()
       .then((m) => {
-        dispatchModule = m;
-        try { m.startDispatchPoller(); } catch (_) {}
+        if (m && typeof m.startDispatchPoller === "function") {
+          m.startDispatchPoller();
+        }
       })
       .catch(() => {});
   }
@@ -326,6 +381,7 @@ if (typeof globalThis !== "undefined") {
     handleActionClick,
     syncAuthFromWebApp,
     syncAuthToWebApp,
+    getDispatchModule,
     version: "1.0.0"
   };
 }

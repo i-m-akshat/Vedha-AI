@@ -15,16 +15,18 @@ public class AkshSkillRegistry : IAkshSkillRegistry
 
     public AkshSkillRegistry()
     {
-        // Registered in evaluation priority order:
-        // High-specificity domain skills first, with general career strategist as default fallback.
+        // Registered in specificity evaluation order:
+        // Highly targeted domain skills evaluate first;
+        // JobApplicationCopilot evaluates when explicit application directives or URLs are present;
+        // CareerStrategist acts as the conversational fallback.
         _skills = new List<IAkshSkill>
         {
-            new JobApplicationCopilotSkill(),
-            new InterviewCoachSkill(),
-            new SalaryNegotiatorSkill(),
             new ProfileAndQueueAuditSkill(),
             new PlatformNavigatorSkill(),
+            new InterviewCoachSkill(),
+            new SalaryNegotiatorSkill(),
             new ResumeOptimizerSkill(),
+            new JobApplicationCopilotSkill(),
             new CareerStrategistSkill(),
         };
     }
